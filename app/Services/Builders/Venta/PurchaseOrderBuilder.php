@@ -6,8 +6,8 @@ use App\Enums\Ventas\PurchaseOrdersL;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpProveedor;
 use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Models\Ventas\Proveedores\GpProveedor;
 use App\Services\Builders\Venta\Contracts\PurchaseOrderBuilderInterface;
 
 class PurchaseOrderBuilder implements PurchaseOrderBuilderInterface

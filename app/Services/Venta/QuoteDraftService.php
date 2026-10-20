@@ -18,14 +18,15 @@ class QuoteDraftService implements QuoteDraftServiceInterface
     }
 
 
-    public function sync(string $draftId, string $ptoVtaId, array $data, GpUsuario $user)
+    public function sync(string $draftId,int $pvId ,string $ptoVtaId, array $data, GpUsuario $user)
     {
-        return Cache::lock("sync_draft_{$draftId}", 10)->get(function () use ($draftId, $ptoVtaId, $data, $user) {
-            return DB::transaction(function () use ($draftId, $ptoVtaId, $data, $user) {
+        return Cache::lock("sync_draft_{$draftId}", 10)->get(function () use ($draftId, $ptoVtaId, $data, $pvId, $user) {
+            return DB::transaction(function () use ($draftId, $ptoVtaId, $data, $pvId, $user) {
                 CotizacionBorrador::updateOrCreate([
                     'draft_id'  => $draftId,
                     'user_id'   => $user->id
                 ], [
+                    'pv_id'          => $pvId,
                     'punto_venta_id' => $ptoVtaId,
                     'data'           => $data
                 ]);
@@ -40,10 +41,10 @@ class QuoteDraftService implements QuoteDraftServiceInterface
     }
 
 
-    public function listDrafts(?string $ptoVtaId, GpUsuario $user)
+    public function listDrafts(?string $pvId, GpUsuario $user)
     {
         $drafts = CotizacionBorrador::where('user_id', $user->id)
-            ->where('punto_venta_id', $ptoVtaId)
+            ->where('pv_id', $pvId)
             ->orderBy('updated_at', 'desc')->get();
 
         $lista = $drafts->map(function ($draft) {

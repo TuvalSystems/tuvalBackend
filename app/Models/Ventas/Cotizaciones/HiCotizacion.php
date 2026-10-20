@@ -20,6 +20,14 @@ class HiCotizacion extends Model
     protected $table = 'hi_cotizacion';
 
     protected $fillable = [
+        'pv_id',
+        'vendedor_id',
+        'tipo_despacho_id',
+        'responsable_flete',
+        'proveedor_despacho_id',
+        'peso',
+        'peso_flete',
+        'monto_flete',
         'cot_id',
         'co_his',
         'cotizacion',
@@ -81,7 +89,12 @@ class HiCotizacion extends Model
         'pedido_generado_at',
         'user_rechazo_id',
         'fe_rechazo',
-        'proyecto'
+        'proyecto',
+        'usuario_flete_id',
+        'fecha_flete',
+        'usuario_flete_autorizador_id',
+        'fecha_flete_autorizacion',
+        'facturar_ahora'
     ];
 
     protected $casts = [
@@ -120,6 +133,7 @@ class HiCotizacion extends Model
         'fe_facturacion_reserva'            => 'datetime',
         'pedido_generado_at'                => 'datetime',
         'fe_rechazo'                        => 'datetime',
+        'facturar_ahora'                    => 'boolean'
     ];
 
     public function cotizacionOriginal()

@@ -13,6 +13,10 @@ class HiCotizacionDetalle extends Model
     protected $table = 'hi_cotizacion_detalles';
 
     protected $fillable = [
+        'art_id',
+        'monto_flete',
+        'precio_sin_flete',
+        'lista_precio',
         'hi_cot_id',
         'cot_id',
         'det_id',
@@ -43,28 +47,31 @@ class HiCotizacionDetalle extends Model
         'cod_categoria',
         'cod_linea',
         'cod_clase',
-        'resultado_configuracion_item_l'
+        'resultado_configuracion_item_l',
+        'es_servicio_logistico'
     ];
 
     protected $casts = [
-        'hi_cot_id'            => 'integer',
-        'cot_id'               => 'integer',
-        'det_id'               => 'integer',
-        'CHECK_ALTERNATIVO'    => 'boolean',
-        'ART_DECIMAL_CANTIDAD' => 'integer',
-        'ART_PESO'             => 'decimal:2',
-        'ART_VALOR'            => 'decimal:4',
-        'ART_IVA'              => 'decimal:2',
-        'ART_VALOR_ORIGINAL'   => 'decimal:4',
-        'valor_original_l'     => 'decimal:4',
-        'ART_DESCUENTO'        => 'decimal:4',
-        'ART_CANTIDAD'         => 'decimal:2',
-        'ART_STOCK'            => 'decimal:2',
-        'ART_IMP_VTA'          => 'decimal:2',
-        'ART_COSTO_PROMEDIO'   => 'decimal:2',
-        'descuento'            => 'decimal:2',
-        'descuento_original'   => 'decimal:2',
-        'validador_l'          => 'boolean'
+        'hi_cot_id'             => 'integer',
+        'cot_id'                => 'integer',
+        'det_id'                => 'integer',
+        'CHECK_ALTERNATIVO'     => 'boolean',
+        'ART_DECIMAL_CANTIDAD'  => 'integer',
+        'ART_PESO'              => 'decimal:2',
+        'ART_VALOR'             => 'decimal:4',
+        'ART_IVA'               => 'decimal:2',
+        'ART_VALOR_ORIGINAL'    => 'decimal:4',
+        'valor_original_l'      => 'decimal:4',
+        'ART_DESCUENTO'         => 'decimal:4',
+        'ART_CANTIDAD'          => 'decimal:2',
+        'ART_STOCK'             => 'decimal:2',
+        'ART_IMP_VTA'           => 'decimal:2',
+        'ART_COSTO_PROMEDIO'    => 'decimal:2',
+        'descuento'             => 'decimal:2',
+        'descuento_original'    => 'decimal:2',
+        'validador_l'           => 'boolean',
+        'es_servicio_logistico' => 'boolean'
+
     ];
 
     public function hiCotizacion()

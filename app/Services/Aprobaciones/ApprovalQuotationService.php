@@ -12,6 +12,8 @@ use App\Models\GpRegistroCopia;
 use App\Models\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
+use App\Services\Aprobaciones\Utils\FreightApproval;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Traits\RegisterAudit;
@@ -35,6 +37,12 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         $registroVolverAPedir = null;
         $quoteId = data_get($data, 'cotizacion_id', null);
         $quoteOrigin = empty($quoteId) ? null : GpCotizacion::find($quoteId);
+        $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+        if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quoteOrigin)) {
+            $motivosAprobacionComercial[] = $this->approvalFuntions->requiredApprovalResponse(
+                "Requiere aprobación de flete por tipo de despacho: {$dispatchType->descripcion}."
+            );
+        }
         $idRegistroCopiaInput = data_get($data, 'registro_copia', null);
 
         if ($quoteOrigin) {
@@ -81,7 +89,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
         $nivelCotizacion = $this->approvalFuntions->getNivelFormaPago('DESC_FORMA_PAGO_CODIGO', $data['forma_pago_id']);
         $rebajaCotizacion = $this->approvalFuntions->getPorcentilDiscount('DESC_FORMA_PAGO_CODIGO', $data['forma_pago_id']);
-        $prcCLienteDescuento = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($data['ruc']);
+        $prcCLienteDescuento = $this->approvalFuntions->getPorcentilDiscountCommercialCliente($data['cliente_id']);
 
         /** este descuento global lo utilizamos para calcular el descuento de la cabecera y del detalle de la cotizacion  */
         $dsctGlobalCliente = (float) $prcCLienteDescuento - (float) $rebajaCotizacion;
@@ -117,7 +125,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         }
 
 
-        $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $ptoVenta = GpPuntoVenta::where('id', $data['pv_id'])->first();
         $motivosDetalle = $this->validateQuotationDetailToApprove($data['items'], $ptoVenta, $dsctGlobalCliente);
         if (!empty($motivosDetalle)) {
             $motivosAprobacionComercial = array_merge($motivosAprobacionComercial, $motivosDetalle);
@@ -129,10 +137,10 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
     public function validateQuotationDetailToApprove(array $detalles, GpPuntoVenta $ptoVenta, float $dsctGlobalCliente): array
     {
-        $detailMotivos  = [];
-        $ids            = collect($detalles)->pluck('detalle_id')->filter();
-        $dbDetailQuote  = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
-        $dbDetailOrder  = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $detailMotivos      = [];
+        $ids                = collect($detalles)->pluck('detalle_id')->filter();
+        $dbDetailQuote      = GpCotizacionDetalle::whereIn('id', $ids)->get()->keyBy('id');
+        $dbDetailOrder      = GpPedidoDetalle::whereIn('id', $ids)->get()->keyBy('id');
         foreach ($detalles as $detalle) {
 
             $detailId       = data_get($detalle, 'detalle_id');
@@ -144,27 +152,26 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             // NORMALIZACIÓN DE VALORES (El secreto para no duplicar código)
             // ---------------------------------------------------------
 
-            // 2. Descripción de Referencia
-            $refDescripcion =  $detailOrigin ? $detailOrigin->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL');
-            // 3. Valor de Referencia
-            $refValor = $detailOrigin ? $detailOrigin->ART_VALOR : data_get($detalle, 'ART_VALOR_ORIGINAL', 0);
+            $refDescripcion = trim($detailOrigin ? $detailOrigin->ART_DESCRIPCION : data_get($detalle, 'ART_DESCRIPCION_ORIGINAL'));
+            $refValor       = (float)($detailOrigin ? $detailOrigin->precio_sin_flete : data_get($detalle, 'ART_VALOR_ORIGINAL', 0));
+            $refValidadorL  = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
+            $refValidadorL  = filter_var($refValidadorL, FILTER_VALIDATE_BOOLEAN);
 
-            $refValidadorL = $detailOrigin ? $detailOrigin->validador_l : data_get($detalle, 'validador_l', false);
-            $refValidadorL = filter_var($refValidadorL, FILTER_VALIDATE_BOOLEAN);
+            $description    = trim(data_get($detalle, 'ART_DESCRIPCION'));
+            $discount       = data_get($detalle, 'descuento');
+            $discountOrigin = data_get($detalle, 'descuento_original');
 
-            if ($detalle['descuento'] != $detalle['descuento_original'] && $detalle['descuento'] != $dsctGlobalCliente) {
-                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$detalle['descuento']}% vs Original: {$dsctGlobalCliente}%");
+            if ($discount != $discountOrigin && $discount != $dsctGlobalCliente) {
+                $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("Descuento del detalle modificado. Nuevo: {$discount}% vs Original: {$dsctGlobalCliente}%");
             }
 
             // validacion de descripcion difernete a tipo L
             if ($tipoCompra != 'L') {
-                if (trim($detalle['ART_DESCRIPCION']) != trim($refDescripcion)) {
-                    $descNueva = trim($detalle['ART_DESCRIPCION']);
-                    $descRef = trim($refDescripcion);
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$descNueva' vs Original: '$descRef'");
+                if ($description != $refDescripcion) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("La descripción del producto cambió. Nueva: '$description' vs Original: '$refDescripcion'");
                 }
-                $price    = round((float)$detalle['ART_VALOR'], 4);
-                $priceOrigin = round((float)$refValor, 4);
+                $price          = round((float)data_get($detalle, 'precio_sin_flete'), 4);
+                $priceOrigin    = round($refValor, 4);
                 if ($price != $priceOrigin) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ha cambiado. Nuevo: {$price} vs Original: $priceOrigin");
                 }
@@ -175,12 +182,11 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 $valorOriginal  = (float) $refValor;
                 $porcMaxSubida  = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                 $precioLimite   = $valorOriginal * (1 + ($porcMaxSubida / 100));
-                $precioActual   = (float) $detalle['ART_VALOR'];
 
-                if ($precioActual > $precioLimite) {
-                    $exceso = $precioActual - $precioLimite;
+                if ($price > $precioLimite) {
+                    $exceso = $price - $precioLimite;
                     $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
-                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ({$precioActual}) supera el límite permitido de {$porcMaxSubida}% "
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ({$price}) supera el límite permitido de {$porcMaxSubida}% "
                         . "(límite: {$precioLimite}), excede en {$exceso} "
                         . "({$excesoPct}% sobre el valor original).");
                 }
@@ -196,7 +202,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
 
                 //validacion de precio de item L
                 $valorOriginalL = round(data_get($detalle, 'valor_original_l', 0), 4);
-                $valor = round(data_get($detalle, 'ART_VALOR', 0), 4);
+                $valor = round(data_get($detalle, 'precio_sin_flete', 0), 4);
 
                 if ($valorOriginalL > $valor) {
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ($" . $valor . ") es INFERIOR al precio mínimo permitido ($" . $valorOriginalL . ")");
@@ -263,7 +269,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
     }
 
 
-    protected function filterQuotesForVicePresidency($quotes, GpUsuario $user): Collection
+    protected function filterQuotesForVicePresidency(Collection $quotes, GpUsuario $user): Collection
     {
         return $quotes->filter(function ($quote) use ($user) {
             return in_array($user->id, $quote->authorizer_ids_list ?? []);
@@ -286,7 +292,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
         }
 
         $hasModifications = $quote->detallecotizacion->contains(function ($detail) {
-            $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+            $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->precio_sin_flete);
             $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
             return $priceChange != 0 || $discount != 0;
         });
@@ -321,7 +327,7 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 }
             }
             $puedeAprobar = $quote->detallecotizacion->every(function ($detail) use ($ruleUser) {
-                $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->ART_VALOR);
+                $priceChange = $this->approvalFuntions->calculatePriceVariationPercentage($detail->ART_VALOR_ORIGINAL, $detail->precio_sin_flete);
                 $discount    = $this->approvalFuntions->calculateDiscountChange($detail->descuento_original, $detail->descuento);
                 return $ruleUser->contains(function ($rule) use ($priceChange, $discount) {
                     $priceOk =  ($priceChange >= $rule->descuento_min && $priceChange <= $rule->descuento_max);
@@ -384,6 +390,15 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             'estado'                            => 'aprobado',
             'fecha_hora_aprobacion_comercial'   => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+        if (
+            FreightApproval::requiresApprovalForType(TipoDespacho::find($quote->tipo_despacho_id))
+            && !FreightApproval::hasValidApproval($quote->getAttributes(), $quote)
+        ) {
+            $quote->fill([
+                'usuario_flete_autorizador_id' => $gpUser->id,
+                'fecha_flete_autorizacion'  => $quote->fecha_hora_aprobacion_comercial,
+            ]);
+        }
         $camposModificados = array_keys($quote->getDirty());
         $oldQuote = [
             'cotizacion_anterior' => Arr::only($quote->getOriginal(), $camposModificados),

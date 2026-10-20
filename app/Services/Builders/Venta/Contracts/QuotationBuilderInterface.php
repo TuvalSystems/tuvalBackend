@@ -14,6 +14,8 @@ use App\Models\Ventas\Cotizaciones\HiCotizacion;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalle;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleProveedores;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Ventas\Vendedores\GpVendedor;
 
 interface QuotationBuilderInterface
 {
@@ -24,16 +26,9 @@ interface QuotationBuilderInterface
     public function formPayloadReservedToDetaiLStock(int $cotizacionId, int $detalleId, GpCotizacionDetalleStock $stock, array $line): GpCotizacionDetalleStock;
 
 
-    /** proceso de clientes */
-
-    public function formPayloadSendClientGp(array $data, string $nivelPrice): array;
-    public function formPayloadClientWeb(array $data, string $nivelPrecio, GpUsuario $user): array;
-    public function formPayloadClientSucursal(array $data, int $clienteId, GpUsuario $user): array;
-
-
     /** proceso de creacion de cotizacion  */
-    public function formPayloadHeaderQuotation(GpCotizacion $quotation, array $data, GpUsuario $user, GpPuntoVenta $puntoVenta, array $requiredApprovalCommercial, string $motivoLimpio, string $tipoDespacho): GpCotizacion;
-    public function formPayloadDetailQuotation(int $quotationId, array $articles): GpCotizacionDetalle;
+     public function formPayloadHeaderQuotation(GpCotizacion $quotation,  GpUsuario $user, GpCliente $client,  TipoDespacho $typeDispatch, GpVendedor $seller, GpPuntoVenta $pointSales ,array $data, array $requiredApprovalCommercial, string $motivoLimpio): GpCotizacion;
+    public function formPayloadDetailQuotation(int $quotationId, array $articles, string $lvlPrice): GpCotizacionDetalle;
 
     public function formPayloadProvidersDetailQuotation(int $quoteId, int $detailId, array $provider): GpCotizacionDetalleProveedores;
     public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock): GpCotizacionDetalleStock;

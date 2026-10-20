@@ -3,14 +3,19 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\QuotationMode;
+use App\Models\GpCliente;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpCotizacionImagen;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRegistroCopia;
 use App\Models\GpUsuario;
+use App\Models\Ventas\Cliente\ClienteConfiguracion;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
@@ -41,7 +46,18 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
             $quoteId                = data_get($data, 'cotizacion_id', null);
             $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
             $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
+            $client                 = GpCliente::find(data_get($data, 'cliente_id'));
+            $pointSales             = GpPuntoVenta::find(data_get($data, 'pv_id'));
+            $clientConfig           = ClienteConfiguracion::where('pv_id', $pointSales->id)
+                ->where('cliente_id', $client->id)
+                ->where('estado', 1)
+                ->firstOrFail();
+            $typeDispatch = TipoDespacho::where('id', data_get($data, 'tipo_despacho_id'))->first();
 
+            if (!$clientConfig) {
+                throw new \RuntimeException("No se ha encontrado la configuración de este cliente");
+            }
+            $seller = GpVendedor::where('id', $clientConfig->vendedor_id)->firstOrFail();
             // --- VALIDACIONES DE NEGOCIO ---
             if ($direccionFacturacion) {
                 $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
@@ -55,9 +71,9 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 GpCotizacionDetalle::where('cotizacion_id', $quoteId)
                     ->delete();
             }
-            $cotizacion = $this->prepareQuotationHeader($data, $user);
+            $cotizacion = $this->prepareQuotationHeader($data, $client, $pointSales, $typeDispatch, $seller, $user);
             if (!empty($data['items'])) {
-                $this->saveQuotationDetails($cotizacion->id, $data['items'] ?? []);
+                $this->saveQuotationDetails($cotizacion->id, $client->CLI_NIVEL_PRECIO, $data['items'] ?? []);
             }
             $registerCopyId = data_get($data, 'registro_copia', null);
             if (!empty($registerCopyId)) {
@@ -78,16 +94,14 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
 
-    public function prepareQuotationHeader(array $data, GpUsuario $user): GpCotizacion
+    public function prepareQuotationHeader(array $data, GpCliente $client, GpPuntoVenta $pointSales, TipoDespacho $typeDispatch, GpVendedor $seller, GpUsuario $user): GpCotizacion
     {
         $id                         = data_get($data, 'cotizacion_id', null);
         $quotation                  = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
         $requiredApprovalCommercial = $this->determineApprovalStatus($quotation, $data);
         $motivoLimpio               = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
-        $puntoVenta                 = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
-        $despacho                   = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho               = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
-        $this->builder->formPayloadHeaderQuotation($quotation, $data, $user, $puntoVenta, $requiredApprovalCommercial, $motivoLimpio, $tipoDespacho);
+
+        $this->builder->formPayloadHeaderQuotation($quotation, $user,$client, $typeDispatch, $seller, $pointSales, $data,  $requiredApprovalCommercial, $motivoLimpio);
         $quotation->save();
         return $quotation;
     }
@@ -95,7 +109,12 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     {
         $requiereAprobacion = $this->approval->approveQuotation($data);
         if ($quotation->exists) {
-            $this->mantenerAprobacionSiSigueValida($quotation, $requiereAprobacion);
+            $dispatchType = TipoDespacho::find(data_get($data, 'tipo_despacho_id'));
+            if (FreightApproval::requiresApprovalForType($dispatchType) && !FreightApproval::hasValidApproval($data, $quotation)) {
+                $this->resetToPending($requiereAprobacion);
+            } else {
+                $this->mantenerAprobacionSiSigueValida($quotation, $requiereAprobacion);
+            }
         } else {
             $requiereAprobacion['estado'] = ($requiereAprobacion['requiere'] === 'yes') ? 'espera' : 'aprobado';
             $requiereAprobacion['aprobado'] = 'no';
@@ -161,10 +180,10 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
     /** proceso de creacion de detalle de cotizacion */
-    protected function saveQuotationDetails(int $quoteId, array $items)
+    protected function saveQuotationDetails(int $quoteId, string $lvlPrice, array $items)
     {
         foreach ($items as $it) {
-            $detail = $this->builder->formPayloadDetailQuotation($quoteId, $it);
+            $detail = $this->builder->formPayloadDetailQuotation($quoteId, $it, $lvlPrice);
             $detail->save();
             $providers = data_get($it, 'proveedores', []);
             if (!empty($providers)) {
@@ -390,7 +409,4 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 ->toMediaCollection('documentos_pdf', 'public');
         }
     }
-
-
-
 }

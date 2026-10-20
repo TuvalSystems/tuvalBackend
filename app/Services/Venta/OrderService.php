@@ -880,21 +880,22 @@ class OrderService implements OrderServiceInterface
             $recibido = isset($prov['recibido']) ? $prov['recibido'] : 'no';
             $model = GpPedidoDetalleProveedores::updateOrCreate(
                 [
-                    'pedido_id' => $newOrder->id,
-                    'pedido_detalle_id' => $detailOrderId,
-                    'ID_PROVEEDOR' => $prov['ID_PROVEEDOR']
+                    'pedido_id'             => $newOrder->id,
+                    'pedido_detalle_id'     => $detailOrderId,
+                    'ID_PROVEEDOR'          => $prov['ID_PROVEEDOR']
                 ],
                 [
-                    'DESCRIPCION_ARTICULO' => $prov['DESCRIPCION_ARTICULO'],
-                    'FECHA_ENTREGA' => $prov['FECHA_ENTREGA'],
-                    'CANTIDAD' => $prov['CANTIDAD'],
-                    'COSTO_UNITARIO' => $prov['COSTO_UNITARIO'],
-                    'IMPUESTO' => $prov['IMPUESTO'],
-                    'TOTAL' => $prov['TOTAL'],
-                    'TOTALCONIMPUESTO' => $prov['TOTALCONIMPUESTO'],
-                    'NOTA' => $prov['NOTA'],
-                    'recibido' => $recibido,
-                    'MARGEN' => $prov['MARGEN'],
+                    'DESCRIPCION_ARTICULO'  => $prov['DESCRIPCION_ARTICULO'],
+                    'FECHA_ENTREGA'         => $prov['FECHA_ENTREGA'],
+                    'CANTIDAD'              => $prov['CANTIDAD'],
+                    'COSTO_UNITARIO'        => $prov['COSTO_UNITARIO'],
+                    'IMPUESTO'              => $prov['IMPUESTO'],
+                    'TOTAL'                 => $prov['TOTAL'],
+                    'TOTALCONIMPUESTO'      => $prov['TOTALCONIMPUESTO'],
+                    'NOTA'                  => $prov['NOTA'],
+                    'recibido'              => $recibido,
+                    'MARGEN'                => $prov['MARGEN'],
+                    'proveedor_entrega'     => $prov['MARGEN'],
                 ]
             );
             $incoming[] = $model->id;

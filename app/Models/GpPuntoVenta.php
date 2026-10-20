@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Ventas\Proveedores\GpProveedor;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -72,6 +74,7 @@ class GpPuntoVenta extends Model
     use HasFactory;
 
     protected $fillable = [
+        'codigo_local',
         'PTO_VTA_ID',
         'PTO_VTA_DESCRIPCION',
         'PTO_VTA_DIRECCION_1',
@@ -138,5 +141,27 @@ class GpPuntoVenta extends Model
         return $this->belongsToMany(GpCaja::class, 'gp_relacion_punto_venta_cajas', 'pv_id', 'caja_id')
             ->withPivot('estado')
             ->wherePivot('estado', 1);
+    }
+
+
+    public function tiposDespacho()
+    {
+        return $this->belongsToMany(
+            TipoDespacho::class,
+            'tipo_despacho_punto_ventas',
+            'pv_id',
+            'tipo_despacho_id'
+        )->withTimestamps();
+    }
+
+
+    public function proveedores()
+    {
+        return $this->belongsToMany(
+            GpProveedor::class,
+            'proveedores_punto_ventas',
+            'pv_id',
+            'prov_id'
+        )->withTimestamps();
     }
 }

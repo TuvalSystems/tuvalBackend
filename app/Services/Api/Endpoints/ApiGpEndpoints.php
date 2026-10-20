@@ -92,8 +92,14 @@ class ApiGpEndpoints
     public const CLIENTE_GUARDAR_SUBSEGMENTO_RUC = 'api/cliente/crear-registro-subsegmento-ruc';
     public const CLIENTE_GUARDAR_NUEVA_DIRECCION = 'api/cliente/crear-nueva-direccion';
     public const CLIENTE_CREAR_MODIFICAR_ESTADO_SUCURSAL = 'api/cliente/actualizar-o-crear-registro-sucursal-cliente';
+    public const CLIENTE_CONSULTA_TOTAL_CONFIGURACIONES_PENDIENTES_SYNC = 'api/cliente/contador-sucursales-pendientes-sincronizar-mysql';
+    public const CLIENTE_CONSULTA_CONFIGURACIONES_PENDIENTES_SYNC = 'api/cliente/configuraciones-sucursales-pendientes-sincronizar-mysql';
 
     // ---
+    public const CLIENTE_MARCAR_CONFIGURACION_SINCRONIZADA = 'api/cliente/marcar-configuracion-sucursal-sincronizada-mysql';
+    public const CLIENTE_GUARDAR_HISTORICO_CONFIGURACION = 'api/cliente/guardar-historico-configuracion-sucursal';
+    public const CLIENTE_CONFIRMAR_CONFIGURACION_SYNC = 'api/cliente/confirmar-sincronizacion-configuracion-sucursal';
+
     // 📜 7. Endpoints de Guías de Remisión ( General y Movimientos )
     // ---
     // General

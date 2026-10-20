@@ -2,14 +2,9 @@
 
 namespace App\Http\Controllers\ventas;
 
-use App\Enums\Ventas\OrderStatus;
-use App\Models\ordendecompra\GpOrdenDeCompra;
 use App\Http\Controllers\WebserviceController;
 use App\Http\Controllers\Controller;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpProveedor;
-use App\Models\GpPedido;
+
 use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
 use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;

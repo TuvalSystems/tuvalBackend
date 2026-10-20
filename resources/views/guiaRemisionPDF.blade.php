@@ -333,28 +333,8 @@
             </table>
         </div>
 
-        @if($guia['tipo'] == 'despacho')
-        <table width="100%" style="margin-top: 30px; margin-bottom: 30px;">
-            <tr>
-                <td width="40%" align="left">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                            <td style="text-align: left; padding-bottom: 40px; font-size: 11px;">
-                                Recibí Conforme:
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="border-top: 1px solid #000000; padding-top: 5px; text-align: left; font-size: 11px;">
-                                C.I.:
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-
-                <td width="60%"></td>
-            </tr>
-        </table>
-        @endif
+        @include('pdf.partials.qr-guia')
+        @include('pdf.partials.firma-guia', ['mostrarSinFirma' => $guia['tipo'] == 'despacho'])
 
         @if($guia['tipo'] != 'despacho')
         @if($guia['GUI_REM_OBSERVACION'] != '')

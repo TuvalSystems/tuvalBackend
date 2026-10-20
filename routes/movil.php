@@ -5,7 +5,9 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Movil\Auth\AuthMobileController;
 use App\Http\Controllers\Movil\Menu\MobileMenuController;
 use App\Http\Controllers\Movil\SteamTrapController;
-use App\Http\Controllers\ventas\ConsultasController;
+use App\Http\Controllers\Movil\Inventario\GuiaRemisionController;
+use App\Http\Controllers\Movil\Inventario\GuiaRemisionArchivoController;
+use App\Http\Controllers\ventas\ClienteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,6 +58,24 @@ Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
                 Route::post('/borrador', 'generarCotizacionBorrador');
             });
 
+        Route::post('inventario/guias-remision/resolver-qr', [GuiaRemisionArchivoController::class, 'resolverQr']);
+
+        // Inventario: listado de guias recibidas.
+        Route::prefix('inventario/guias-remision/{tipo}/{guia}')
+            ->where(['tipo' => 'despacho|reserva|reposicion|transferencia', 'guia' => '[0-9]+'])
+            ->controller(GuiaRemisionArchivoController::class)->group(function () {
+                Route::get('archivos', 'index');
+                Route::post('firma', 'firma');
+                Route::post('documentos', 'documentos');
+                Route::get('archivos/{archivo}', 'show')->whereNumber('archivo');
+            });
+
+        Route::prefix('inventario/guias-remision')->controller(GuiaRemisionController::class)->group(function () {
+            Route::get('tipos', 'tipos');
+            Route::get('bodegas', 'obtenerBodegas');
+            Route::get('/', 'index');
+        });
+
         //menu
         Route::get('/menu', [MobileMenuController::class, 'index']);
 
@@ -63,8 +83,8 @@ Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
         Route::get('point-sales', [AuthMobileController::class, 'obtenerPuntosVenta']);
 
         //clientes
-        Route::prefix('cliente')->group(function () {
-            Route::post('buscar', [ConsultasController::class, 'buscarClientes']);
+        Route::prefix('clientes')->group(function () {
+            Route::post('buscar-clientes', [ClienteController::class, 'buscarClientes']);
         });
     });
 });

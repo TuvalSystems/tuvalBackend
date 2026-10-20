@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\ordendecompra\GpOrdenDeCompra;
+use App\Models\Ventas\Proveedores\GpProveedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,7 +30,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read GpOrdenDeCompra|null $ordenCompra
  * @property-read \App\Models\GpPedidoDetalle $pedidodetalle
- * @property-read \App\Models\GpProveedor|null $proveedores
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpPedidoDetalleProveedores query()
@@ -72,16 +72,16 @@ class GpPedidoDetalleProveedores extends Model
         'NOTA',
         'recibido',
         'MARGEN',
-
+        'proveedor_entrega'
     ];
 
     protected $casts = [
-        'CANTIDAD' => 'float',
-        'COSTO_UNITARIO' => 'float',
-        'IMPUESTO' => 'float',
-        'TOTAL' => 'float',
-        'TOTALCONIMPUESTO' => 'float',
-        'MARGEN' => 'float',
+        'CANTIDAD'          => 'float',
+        'COSTO_UNITARIO'    => 'float',
+        'IMPUESTO'          => 'float',
+        'TOTAL'             => 'float',
+        'TOTALCONIMPUESTO'  => 'float',
+        'MARGEN'            => 'float',
     ];
 
     public function pedidodetalle(){

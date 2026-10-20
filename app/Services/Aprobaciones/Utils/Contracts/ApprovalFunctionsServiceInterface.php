@@ -16,7 +16,7 @@ interface ApprovalFunctionsServiceInterface
 
     public function getNivelFormaPago($columna, $codigo);
     public function getPorcentilDiscount($columna, $codigo);
-    public function getPorcentilDiscountCommercialCliente($ruc): float;
+    public function getPorcentilDiscountCommercialCliente(int $id): float;
 
     public function getProviderToValidateMargen($prov);
 

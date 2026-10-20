@@ -5,6 +5,8 @@ namespace App\Services\Builders\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Models\GpPedido;
+use App\Models\GpCotizacion;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoDetalleProveedores;
 use App\Models\GpPedidoDetalleStock;
@@ -17,6 +19,8 @@ class OrderBuilder implements OrderBuilderInterface
 
     public function formPayloadOrderDemand(array $infoCreator, array $data, array  $approvalComercial, GpPuntoVenta $puntoVenta, string  $requiereAprobacionCrediticia): GpPedido
     {
+        $quote = GpCotizacion::find(data_get($infoCreator, 'cotizacion_id'));
+        $freightAuthorization = FreightApproval::authorizationFields($data, $quote);
         $newOrder           = new GpPedido();
         $subtotalBruto      = (float)  data_get($data, 'subtotal', 0) + (float) data_get($data, 'descuento', 0);
         $descuento          = (float) data_get($data, 'descuento', 0);
@@ -69,6 +73,21 @@ class OrderBuilder implements OrderBuilderInterface
             'origen'                        => data_get($infoCreator, 'origen'),
             'fe_facturacion_reserva'        => data_get($infoCreator, 'fecha_reserva'),
             'modificador_global'            => data_get($data, 'modificador_global', 0),
+
+            //nuevos campos
+            'pv_id'                         => $puntoVenta->id,
+            'vendedor_id'                   => data_get($data, 'vendedor_id'),
+            'tipo_despacho_id'              => data_get($data, 'tipo_despacho_id', null),
+            'responsable_flete'             => data_get($data, 'responsable_flete', null),
+            'proveedor_despacho_id'         => data_get($data, 'proveedor_despacho_id', null),
+            'peso'                          => data_get($data, 'peso') ?? 0,
+            'peso_flete'                    => data_get($data, 'peso_flete') ?? 0,
+            'monto_flete'                   => data_get($data, 'monto_flete') ?? 0,
+            'usuario_flete_id'              => data_get($data, 'monto_flete')  > 0 ?  data_get($infoCreator, 'user.id') : null,
+            'fecha_flete'                   => data_get($data, 'monto_flete')  > 0 ? now() : null,
+            'fecha_flete_autorizacion'      => $freightAuthorization['fecha_flete_autorizacion'],
+            'usuario_flete_autorizador_id'  => $freightAuthorization['usuario_flete_autorizador_id'],
+            'facturar_ahora'                => data_get($data, 'facturar_ahora') ?? false,
         ]);
 
         return $newOrder;
@@ -81,6 +100,10 @@ class OrderBuilder implements OrderBuilderInterface
         $det = new GpPedidoDetalle();
         $det->fill([
             'pedido_id'                         => $orderId,
+            'art_id'                            => data_get($item, 'art_id'),
+            'monto_flete'                       => data_get($item, 'monto_flete') ?? 0,
+            'precio_sin_flete'                  => data_get($item, 'precio_sin_flete') ?? 0,
+            'lista_precio'                      => data_get($item, 'lista_precio'),
             'orden'                             => $i + 1,
             'ART_CODIGO'                        => data_get($item, 'ART_CODIGO'),
             'ART_DESCRIPCION'                   => data_get($item, 'ART_DESCRIPCION'),
@@ -108,6 +131,7 @@ class OrderBuilder implements OrderBuilderInterface
             'cod_linea'                         => data_get($item, 'cod_linea', null),
             'cod_clase'                         => data_get($item, 'cod_clase', null),
             'resultado_configuracion_item_l'    => data_get($item, 'resultado_configuracion_item_l'),
+             'es_servicio_logistico'            => data_get($item, 'es_servicio_logistico'),
         ]);
         return $det;
     }
@@ -128,7 +152,8 @@ class OrderBuilder implements OrderBuilderInterface
             'TOTALCONIMPUESTO'      => (float)data_get($provider, 'TOTALCONIMPUESTO', 0),
             'NOTA'                  => data_get($provider, 'NOTA', ''),
             'recibido'              => $recibido,
-            'MARGEN'                => (float)data_get($provider, 'MARGEN', 0)
+            'MARGEN'                => (float)data_get($provider, 'MARGEN', 0),
+            'proveedor_entrega'     => data_get($provider, 'proveedor_entrega')
         ]);
 
         return $prov;
@@ -159,8 +184,18 @@ class OrderBuilder implements OrderBuilderInterface
 
     public function formPayloadOrderV2(array $data, GpUsuario $user, GpPuntoVenta $ptoVta,  array $requiredApprovalCommercial, array $extras): GpPedido
     {
+        $quote = GpCotizacion::find(data_get($data, 'cotizacion_id'));
+        $freightAuthorization = FreightApproval::authorizationFields($data, $quote);
         $od = new GpPedido();
         $od->fill([
+            'pv_id'                             => $ptoVta->id,
+            'vendedor_id'                       => data_get($extras, 'vendedor_id'),
+            'tipo_despacho_id'                  => data_get($data, 'tipo_despacho_id'),
+            'responsable_flete'                 => data_get($data, 'responsable_flete'),
+            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id', null),
+            'peso'                              => data_get($data, 'peso') ?? 0,
+            'peso_flete'                        => data_get($data, 'peso_flete') ?? 0,
+            'monto_flete'                       => data_get($data, 'monto_flete') ?? 0,
             'cotizacion_id'                     => data_get($data, 'cotizacion_id'),
             'user_id'                           => $user->id,
             'USERID'                            => $user->USERID,
@@ -172,7 +207,7 @@ class OrderBuilder implements OrderBuilderInterface
             'factura_siguiente_mes'             => data_get($data, 'factura_siguiente_mes'),
             'impuesto'                          => TaxRateEnum::IVA_15->value,
             'BOD_BODEGA'                        => data_get($data, 'bodega_facturacion'),
-            'PTO_VTA_ID'                        => data_get($data, 'punto_venta_id'),
+            'PTO_VTA_ID'                        => $ptoVta->PTO_VTA_ID,
             'PTO_VTA_DESCRIPCION'               => $ptoVta->PTO_VTA_DESCRIPCION,
             'DESC_FORMA_PAGO_CODIGO'            => data_get($data, 'forma_pago_id'),
             'CLI_RUC'                           => data_get($data, 'ruc'),
@@ -207,8 +242,13 @@ class OrderBuilder implements OrderBuilderInterface
             'fecha_entrega'                     => data_get($data, 'fecha_entrega', null),
             'origen'                            => data_get($extras, 'origen'),
             'modificador_global'                => data_get($data, 'modificador_global', 0),
-            'fe_facturacion_reserva'            =>  data_get($extras, 'facturacion_reserva'),
+            'fe_facturacion_reserva'            => data_get($extras, 'facturacion_reserva'),
             'proyecto'                          => data_get($data, 'proyecto', null),
+            'usuario_flete_id'                  => data_get($data, 'monto_flete') > 0 ? $user->id : null,
+            'fecha_flete'                       => data_get($data, 'monto_flete')  > 0 ? now() : null,
+            'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
+            'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora') ?? false,
         ]);
         return $od;
     }
@@ -268,6 +308,7 @@ class OrderBuilder implements OrderBuilderInterface
             'modificador_global'                => data_get($data, 'modificador_global', 0),
             'fe_facturacion_reserva'            => data_get($data, 'facturacion_reserva'),
             'pedido_origen'                     => data_get($data, 'pedido'),
+            'facturar_ahora'                    => data_get($data, 'facturar_ahora') ?? false,
         ]);
 
         return $od;

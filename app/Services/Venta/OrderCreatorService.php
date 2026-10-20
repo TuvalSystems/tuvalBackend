@@ -5,6 +5,11 @@ namespace App\Services\Venta;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\GpCotizacion;
+use App\Models\GpCliente;
+use App\Models\Articulos\GpArticulo;
+use App\Models\Ventas\Cliente\ClienteConfiguracion;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalle;
 use App\Models\GpPedidoImagen;
@@ -109,20 +114,34 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 
     protected function prepareOrderHeader(array $data, GpUsuario $user): GpPedido
     {
-        $puntoVenta                     = GpPuntoVenta::where('PTO_VTA_ID', $data['punto_venta_id'])->first();
+        $puntoVenta = GpPuntoVenta::findOrFail(data_get($data, 'pv_id'));
+        $client = GpCliente::findOrFail(data_get($data, 'cliente_id'));
+        $clientConfig = ClienteConfiguracion::where('pv_id', $puntoVenta->id)
+            ->where('cliente_id', $client->id)
+            ->where('estado', 1)
+            ->firstOrFail();
+        $seller = GpVendedor::findOrFail($clientConfig->vendedor_id);
+        $typeDispatch = TipoDespacho::findOrFail(data_get($data, 'tipo_despacho_id'));
+        $data = array_merge($data, [
+            'ruc' => $client->CLI_RUC,
+            'razon_social' => $client->CLI_RAZON_SOCIAL,
+            'vendedor_id' => $seller->VEND_ID,
+            'vendedor_nombres' => $seller->VEND_NOMBRES,
+            'vendedor_apellidos' => $seller->VEND_APELLIDOS,
+        ]);
         $approvalCommercial             = $this->approval->approveOrder($data);
         $motivoLimpio                   = $this->sanitizeString($approvalCommercial['motivo'] ?? '');
         $approvalCredit                 = $this->prepareApprovalCreditOrder($data);
         $requieresApproval              = $approvalCredit != 'no';
         $motivoCrediticio               = $requieresApproval ? $approvalCredit : null;
         $requiereAprobacionCrediticia   = $requieresApproval ? 'yes' : 'no';
-        $despacho                       = data_get($data, 'tipo_entrega', 'retiro');
-        $tipoDespacho                   = ($despacho == 'retiro') ? 'Retiro en bodega' : 'Despacho en ruta';
+        $tipoDespacho                   = $typeDispatch->descripcion;
         $arStrings = [
             'motivo_comercial'                  => $motivoLimpio,
             'requiere_aprobacion_crediticia'    => $requiereAprobacionCrediticia,
             'motivo_crediticio'                 => $motivoCrediticio,
             'tipo_despacho'                     => $tipoDespacho,
+            'vendedor_id'                       => $seller->id,
             'origen'                            => data_get($data, 'origen'),
             'facturacion_reserva'               => null
         ];
@@ -160,6 +179,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     protected function saveOrderDetails(GpPedido $order, array $items)
     {
         $usedItemLExcluded = [];
+        $lvlPrice = GpCliente::findOrFail($order->cliente_id)->CLI_NIVEL_PRECIO;
 
         $this->validateStockTotalsForOrderItems($order, $items);
 
@@ -176,12 +196,14 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                         throw new \DomainException("No se encontró un artículo tipo L disponible para el código {$artCodigo}");
                     }
                     $item['ART_CODIGO'] = trim((string) $replacementCodeL);
+                    $item['art_id'] = GpArticulo::where('ART_CODIGO', $item['ART_CODIGO'])->value('id');
                     $selectedArtCodigo  = $replacementCodeL;
                 }
 
                 $usedItemLExcluded[] = $selectedArtCodigo;
                 $usedItemLExcluded = array_values(array_unique($usedItemLExcluded));
             }
+            $item['lista_precio'] = $lvlPrice;
             $detail = $this->builder->formPayloadOrderDetail($order->id, $item, $key);
             $detail->save();
 

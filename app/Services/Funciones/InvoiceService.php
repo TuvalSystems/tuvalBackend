@@ -232,6 +232,11 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->factura_a_demanda          = 0;
         $pedido->factura_siguiente_mes      = 0;
 
+        // La facturación inmediata tiene prioridad sobre la modalidad del cliente.
+        if ($pedido->facturar_ahora) {
+            return;
+        }
+
         if ($cliente->CLI_FACTURA_POSTERIOR_AL_DESPACHO === 'SI') {
             $pedido->factura_posterior_despacho = 1;
 
@@ -248,6 +253,10 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function processInvoiceDecision(GpPedido $pedido): bool
     {
+        if ($pedido->facturar_ahora) {
+            return false;
+        }
+
         if (!$pedido->factura_posterior_despacho) {
             return false;
         }
@@ -289,7 +298,7 @@ class InvoiceService implements InvoiceServiceInterface
         $estado             = self::STATUS_PENDING;
         $fechaLiberacion    = null;
         $esContado          = $pedido->COND_ID == 'CONTADO';
-        $bloqueoFactura     = $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
+        $bloqueoFactura     = !$pedido->facturar_ahora && $pedido->factura_posterior_despacho && $pedido->factura_a_demanda && !$pedido->factura_siguiente_mes;
 
         // 3. Solo si NO es contado y NO hay bloqueo de factura, evaluamos liberarlo
         if (!$esContado && !$bloqueoFactura) {
@@ -437,6 +446,10 @@ class InvoiceService implements InvoiceServiceInterface
             'detalle' => $detallePedido
         ];
 
+        Log::channel('invoice')->info('información enviada', [
+            $params
+        ]);
+
         $result = $this->apiGpProcessInvoice->storeDocumentInvoiceVta($params);
         if ($result['success'] === false) {
             throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
@@ -483,6 +496,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function isInvoiceDateValidForReservedOrder(GpPedido $pedido): bool
     {
+        // En factura a demanda, la fecha de reserva prevalece sobre facturar_ahora.
         if ($pedido->origen !== OrderOrigenEnum::FACTURA_DEMANDA->value) {
             return true;
         }
@@ -527,7 +541,14 @@ class InvoiceService implements InvoiceServiceInterface
             'condIdOriginal'               => $pedido->COND_ID_ORIGINAL,
             'userApprovalId'               => $userApprovalId,
             'pedidoId'                     => $pedido->id,
-            'proyecto'                     => $pedido->proyecto
+            'proyecto'                     => $pedido->proyecto,
+
+            //paqueteria
+            'monto_flete'                  => $pedido->monto_flete,
+            'peso'                         => $pedido->peso,
+            'peso_flete'                   => $pedido->peso_flete,
+            'tipo_despacho_id'             => $pedido->tipo_despacho_id,
+            'proveedor_despacho_id'        => $pedido->proveedor_despacho_id,
         ];
     }
 
@@ -569,6 +590,8 @@ class InvoiceService implements InvoiceServiceInterface
                 'linea'                             => $detalle->cod_linea,
                 'clase'                             => $detalle->cod_clase,
                 'configuracionItemL'                => $detalle->resultado_configuracion_item_l,
+                //paqueteria
+                'monto_flete'                       => $detalle->monto_flete
             ];
         })->toArray();
     }

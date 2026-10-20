@@ -18,7 +18,7 @@ interface DeliveryNoteCommonServiceInterface
 
     public function getVehicleAndCarrierInfo($payload): array;
 
-    public function getDirection($ptoWarehouse): string;
+    public function getDirection(string $ptoWarehouse): string;
     public function getWarehouseDescriptionOrigin($ptoWarehouse);
     public function formatGuideNumber(string $ptoVta, string $ptoEmision, string $secuencia): string;
 

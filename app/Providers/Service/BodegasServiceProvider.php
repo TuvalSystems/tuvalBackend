@@ -2,6 +2,13 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
+use App\Services\Inventario\Bodegas\DeliveryNoteQrService;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
+use App\Services\Inventario\Bodegas\DeliveryNoteSignaturePdfService;
+use App\Services\Inventario\Bodegas\DeliveryNoteMediaService;
+
 use App\Services\Inventario\Articulo\ArticleSegmentConfigService;
 use App\Services\Inventario\Articulo\ArticleService;
 use App\Services\Inventario\Articulo\ArticleSyncService;
@@ -19,6 +26,7 @@ use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterfac
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\ReceivedDeliveryNoteServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Inventario\Bodegas\DashboardService;
 use App\Services\Inventario\Bodegas\DeliveryNoteCommonService;
@@ -31,6 +39,7 @@ use App\Services\Inventario\Bodegas\LogisticsOperationsService;
 use App\Services\Inventario\Bodegas\PurchaseReceiptLItemService;
 use App\Services\Inventario\Bodegas\PurchaseReceiptService;
 use App\Services\Inventario\Bodegas\ReservationDeliveryNoteService;
+use App\Services\Inventario\Bodegas\ReceivedDeliveryNoteService;
 use App\Services\Inventario\Bodegas\TransferService;
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Services\Inventario\Reposiciones\ItemsLService;
@@ -46,6 +55,10 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
 
 
     public array $singletons = [
+        DeliveryNoteQrServiceInterface::class                       => DeliveryNoteQrService::class,
+        DeliveryNoteSignaturePdfServiceInterface::class             => DeliveryNoteSignaturePdfService::class,
+        DeliveryNoteMediaServiceInterface::class                    => DeliveryNoteMediaService::class,
+        ReceivedDeliveryNoteServiceInterface::class                 => ReceivedDeliveryNoteService::class,
         DispatchServiceInterface::class                             => DispatchService::class,
         PurchaseReceiptServiceInterface::class                      => PurchaseReceiptService::class,
         PurchaseReceiptLItemServiceInterface::class                 => PurchaseReceiptLItemService::class,

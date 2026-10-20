@@ -6,10 +6,16 @@ use App\Services\Imports\Contracts\OrdersImportInterface;
 use App\Services\Imports\Contracts\QuoteImportsInterface;
 use App\Services\Imports\OrdersImport;
 use App\Services\Imports\QuoteImports;
+use App\Services\Venta\Cliente\ClientCreatorService;
+use App\Services\Venta\Cliente\ClientGpSenderService;
+use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
+use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
 use App\Services\Venta\ClientQueryService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\OrderServiceInterface;
 use App\Services\Venta\OrderJobService;
+use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
+use App\Services\Venta\TipoDespachos\DispatchTypeService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Venta\QuotationService;
@@ -24,7 +30,9 @@ use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
 use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
+use App\Services\Venta\Cotizaciones\ProspectQuoteService;
 use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
 use App\Services\Venta\OrderCreatorService;
 use App\Services\Venta\OrderService;
@@ -32,6 +40,10 @@ use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Services\Venta\Pedidos\InvoiceHistoryService;
 use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Services\Venta\Pedidos\OrderGuideService;
+use App\Services\Venta\Proveedores\CarrierDriverService;
+use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
+use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
+use App\Services\Venta\Proveedores\ProviderService;
 use App\Services\Venta\QuotationCreatorService;
 use App\Services\Venta\QuoteDraftService;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
@@ -59,12 +71,22 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 
 
         //historico de cotizaciones
-        QuotationHistoryCreatorServiceInterface::class => QuotationHistoryCreatorService::class,
+        QuotationHistoryCreatorServiceInterface::class  => QuotationHistoryCreatorService::class,
 
         // historico de pedidos
-        InvoiceHistoryServiceInterface::class => InvoiceHistoryService::class,
-        //sp de pedidos 
-        OrderGuideServiceInterface::class   => OrderGuideService::class,
+        InvoiceHistoryServiceInterface::class           => InvoiceHistoryService::class,
+        //sp de pedidos
+        OrderGuideServiceInterface::class               => OrderGuideService::class,
+
+        //para el manejo de tipo de despachos
+        DispatchTypeServiceInterface::class             => DispatchTypeService::class,
+        ProviderServiceInterface::class                 => ProviderService::class,
+        CarrierDriverServiceInterface::class            => CarrierDriverService::class,
+
+        ClientCreatorServiceInterface::class            => ClientCreatorService::class,
+        ClientGpSenderServiceInterface::class           => ClientGpSenderService::class,
+
+        ProspectQuoteServiceInterface::class            => ProspectQuoteService::class,
     ];
 
 

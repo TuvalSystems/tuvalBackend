@@ -20,7 +20,6 @@ use App\Models\GpCotizacionVentaMotivo;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\Articulos\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
-use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
@@ -29,12 +28,12 @@ use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 
 class QuotationService implements QuotationServiceInterface
 {
@@ -49,7 +48,8 @@ class QuotationService implements QuotationServiceInterface
         protected readonly ApprovalServiceInterface $approvalService,
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
-        protected readonly ClientQueryServiceInterface $clientService
+        protected readonly ClientQueryServiceInterface $clientService,
+        protected readonly ClientGpSenderServiceInterface $clientGp
     ) {}
 
 
@@ -793,100 +793,7 @@ class QuotationService implements QuotationServiceInterface
 
 
     /** Seccion de clientes */
-    public function getAllSegments()
-    {
-        $resp = $this->apiGpService->fetchAllSegments();
-        return data_get($resp, 'data', []);
-    }
 
-    public function getSubSegmentBySegment(int $coAtrPadre)
-    {
-        if (empty($coAtrPadre)) {
-            abort(404, 'Segmento no encontrado');
-        }
-        $resp = $this->apiGpService->fetchSubSegmentsBySegment(['coAtrPadre' => $coAtrPadre]);
-        return data_get($resp, 'data', []);
-    }
-
-
-    public function storeClientQuotation(array $data, GpUsuario $user)
-    {
-
-        $this->prepareForValidationDirection($data);
-        $nivelPrecio            = $this->getNivelPriceSeller($user);
-        $params                 = $this->quotationBuilder->formPayloadSendClientGp($data, $nivelPrecio);
-        $this->apiGpService->storeClientGp($params);
-        $client = $this->createClientWeb($data, $nivelPrecio, $user);
-        $this->createClientSucursalWeb($data, $client,  $user);
-        $this->sendToSegmentAndRucToGp($data['CLI_RUC'], $data['CLI_SUBSEGMENTO_ID']);
-        $cliente                = GpCliente::where('CLI_RUC', $data['CLI_RUC'])->get()->first();
-        $vendedor               = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-        $cliente->vendedor      = $vendedor;
-
-        $sucursales             = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-        $cliente->sucursales    = $sucursales;
-        $cliente->sucursalesfacturacion = $sucursales;
-        return $cliente;
-    }
-
-    public function prepareForValidationDirection(array &$data)
-    {
-        $data['CLI_CORREO_ELECT_SRI'] = isset($data['CLI_CORREO_ELECT_SRI']) ? mb_strtoupper($data['CLI_CORREO_ELECT_SRI']) : strtolower($data['CLI_CORREO_ELECT_SRI']);
-        $data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA'] = isset($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) ? mb_strtoupper($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']) : strtolower($data['CLI_CORREO_ELECT_NOTIFICACION_INTERNA']);
-    }
-
-
-
-
-    public function createClientWeb(array $data, string $nivelPrecio, GpUsuario $user)
-    {
-        $attrs = $this->quotationBuilder->formPayloadClientWeb($data, $nivelPrecio, $user);
-        Log::info('GpCliente creará con attrs:', $attrs);
-        return GpCliente::create($attrs);
-    }
-
-
-
-
-    public function createClientSucursalWeb(array $data, GpCliente $client, GpUsuario $user)
-    {
-        $sucursal = GpClienteSucursal::create($this->quotationBuilder->formPayloadClientSucursal($data, $client->id, $user));
-        $this->updateStatusBranchInGp($sucursal, $user);
-    }
-
-    protected function updateStatusBranchInGp(GpClienteSucursal $branch, GpUsuario $userCreator): void
-    {
-        $fechaCreacion = Carbon::now()->format('Y-m-d H:i:s');
-        $this->clientService->createRegisterBranchClient(
-            $branch,
-            1,
-            $userCreator->USERID,
-            $fechaCreacion,
-            null,
-            null,
-            false
-        );
-    }
-
-
-
-    protected function getNivelPriceSeller(GpUsuario $user)
-    {
-        $vendedor = GpVendedor::with(['atributoValores' => function ($q) {
-            // Aseguramos que la opción exista y esté activa
-            $q->whereHas('opcion', function ($qOpcion) {
-                $qOpcion->where('estado', 1)->where('atributo_id', 1);
-            })->with('opcion:id,codigo');
-        }])
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$vendedor || $vendedor->atributoValores->isEmpty()) {
-            return 'GENERAL';
-        }
-
-        return $vendedor->atributoValores->first()?->opcion?->codigo ?? 'GENERAL';
-    }
     public function sendToSegmentAndRucToGp(string $ruc, int $subsegmentoId)
     {
         $this->apiGpService->storeSubsegmentAssociation([

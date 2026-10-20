@@ -125,11 +125,16 @@ class GpPedidoDetalle extends Model
         'trasladado'                => 'float',
         'devuelto'                  => 'float',
         'cancelado'                 => 'float',
-        'validador_l'               => 'boolean'
+        'validador_l'               => 'boolean',
+        'es_servicio_logistico'     => 'boolean'
     ];
 
 
     protected $fillable = [
+        'art_id',
+        'monto_flete',
+        'precio_sin_flete',
+        'lista_precio',
         'pedido_id',
         'orden',
         'ART_CODIGO',
@@ -165,7 +170,8 @@ class GpPedidoDetalle extends Model
         'cod_linea',
         'cod_clase',
         'resultado_configuracion_item_l',
-        'import_job'
+        'import_job',
+        'es_servicio_logistico'
 
     ];
 

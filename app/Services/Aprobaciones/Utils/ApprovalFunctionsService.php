@@ -123,9 +123,9 @@ class ApprovalFunctionsService implements ApprovalFunctionsServiceInterface
         return abs((float) $valorBase);
     }
 
-    public function getPorcentilDiscountCommercialCliente($ruc): float
+    public function getPorcentilDiscountCommercialCliente(int $id): float
     {
-        return (float) GpCliente::where('CLI_RUC', $ruc)->value('CLI_DSTO_COMERCIAL');
+        return (float) GpCliente::where('id', $id)->value('CLI_DSTO_COMERCIAL');
     }
 
     public function getTypeArticleLQuotationOrOrder(string $art): ?GpDatosItemsL

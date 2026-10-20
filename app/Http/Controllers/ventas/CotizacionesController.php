@@ -7,18 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Models\GpCronLog;
 use App\Models\GpProspecto;
 use App\Traits\JsonResponseTrait;
-use App\Models\GpTempCart;
-use App\Models\GpTempCartStock;
 use App\Models\GpCotizacion;
 use App\Models\GpCotizacionDetalle;
 use App\Models\GpPuntoVenta;
 use App\Models\GpClienteSucursal;
-use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpCliente;
 use App\Models\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WebserviceController;
-use App\Http\Controllers\FuncionesController;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\GpPedido;
 use App\Models\GpUsuario;
@@ -26,13 +22,11 @@ use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
-use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CotizacionesController extends Controller
@@ -46,15 +40,11 @@ class CotizacionesController extends Controller
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
         protected readonly CommercialVisibilityService $commercial,
-        protected readonly InvoiceHistoryServiceInterface $invoiceHistory
+        protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
+        protected readonly ProspectQuoteServiceInterface $prospectService
     ) {}
 
-    public function obtenerListaTipoIdentificacion(): JsonResponse
-    {
-        return $this->handleApiAction(function (): JsonResponse {
-            return $this->successResponse('Lista Obtenida', $this->clientService->getListTypeDni());
-        }, self::LOG_CHANNEL, 'obtenerListaTipoIdentificacion');
-    }
+
 
 
     public function store(ValidateStoreQuotationRequest $request): JsonResponse
@@ -77,85 +67,6 @@ class CotizacionesController extends Controller
             return $this->buildSuccessResponse($msg, 200);
         }, self::LOG_CHANNEL, 'CotizacionesController@store');
     }
-    public function selectarticulo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $user = $request->user();
-        $data = $request->validate([
-            'cliente_id' => '',
-            'puntodeventa_id' => '',
-            'sucursal_id' => '',
-            'articulo' => []
-        ]);
-        $user = GpUsuario::where('id', $user->id)->first();
-        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
-            $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
-        }
-        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV-L')
-            $data['articulo']['ART_TIPO_COMPRA'] = 'L';
-        $articulo = new GpTempCart;
-        $articulo->sucursal_id = $data['sucursal_id'];
-        $articulo->cliente_id = $data['cliente_id'];
-        $articulo->puntodeventa_id = $data['puntodeventa_id'];
-        $articulo->user_id = $user->id;
-        $articulo->USERID = $user->USERID;
-        $articulo->ART_CODIGO = $data['articulo']['ART_CODIGO'];
-        $articulo->ART_DESCRIPCION = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION']));
-        $articulo->ART_DESCRIPCION_ORIGINAL = trim(str_replace('  ', ' ', $data['articulo']['ART_DESCRIPCION_ORIGINAL']));
-        $articulo->ART_CODIGO_TRES_LETRAS = $data['articulo']['ART_CODIGO_TRES_LETRAS'];
-        $articulo->ART_DECIMAL_CANTIDAD = $data['articulo']['ART_DECIMAL_CANTIDAD'];
-        $articulo->ART_PLAN_UMEDIDA = $data['articulo']['ART_PLAN_UMEDIDA'];
-        $articulo->ART_MARCA = $data['articulo']['ART_MARCA'];
-        $articulo->ART_MATERIAL = $data['articulo']['ART_MATERIAL'];
-        $articulo->ART_PESO = $data['articulo']['ART_PESO'];
-        $articulo->ART_TIPO_COMPRA = $data['articulo']['ART_TIPO_COMPRA'];
-        $articulo->ART_VALOR = $data['articulo']['ART_VALOR'];
-        $articulo->ART_VALOR_ORIGINAL = $data['articulo']['ART_VALOR_ORIGINAL'];
-        $articulo->ART_CANTIDAD = 0;
-        $articulo->ART_IVA = 0;
-        $articulo->ART_DESCUENTO = 0;
-        $articulo->ART_STOCK = $data['articulo']['ART_STOCK'];
-        $articulo->ART_IMP_VTA = $data['articulo']['ART_IMP_VTA'];
-        $articulo->ART_COSTO_PROMEDIO = $data['articulo']['ART_COSTO_PROMEDIO'];
-        $articulo->descuento = $data['articulo']['descuento'];
-        $articulo->descuento_original = $data['articulo']['descuento_original'];
-        $articulo->modificador = $data['articulo']['modificador'];
-        $orden = GpTempCart::where('sucursal_id', $data['sucursal_id'])
-            ->where('cliente_id', $data['cliente_id'])
-            ->where('puntodeventa_id', $data['puntodeventa_id'])
-            ->orderBy('orden', 'DESC')
-            ->first();
-        if (!$orden) {
-            $orden = new \stdClass();
-            $orden->orden = 0;
-        }
-        $articulo->orden = $orden->orden + 1;
-        $articulo->save();
-        $array_stock = array();
-        foreach ($data['articulo']['stock'] as $stockbodega) {
-            $stock = new GpTempCartStock;
-            $stock->id_tempcart = $articulo->id;
-            $stock->STO_ART_BODEGA = $stockbodega['STO_ART_BODEGA'];
-            $stock->STO_ART_STOCK_DISPONIBLE = $stockbodega['STO_ART_STOCK_DISPONIBLE'];
-            $stock->seleccionado = 0;
-            $stock->save();
-            $array_stock[] = $stock;
-        }
-        $articulo->proveedores = array();
-        $articulo->stock = $array_stock;
-        $imagenes = array();
-        for ($i = 1; $i <= 3; $i++) {
-            $file = 'images/productos/' . $articulo->ART_CODIGO_TRES_LETRAS . '_' . $i . '.jpg';
-            if (File::exists($file)) {
-                $imagenes[] = env('APP_URL') . '/' . $file;
-            }
-        }
-        $articulo->imagenes = $imagenes;
-        return response([
-            'success' => true,
-            'articulo' => $articulo,
-        ]);
-    }
-
 
 
     public function selectarticuloprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
@@ -246,6 +157,7 @@ class CotizacionesController extends Controller
             foreach ($data['cotizacion'] as $det) {
                 $detalle = new GpCotizacionDetalle;
                 $detalle->cotizacion_id = $cotizacion->id;
+                $detalle->art_id        = $det['art_id'];
                 $detalle->ART_CODIGO = $det['ART_CODIGO'];
                 $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
                 $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
@@ -369,120 +281,6 @@ class CotizacionesController extends Controller
         ]);
     }
 
-
-
-    public function guardardireccion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
-    {
-        $data = $request->all();
-
-        foreach ($data as $key => $direccion) {
-            if ($key != 'CLI_SUC_CORREO_ELECTRONICO_SRI')
-                $data[$key] = mb_strtoupper($direccion);
-            else
-                $data[$key] = strtolower($direccion);
-        }
-        $data['CLI_SUC_PROVINCIA'] = $data['CLI_SUC_PROVINCIA_NOMBRE'];
-        unset($data['CLI_SUC_PROVINCIA_NOMBRE']);
-
-        $dir = str_split($data['CLI_SUC_DIRECCION'], 61);
-
-        if (!isset($dir[1])) {
-            $dir[1] = '';
-        }
-        $parameters = array(
-            'CLI_DIR_RUC' => $data['CLI_SUC_RUC'],
-            'CLI_DIR_CONTACTO' => $data['CLI_SUC_CONTACTO'],
-            'CLI_DIR_ID_DIRECCION' => '',
-            'CLI_DIR_DIRECCION_1' => $dir[0],
-            'CLI_DIR_DIRECCION_2' => $dir[1],
-            'CLI_DIR_CIUDAD' => $data['CLI_SUC_CIUDAD'],
-            'CLI_DIR_PROVINCIA' => $data['CLI_SUC_PROVINCIA'],
-            'CLI_DIR_PAIS' => 'Ec',
-            'CLI_DIR_TERRITORIO' => $data['CLI_SUC_TERRITORIO'],
-            'CLI_DIR_TELEFONO_1' => $data['CLI_SUC_TELEFONO'],
-            'CLI_DIR_TELEFONO_2' => '',
-            'CLI_DIR_TELEFONO_3' => '',
-            'CLI_DIR_TELEFONO_4' => '',
-            'CLI_DIR_CORREO_ELECTRONICO_SRI' => $data['CLI_SUC_CORREO_ELECTRONICO_SRI'],
-            'CLI_DIR_CORREO_ELECTRONICO_NOTIFICACION_INTERNA' => $data['CLI_SUC_CORREO_ELECTRONICO_SRI'],
-            'CLI_DIR_VENDEDOR' => $data['CLI_SUC_VENDEDOR'],
-            'CLI_DIR_PUNTO_VENTA' => $data['CLI_DIR_PUNTO_VENTA'],
-        );
-
-
-        $webservices = new WebserviceController;
-        $parameters = [
-            'Direccion_Cliente' => array($parameters)
-        ];
-        $nuevaDireccion = $webservices->transaccional('MST_Direccion_Cliente_Creacion_Modificacion', $parameters);
-        Log::channel(self::LOG_CHANNEL)->info('Nueva Direccion', $nuevaDireccion);
-        if (!isset($nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult'])) {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
-        }
-        $CLI_SUC_ID_DIRECCION = explode('-', $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']);
-        if (!isset($CLI_SUC_ID_DIRECCION[1])) {
-            return response([
-                'error' => $nuevaDireccion['MST_Direccion_Cliente_Creacion_ModificacionResult']
-            ], 409);
-        }
-        $direccion = new GpClienteSucursal;
-        $direccion->CLI_SUC_RUC = $data['CLI_SUC_RUC'];
-        $direccion->CLI_SUC_DESCRIPCION = $data['CLI_SUC_DESCRIPCION'];
-        $direccion->CLI_SUC_ID_DIRECCION = $CLI_SUC_ID_DIRECCION[1];
-        $direccion->CLI_SUC_DIRECCION = $data['CLI_SUC_DIRECCION'];
-        $direccion->CLI_SUC_CONTACTO = $data['CLI_SUC_CONTACTO'];
-        $direccion->CLI_SUC_REFERENCIA = $data['CLI_SUC_REFERENCIA'];
-        $direccion->CLI_SUC_VENDEDOR = $data['CLI_SUC_VENDEDOR'];
-        $direccion->CLI_SUC_TERRITORIO = $data['CLI_SUC_TERRITORIO'];
-        $direccion->CLI_SUC_CIUDAD = $data['CLI_SUC_CIUDAD'];
-        $direccion->CLI_SUC_PROVINCIA = $data['CLI_SUC_PROVINCIA'];
-        $direccion->CLI_SUC_PAIS = 'Ecuador';
-        $direccion->CLI_SUC_TELEFONO = $data['CLI_SUC_TELEFONO'];
-        $direccion->CLI_SUC_CORREO_ELECTRONICO_SRI = $data['CLI_SUC_CORREO_ELECTRONICO_SRI'];
-        $direccion->CLI_SUC_CORREO_ELECTRONICO_NOTIFICACION_INTERNA = $data['CLI_SUC_CORREO_ELECTRONICO_SRI'];
-
-
-        if ($direccion->save()) {
-            $cliente = GpCliente::where('CLI_RUC', $data['CLI_SUC_RUC'])->get()->first();
-            $vendedor = GpVendedor::where('VEND_ID', $cliente->CLI_VENDEDOR)->first();
-            $cliente->vendedor = $vendedor;
-            $sucursales = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)->get();
-            $cliente->sucursales = $sucursales;
-            $cliente->sucursalesfacturacion = $sucursales;
-
-            return response([
-                'success' => true,
-                'message' => 'Dirección de cliente guardado',
-                'cliente' => $cliente,
-            ]);
-        } else {
-            return response([
-                'error' => 'Hubo un error al guardar'
-            ], 409);
-        }
-    }
-
-    public function guardarcliente(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = $request->all();
-            $user = $request->user();
-            $cliente = DB::transaction(fn() => $this->quotationService->storeClientQuotation($data, $user));
-            return $this->successResponse('Cliente Guardado Correctamente', $cliente, 200);
-        }, self::LOG_CHANNEL, 'guardarcliente');
-    }
-
-    public function guardarNuevaDireccionSucursal(Request $request)
-    {
-        return $this->handleApiAction(function () use ($request) {
-            $data = data_get($request->all(), 'form', []);
-            $user = $request->user();
-            $sucursal = $this->clientService->storeNewAddressClient($data, $user);
-            return $this->successResponse('Información Obtenida Correctamente', $sucursal, 200);
-        }, self::LOG_CHANNEL, 'guardarNuevaDireccionSucursal');
-    }
 
     public function detallecotizacion(Request $request)
     {
@@ -690,41 +488,10 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function checkrucprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+
+    public function ListaMotivosNoVenta(): JsonResponse
     {
-        $data = $request->validate([
-            'CLI_RUC' => '',
-        ]);
-
-        $cliente = GpCliente::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-        if ($cliente) {
-            $data['cliente_id'] = $cliente->id;
-            $funciones = new FuncionesController();
-            $cliente = $funciones->getcliente($data);
-
-            return response([
-                'success' => true,
-                'cliente' => $cliente
-            ]);
-        }
-
-        $prospecto = GpProspecto::where('CLI_RUC', trim($data['CLI_RUC']))->first();
-        if ($prospecto) {
-            return response([
-                'success' => true,
-                'prospecto' => $prospecto
-            ]);
-        }
-
-        return response([
-            'success' => false,
-        ]);
-    }
-
-
-    public function ListaMotivosNoVenta() : JsonResponse
-    {
-        return $this->handleApiAction(function () : JsonResponse {
+        return $this->handleApiAction(function (): JsonResponse {
             $lista = $this->quotationService->getNonSalesReasons();
             return $this->successResponse('Lista Obtenida', $lista);
         }, self::LOG_CHANNEL, 'getlistNonSaleReasons');
@@ -826,22 +593,7 @@ class CotizacionesController extends Controller
 
 
     /** seccion de cliente  */
-    public function obtenerListaSegmentos(): JsonResponse
-    {
-        return $this->handleApiAction(function (): JsonResponse {
-            $resp = $this->quotationService->getAllSegments();
-            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        }, self::LOG_CHANNEL, 'obtenerListaSegmentos');
-    }
 
-    public function obtenerListaSubSegmentos(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $coAtrPadre = $request->get('segmento', null);
-            $resp       = $this->quotationService->getSubSegmentBySegment($coAtrPadre);
-            return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
-        }, self::LOG_CHANNEL, 'obtenerListaSubSegmentos');
-    }
 
     public function validarSegmentoCliente(Request $request): JsonResponse
     {
@@ -903,5 +655,18 @@ class CotizacionesController extends Controller
             $data = $this->invoiceHistory->fetchInvoiceHistory($user, $clientId, $pvId, $pvCode, $filters);
             return $this->successResponse('Lista Obtenida Correctamente', $data);
         }, self::LOG_CHANNEL, 'obtenerFacturasHistoricasCotizacion');
+    }
+
+
+
+
+    /** prospecto  */
+    public function recuperarProspecto(Request $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $documento = $request->input('documento');
+            $info = $this->prospectService->restoreProspectQuote($documento);
+            return $this->successResponse('Información Obtenida Correctamente', $info);
+        }, self::LOG_CHANNEL, 'recuperarProspecto');
     }
 }

@@ -3,6 +3,9 @@
 namespace App\Models\despachos;
 
 use App\Models\GpBodega;
+use App\Models\Concerns\HasDeliveryNoteWarehouses;
+use App\Models\Concerns\HasDeliveryNoteMedia;
+use Spatie\MediaLibrary\HasMedia;
 use App\Models\GpRelacionPuntoVentaBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +19,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $estado
  * @property string $bodega_origen
  * @property string|null $bodega_destino
+ * @property int|null $bodega_origen_id
+ * @property int|null $bodega_destino_id
  * @property string|null $pedido
  * @property string $GUI_REM_BODEGA
  * @property string $GUI_REM_GUIA_REMISION
@@ -91,16 +96,21 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUserId($value)
- * @mixin \Eloquent
  */
-class GpGuiaRemision extends Model
+class GpGuiaRemision extends Model implements HasMedia
 {
     use HasFactory;
+    use HasDeliveryNoteWarehouses;
+    use HasDeliveryNoteMedia;
+
+    protected $table = 'gp_guia_remisions';
     protected $fillable = [
         'tipo',
         'estado',
         'bodega_origen',
         'bodega_destino',
+        'bodega_origen_id',
+        'bodega_destino_id',
         'pedido',
         'user_id',
         'GUI_REM_BODEGA',
@@ -128,7 +138,27 @@ class GpGuiaRemision extends Model
         'procesado',
         'GUI_REM_CODIGO',
         'idempotency_key',
-        'orden_compra'
+        'orden_compra',
+
+        // nuevos campos
+        'sucursal_destinatario_id',
+        'tipo_despacho_id',
+        'proveedor_despacho_id',
+        'chofer_transportista_id',
+        'numero_orden_compra_gp',
+        'monto_orden_compra',
+        'requiere_orden_compra'
+    ];
+
+    protected $casts = [
+        'bodega_origen_id' => 'integer',
+        'bodega_destino_id' => 'integer',
+        'sucursal_destinatario_id'  => 'integer',
+        'tipo_despacho_id'          => 'integer',
+        'proveedor_despacho_id'     => 'integer',
+        'chofer_transportista_id'   => 'integer',
+        'monto_orden_compra'        => 'decimal:2',
+        'requiere_orden_compra'     => 'boolean'
     ];
 
     public function guiadetalle()

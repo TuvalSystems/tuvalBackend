@@ -32,6 +32,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'factura_posterior_despacho' => filter_var($this->factura_posterior_despacho, FILTER_VALIDATE_BOOLEAN),
             'factura_a_demanda'          => filter_var($this->factura_a_demanda, FILTER_VALIDATE_BOOLEAN),
             'factura_siguiente_mes'      => filter_var($this->factura_siguiente_mes, FILTER_VALIDATE_BOOLEAN),
+            'facturar_ahora'             => filter_var($this->facturar_ahora, FILTER_VALIDATE_BOOLEAN),
         ]);
 
         $fieldsToNull = [
@@ -44,7 +45,14 @@ class ValidateStoreQuotationRequest extends FormRequest
             'nota_cliente',
             'nota_operaciones',
             'forma_pago_id',
-            'correo_electronico_sri'
+            'correo_electronico_sri',
+            'proyecto',
+            'proveedor_despacho_id',
+            'monto_flete',
+            'peso',
+            'peso_flete',
+            'usuario_flete_autorizador_id',
+            'fecha_flete_autorizacion',
         ];
 
         foreach ($fieldsToNull as $field) {
@@ -68,8 +76,8 @@ class ValidateStoreQuotationRequest extends FormRequest
             'mode'                      => ['required'],
             // -- datos del cliente
             'cliente_id'                => ['required', 'integer', 'exists:gp_clientes,id'], // Corregido sintaxis array
-            'ruc'                       => ['required', 'string', 'max:20'],
-            'razon_social'              => ['required', 'string', 'max:255'],
+            // 'ruc'                       => ['required', 'string', 'max:20'],
+            // 'razon_social'              => ['required', 'string', 'max:255'],
             'correo_electronico_sri' => [
                 'nullable', // 1. Permite que sea null o vacío
                 'string',
@@ -94,91 +102,101 @@ class ValidateStoreQuotationRequest extends FormRequest
                     }
                 },
             ],
-            'vendedor_id'                   => ['required', 'string'],
-            'vendedor_nombres'              => ['nullable', 'string', 'max:255'],
-            'vendedor_apellidos'            => ['nullable', 'string', 'max:255'],
+            // 'vendedor_id'                               => ['required', 'string'],
+            // 'vendedor_nombres'                          => ['nullable', 'string', 'max:255'],
+            // 'vendedor_apellidos'                        => ['nullable', 'string', 'max:255'],
             // -- logica de ubicacion y bodegas despacho
-            'punto_venta_id'                => ['required', 'string'],
-            'bodega_facturacion'            => ['required', 'string'],
-            'tipo_entrega'                  => ['required', 'in:retiro,despacho'],
-            'fecha_entrega'                 => ['required_if:tipo_entrega,despacho'],
-            'direccion_facturacion_id'      => ['required'],
-            'direccion_entrega_id'          => ['required_if:tipo_entrega,despacho'],
+            'pv_id'                                     => ['required', 'integer'],
+            'punto_venta_id'                            => ['required', 'string'],
+            'bodega_facturacion'                        => ['required', 'string'],
+
+            'fecha_entrega'                             => ['nullable', 'string'],
+            'direccion_facturacion_id'                  => ['required'],
+            'direccion_entrega_id'                      => ['nullable', 'integer'],
 
             // --- Booleanos (Facturación) ---
-            'factura_posterior_despacho'    => ['required', 'boolean'],
-            'factura_a_demanda'             => ['required', 'boolean'],
-            'factura_siguiente_mes'         => ['required', 'boolean'],
+            'factura_posterior_despacho'                => ['required', 'boolean'],
+            'factura_a_demanda'                         => ['required', 'boolean'],
+            'factura_siguiente_mes'                     => ['required', 'boolean'],
+            'facturar_ahora'                            => ['required', 'boolean'],
 
-            'registro_copia'                => ['nullable', 'integer'],
+            'registro_copia'                            => ['nullable', 'integer'],
             // -- pago
-            'condicion_pago_id'             => ['required', 'string'],
-            'condicion_pago_original_id'    => ['required', 'string'],
-            'forma_pago_id'                 => ['required', 'string'],
+            'condicion_pago_id'                         => ['required', 'string'],
+            'condicion_pago_original_id'                => ['required', 'string'],
+            'forma_pago_id'                             => ['required', 'string'],
 
             // -- notas y textos
-            'nota_interna'                  => ['nullable', 'string', 'max:1000'], // CORREGIDO: decía 'nota_internas' (plural)
-            'nota_cliente'                  => ['nullable', 'string', 'max:300'],
-            'nota_operaciones'              => ['nullable', 'string', 'max:300'],
-            'orden_de_compra'               => ['nullable', 'string', 'max:20'],
+            'nota_interna'                              => ['nullable', 'string', 'max:1000'], // CORREGIDO: decía 'nota_internas' (plural)
+            'nota_cliente'                              => ['nullable', 'string', 'max:300'],
+            'nota_operaciones'                          => ['nullable', 'string', 'max:300'],
+            'orden_de_compra'                           => ['nullable', 'string', 'max:20'],
 
             // -- calculo
-            'subtotal'                      => ['required', 'numeric', 'min:0'],
-            'descuento'                     => ['nullable', 'numeric'],
-            'iva'                           => ['required', 'numeric', 'min:0'],
-            'total'                         => ['required', 'numeric', 'min:0'],
-            'modificador_global'            => ['nullable', 'numeric'],
+            'subtotal'                                  => ['required', 'numeric', 'min:0'],
+            'descuento'                                 => ['nullable', 'numeric'],
+            'iva'                                       => ['required', 'numeric', 'min:0'],
+            'total'                                     => ['required', 'numeric', 'min:0'],
+            'modificador_global'                        => ['nullable', 'numeric'],
 
-            'peso'                          => ['nullable', 'numeric'],
-            'descuento_articulo'            => ['nullable', 'numeric'],
-            'descuento_original'            => ['nullable', 'numeric'],
+            'peso'                                      => ['nullable', 'numeric'],
+            'peso_flete'                                => ['nullable', 'numeric'],
+            'descuento_articulo'                        => ['nullable', 'numeric'],
+            'descuento_original'                        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
-            'items'                         => ['required', 'array', 'min:1'],
+            'items'                                     => ['required', 'array', 'min:1'],
 
-            'items.*.id'                    => ['nullable', 'integer'],
-            'items.*.detalle_id'            => ['nullable', 'integer'],
-            'items.*.cotizacion_id'         => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
-            'items.*.id_temp'               => ['nullable', 'string', 'max:100'],
+            'items.*.id'                                => ['nullable', 'integer'],
+            'items.*.art_id'                            => ['nullable', 'integer'],
+            'items.*.detalle_id'                        => ['nullable', 'integer'],
+            'items.*.cotizacion_id'                     => ['nullable', 'integer', 'exists:gp_cotizacions,id'],
+            'items.*.id_temp'                           => ['nullable', 'string', 'max:100'],
 
-            'items.*.ART_CODIGO'            => ['required'],
-            'items.*.ART_CANTIDAD'          => ['required', 'numeric', 'min:0.00001'],
-            'items.*.ART_VALOR'             => ['required', 'numeric', 'min:0'],
-            'items.*.ART_VALOR_ORIGINAL'    => ['nullable', 'numeric'],
-            'items.*.ART_DESCUENTO'         => ['nullable', 'numeric'],
-            'items.*.ART_IVA'               => ['nullable', 'numeric'],
-            'items.*.ART_PESO'              => ['nullable', 'numeric'],
+            'items.*.ART_CODIGO'                        => ['required'],
+            'items.*.ART_CANTIDAD'                      => ['required', 'numeric', 'min:0.00001'],
+            'items.*.ART_VALOR'                         => ['required', 'numeric', 'min:0'],
+            'items.*.ART_VALOR_ORIGINAL'                => ['nullable', 'numeric'],
+            'items.*.ART_DESCUENTO'                     => ['nullable', 'numeric'],
+            'items.*.ART_IVA'                           => ['nullable', 'numeric'],
+            'items.*.ART_PESO'                          => ['nullable', 'numeric'],
 
-            'items.*.ART_TIPO_COMPRA'           => ['nullable', 'string'],
-            'items.*.ART_CODIGO_TRES_LETRAS'    => ['nullable', 'string'],
-            'items.*.ART_DESCRIPCION'           => ['nullable', 'string'],
-            'items.*.ART_DESCRIPCION_ORIGINAL'  => ['nullable', 'string'],
-            'items.*.ART_PLAN_UMEDIDA'          => ['nullable', 'string'],
-            'items.*.CHECK_ALTERNATIVO'         => ['required', 'boolean'],
-            'items.*.ART_DECIMAL_CANTIDAD'      => ['nullable', 'numeric'],
-            'items.*.ART_STOCK'                 => ['nullable', 'numeric'],
-            'items.*.ART_COSTO_PROMEDIO'        => ['nullable', 'numeric'],
+            'items.*.ART_TIPO_COMPRA'                   => ['nullable', 'string'],
+            'items.*.ART_CODIGO_TRES_LETRAS'            => ['nullable', 'string'],
+            'items.*.ART_DESCRIPCION'                   => ['nullable', 'string'],
+            'items.*.ART_DESCRIPCION_ORIGINAL'          => ['nullable', 'string'],
+            'items.*.ART_PLAN_UMEDIDA'                  => ['nullable', 'string'],
+            'items.*.CHECK_ALTERNATIVO'                 => ['required', 'boolean'],
+            'items.*.ART_DECIMAL_CANTIDAD'              => ['nullable', 'numeric'],
+            'items.*.ART_STOCK'                         => ['nullable', 'numeric'],
+            'items.*.ART_COSTO_PROMEDIO'                => ['nullable', 'numeric'],
 
-            'items.*.descuento'             => ['nullable', 'numeric'],
-            'items.*.descuento_original'    => ['nullable', 'numeric'],
-            'items.*.subtotal'              => ['nullable', 'numeric'],
-            'items.*.modificador'           => ['nullable', 'numeric'],
+            'items.*.descuento'                         => ['nullable', 'numeric'],
+            'items.*.descuento_original'                => ['nullable', 'numeric'],
+            'items.*.subtotal'                          => ['nullable', 'numeric'],
+            'items.*.modificador'                       => ['nullable', 'numeric'],
 
-            'items.*.cod_categoria'         => ['nullable', 'string'],
-            'items.*.cod_linea'             => ['nullable', 'string'],
-            'items.*.cod_clase'             => ['nullable', 'string'],
-            'items.*.nivel'                 => ['nullable', 'integer'],
-            'items.*.resultado_configuracion_item_l'   => ['nullable', 'string'],
+            'items.*.cod_categoria'                     => ['nullable', 'string'],
+            'items.*.cod_linea'                         => ['nullable', 'string'],
+            'items.*.cod_clase'                         => ['nullable', 'string'],
+            'items.*.nivel'                             => ['nullable', 'integer'],
+            'items.*.resultado_configuracion_item_l'    => ['nullable', 'string'],
 
-            'items.*.tipo'                      => ['nullable', 'string', 'max:50'],
-            'items.*.ART_IMP_VTA'               => ['nullable', 'numeric'],
-            'items.*.ART_MARCA'                 => ['nullable', 'string', 'max:100'],
-            'items.*.ART_MATERIAL'              => ['nullable', 'string', 'max:100'],
-            'items.*.valor_original_l'          => ['nullable', 'numeric'],
-            'items.*.imagenes'                  => ['nullable', 'array'],
-            'items.*.imagenes.*'                => ['nullable', 'string'],
+            'items.*.tipo'                              => ['nullable', 'string', 'max:50'],
+            'items.*.ART_IMP_VTA'                       => ['nullable', 'numeric'],
+            'items.*.ART_MARCA'                         => ['nullable', 'string', 'max:100'],
+            'items.*.ART_MATERIAL'                      => ['nullable', 'string', 'max:100'],
+            'items.*.valor_original_l'                  => ['nullable', 'numeric'],
+            'items.*.imagenes'                          => ['nullable', 'array'],
+            'items.*.imagenes.*'                        => ['nullable', 'string'],
 
-            'items.*.stock'                 => ['nullable', 'array'],
-            'items.*.proveedores'           => ['nullable', 'array'],
+            'items.*.stock'                             => ['nullable', 'array'],
+            'items.*.proveedores'                       => ['nullable', 'array'],
+
+            //flete detalle
+            'items.*.monto_flete'                       => ['nullable', 'numeric'],
+            'items.*.precio_sin_flete'                  => ['required', 'numeric', 'min:0'],
+            'items.*.es_servicio_logistico'              => ['required', 'boolean'],
+
 
             // --- VALIDACIÓN DE IMÁGENES (AGREGADO) ---
             // Validamos 'imagenes' porque así lo llamaste en el formData.append
@@ -195,7 +213,15 @@ class ValidateStoreQuotationRequest extends FormRequest
             'pdfs_nuevos.*'              => ['file', 'mimetypes:application/pdf,application/x-google-chrome-pdf,application/octet-stream', 'max:10120'],
             'pdfs_existentes'            => ['nullable', 'array'],
             'pdfs_existentes.*'          => ['string'],
-            'proyecto'                   => ['nullable', 'integer']
+            'proyecto'                   => ['nullable', 'integer'],
+
+            //paqueteria o fletes
+            'responsable_flete'         => ['required', 'string'],
+            'tipo_despacho_id'          => ['required', 'integer'],
+            'proveedor_despacho_id'     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
+            'monto_flete'               => ['nullable', 'numeric'],
+            'usuario_flete_autorizador_id' => ['nullable', 'integer', 'exists:gp_usuarios,id'],
+            'fecha_flete_autorizacion'     => ['nullable', 'date'],
         ];
     }
 
@@ -209,6 +235,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'imagenes_nuevas'       => 'nuevas imágenes',
             'imagenes_nuevas.*'     => 'nueva imagen',
             'cotizacion_id'         => 'ID de cotización',
+            'tipo_despacho_id'      => 'Tipo de despacho'
         ];
     }
 }

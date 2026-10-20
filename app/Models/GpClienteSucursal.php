@@ -69,7 +69,10 @@ class GpClienteSucursal extends Model
         'cliente_id'            => 'integer',
         'user_creator_id'       => 'integer',
         'estado'                => 'integer',
-        'fecha_hora_creacion'   => 'datetime',
+        'fecha_hora_creacion'   => 'datetime:Y-m-d H:i:s',
+        'created_at'            => 'datetime:Y-m-d H:i:s',
+        'updated_at'            => 'datetime:Y-m-d H:i:s',
+        'enviado_gp'            => 'boolean'
     ];
     protected $fillable = [
         'cliente_id',
@@ -90,7 +93,11 @@ class GpClienteSucursal extends Model
         'coordenadas',
         'user_creator_id',
         'fecha_hora_creacion',
-        'estado'
+        'estado',
+        'region_id',
+        'provincia_id',
+        'canton_id',
+        'enviado_gp'
     ];
 
     protected function serializeDate(DateTimeInterface $date)

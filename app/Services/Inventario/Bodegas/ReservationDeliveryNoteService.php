@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas;
 
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
+
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\TransactionType;
 use App\Jobs\Venta\Reservas\NotifyReceivedReservationsJob;
@@ -32,7 +34,8 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         protected readonly DeliveryNoteCommonServiceInterface $common,
         protected readonly ReservationDeliveryNoteParamsBuilderInterface $builder,
         protected readonly ApiDeliverNoteService $apiDelivery,
-        protected readonly LogisticsOperationsServiceInterface $logistic
+        protected readonly LogisticsOperationsServiceInterface $logistic,
+        protected readonly DeliveryNoteSignaturePdfServiceInterface $signaturePdf
     ) {}
 
 
@@ -308,6 +311,7 @@ class ReservationDeliveryNoteService implements ReservationDeliveryNoteServiceIn
         return [
             'guia'          => $guia,
             'claveAcceso'   => $guia->clave_acceso,
+            'firmaGuia'     => $this->signaturePdf->forGuide($guia),
             'detalle'       => $detalle,
             'direccion'     => $this->common->getDirection($guia->establecimiento),
             'descripcion'   => $this->getDescriptionWarehouse($guia->establecimiento),
