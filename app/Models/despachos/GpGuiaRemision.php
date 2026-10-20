@@ -3,6 +3,7 @@
 namespace App\Models\despachos;
 
 use App\Models\GpBodega;
+use App\Models\Concerns\HasDeliveryNoteWarehouses;
 use App\Models\GpRelacionPuntoVentaBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $estado
  * @property string $bodega_origen
  * @property string|null $bodega_destino
+ * @property int|null $bodega_origen_id
+ * @property int|null $bodega_destino_id
  * @property string|null $pedido
  * @property string $GUI_REM_BODEGA
  * @property string $GUI_REM_GUIA_REMISION
@@ -95,6 +98,7 @@ use Illuminate\Database\Eloquent\Model;
 class GpGuiaRemision extends Model
 {
     use HasFactory;
+    use HasDeliveryNoteWarehouses;
 
     protected $table = 'gp_guia_remisions';
     protected $fillable = [
@@ -102,6 +106,8 @@ class GpGuiaRemision extends Model
         'estado',
         'bodega_origen',
         'bodega_destino',
+        'bodega_origen_id',
+        'bodega_destino_id',
         'pedido',
         'user_id',
         'GUI_REM_BODEGA',
@@ -142,6 +148,8 @@ class GpGuiaRemision extends Model
     ];
 
     protected $casts = [
+        'bodega_origen_id' => 'integer',
+        'bodega_destino_id' => 'integer',
         'sucursal_destinatario_id'  => 'integer',
         'tipo_despacho_id'          => 'integer',
         'proveedor_despacho_id'     => 'integer',

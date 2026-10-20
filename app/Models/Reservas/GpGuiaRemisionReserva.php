@@ -3,6 +3,7 @@
 namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
+use App\Models\Concerns\HasDeliveryNoteWarehouses;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $estado
  * @property string|null $bodega_origen
  * @property string|null $bodega_destino
+ * @property int|null $bodega_origen_id
+ * @property int|null $bodega_destino_id
  * @property string|null $guia_bodega
  * @property string|null $establecimiento
  * @property string|null $pto_emision
@@ -85,6 +88,7 @@ use Illuminate\Database\Eloquent\Model;
 class GpGuiaRemisionReserva extends Model
 {
     use HasFactory;
+    use HasDeliveryNoteWarehouses;
     protected $appends = ['quotes'];
 
     protected $fillable = [
@@ -94,6 +98,8 @@ class GpGuiaRemisionReserva extends Model
         'estado',
         'bodega_origen',
         'bodega_destino',
+        'bodega_origen_id',
+        'bodega_destino_id',
         'guia_bodega',
         'establecimiento',
         'pto_emision',
@@ -118,6 +124,11 @@ class GpGuiaRemisionReserva extends Model
         'idempotency_key',
     ];
 
+
+    protected $casts = [
+        'bodega_origen_id' => 'integer',
+        'bodega_destino_id' => 'integer',
+    ];
 
     protected function serializeDate(DateTimeInterface $date)
     {
