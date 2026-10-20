@@ -16,7 +16,7 @@ trait HasDeliveryNoteMedia
     public function getCodigoQrAttribute(): ?string
     {
         return $this->getKey()
-            ? app(\App\Services\Inventario\Bodegas\DeliveryNoteQrService::class)->code($this)
+            ? app(\App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface::class)->code($this)
             : null;
     }
 

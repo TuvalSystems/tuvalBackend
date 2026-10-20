@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\Reservas\GpGuiaRemisionReserva;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
-use App\Services\Inventario\Bodegas\DeliveryNoteQrService;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +21,7 @@ class GuiaRemisionArchivoController extends Controller
 
     public function __construct(
         protected readonly DeliveryNoteMediaServiceInterface $media,
-        protected readonly DeliveryNoteQrService $qr
+        protected readonly DeliveryNoteQrServiceInterface $qr
     ) {}
 
     public function resolverQr(Request $request): JsonResponse

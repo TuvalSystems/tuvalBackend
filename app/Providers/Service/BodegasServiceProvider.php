@@ -2,6 +2,8 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
+use App\Services\Inventario\Bodegas\DeliveryNoteQrService;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
 use App\Services\Inventario\Bodegas\DeliveryNoteSignaturePdfService;
@@ -53,6 +55,7 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
 
 
     public array $singletons = [
+        DeliveryNoteQrServiceInterface::class                       => DeliveryNoteQrService::class,
         DeliveryNoteSignaturePdfServiceInterface::class             => DeliveryNoteSignaturePdfService::class,
         DeliveryNoteMediaServiceInterface::class                    => DeliveryNoteMediaService::class,
         ReceivedDeliveryNoteServiceInterface::class                 => ReceivedDeliveryNoteService::class,

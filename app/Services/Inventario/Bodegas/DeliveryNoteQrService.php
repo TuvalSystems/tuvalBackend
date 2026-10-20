@@ -4,10 +4,11 @@ namespace App\Services\Inventario\Bodegas;
 
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use Illuminate\Validation\ValidationException;
 use Milon\Barcode\DNS2D;
 
-class DeliveryNoteQrService
+class DeliveryNoteQrService implements DeliveryNoteQrServiceInterface
 {
     public function code(GpGuiaRemision|GpGuiaRemisionReserva $guide): string
     {

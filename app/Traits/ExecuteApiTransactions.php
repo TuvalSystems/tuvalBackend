@@ -46,6 +46,17 @@ trait ExecuteApiTransactions
         } elseif ($e instanceof ModelNotFoundException) {
             $mensaje = 'El recurso solicitado no fue encontrado.';
             $codigo = 404;
+        } elseif ($e instanceof \DomainException) {
+            $mensaje = $e->getMessage();
+            $codigo = 422;
+        } elseif ($e instanceof QueryException) {
+            $codigo = ((string) $e->getCode() === '40001') ? 409 : 500;
+            $mensaje = ($codigo === 409) ? 'Recurso ocupado, reintente.' : 'Error de integridad en base de datos.';
+
+            $this->logException($canalLog, "Error de Base de Datos en $contextoLog : ", [
+                'message' => $e->getMessage(),
+                'sql'     => $e->getSql()
+            ]);
         } elseif ($e instanceof RuntimeException) {
             $codigo = 409;
             $this->logException($canalLog, "Conflicto de Negocio en $contextoLog : ", [
@@ -53,17 +64,6 @@ trait ExecuteApiTransactions
                 'linea'   => $e->getLine(),
                 'file'    => $e->getFile()
             ], 'warning');
-        } elseif ($e instanceof \DomainException) {
-            $mensaje = $e->getMessage();
-            $codigo = 422;
-        } elseif ($e instanceof QueryException) {
-            $codigo = ($e->getCode() === '40001') ? 409 : 500;
-            $mensaje = ($codigo === 409) ? 'Recurso ocupado, reintente.' : 'Error de integridad en base de datos.';
-
-            $this->logException($canalLog, "Error de Base de Datos en $contextoLog : ", [
-                'message' => $e->getMessage(),
-                'sql'     => $e->getSql()
-            ]);
         } else {
             $this->logException($canalLog, "Error General en $contextoLog : ", [
                 'message' => $e->getMessage(),

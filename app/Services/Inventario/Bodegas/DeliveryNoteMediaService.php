@@ -146,6 +146,7 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
     protected function download(GpGuiaRemision|GpGuiaRemisionReserva $guide, int $mediaId): StreamedResponse
     {
         $media = $guide->media()->whereIn('collection_name', ['firmas', 'documentos'])->findOrFail($mediaId);
+        abort_unless(Storage::disk($media->disk)->exists($media->getPathRelativeToRoot()), 404, 'El archivo solicitado no fue encontrado.');
         return Storage::disk($media->disk)->response($media->getPathRelativeToRoot(), $media->file_name,
             ['Content-Type' => $media->mime_type, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
