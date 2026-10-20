@@ -3,12 +3,16 @@
 namespace App\Models\Concerns;
 
 use App\Models\GpBodega;
+use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @mixin Model
+ */
 trait HasDeliveryNoteWarehouses
 {
     public static function bootHasDeliveryNoteWarehouses(): void
     {
-        static::saving(function ($guia) {
+        static::saving(function (Model $guia) {
             $isDispatch = $guia->getAttribute('tipo') === 'despacho';
 
             foreach (['origen', 'destino'] as $side) {
