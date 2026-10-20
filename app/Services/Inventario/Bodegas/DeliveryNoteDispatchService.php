@@ -19,6 +19,7 @@ use App\Models\Articulos\GpArticulo;
 use App\Models\GpPedido;
 use App\Models\GpPedidoDetalleStock;
 use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteDispatchParamsBuilderInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
@@ -60,6 +61,8 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         $bodGuide       = $this->common->getWarehouseDescriptionOrigin(data_get($payload, 'orden.BOD_BODEGA'));
         $idemKey        = $this->makeIdemKeyDispatch($payload, $pedido, $tipo, $ptoVta);
 
+        //funcion para verificar si requiere orden de compra
+        $requiredOc = TipoDespacho::where('responsable_pago', 'cliente')->where('id', data_get($pedido,'tipo_despacho_id'))->exists();
 
         $lock = Cache::lock('create_dispatch_guide_' . $idemKey, 30);
         if (!$lock->get()) {
@@ -69,17 +72,18 @@ class DeliveryNoteDispatchService implements DeliveryNoteDispatchServiceInterfac
         try {
             $lockSequential = Cache::lock("lock_sequential_{$ptoVta}_{$ptoEmision}", 15);
             $infoGuia = [
-                'tipo'              => $tipo,
-                'ptoEmision'        => $ptoEmision,
-                'user'              => $user,
-                'idemKey'           => $idemKey,
-                'bodGuide'          => $bodGuide,
-                'dirOrigin'         => $dirOrigin,
-                'pedido'            => $pedido,
-                'direccionEnvio'    => $direccionEnvio,
-                'docuSustento'      => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
-                'motivoTraslado'    => ReasonForTransfer::VENTA->value,
-                'ptoVta'           => $ptoVta
+                'tipo'                  => $tipo,
+                'ptoEmision'            => $ptoEmision,
+                'user'                  => $user,
+                'idemKey'               => $idemKey,
+                'bodGuide'              => $bodGuide,
+                'dirOrigin'             => $dirOrigin,
+                'pedido'                => $pedido,
+                'direccionEnvio'        => $direccionEnvio,
+                'docuSustento'          => DeliveryNoteConstants::DOC_SUSTENTO_FACTURA,
+                'motivoTraslado'        => ReasonForTransfer::VENTA->value,
+                'ptoVta'                => $ptoVta,
+                'requiere_orden_compra' => $requiredOc
             ];
 
             $guia = $lockSequential->block(15, function () use ($payload, &$infoGuia, $items, $ptoVta, $ptoEmision) {

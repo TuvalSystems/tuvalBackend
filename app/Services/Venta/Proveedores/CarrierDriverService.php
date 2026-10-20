@@ -6,6 +6,7 @@ use App\Models\GpUsuario;
 use App\Models\Ventas\Proveedores\ChoferTransportista;
 use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
 use App\Traits\CleansPayloadData;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -135,5 +136,19 @@ class CarrierDriverService implements CarrierDriverServiceInterface
                 $excludeId,
                 fn($query) => $query->where('id', '!=', $excludeId)
             )->exists();
+    }
+
+
+    public function getCarrierDriversByProviderAndSalesPoint(int $provId, int $pvId): Collection
+    {
+        return ChoferTransportista::whereHas('proveedor', function ($query) use ($provId, $pvId) {
+            $query->where('gp_proveedors.id', $provId)
+                ->whereHas('puntosVenta', function ($q) use ($pvId) {
+                    $q->where('gp_punto_ventas.id', $pvId);
+                });
+        })
+            ->with([
+                'tipoIdentificacion:id,codigo'
+            ])->get(['id', 'nombre', 'identificacion', 'tipo_identificacion_id', 'placa']);
     }
 }

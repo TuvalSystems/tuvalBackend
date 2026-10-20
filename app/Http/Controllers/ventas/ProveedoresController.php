@@ -51,7 +51,7 @@ class ProveedoresController extends Controller
 
     public function listaProveedoresTransportistas(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use($request): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $pvId = $request->input('pv_id');
             $lista = $this->providerService->listProviderTypeCarrier($pvId);
             return $this->successResponse('Información Obtenida correctamente.!', $lista);
@@ -140,7 +140,7 @@ class ProveedoresController extends Controller
 
     public function obtenerDetalleProveedor(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request) : JsonResponse{
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validate = $request->validate([
                 'id'               => 'required|exists:gp_proveedors,id',
             ]);
@@ -161,5 +161,20 @@ class ProveedoresController extends Controller
             $prov   = $this->providerService->syncPotinSalesByProvider($id, $pvIds);
             return $this->successResponse('Proveedor sincronizado correctamente', $prov);
         }, self::LOG_CHANNEL, 'sincronizarPuntoVentaPorProveedor');
+    }
+
+
+    public function listaChoferesPorProveedorPuntoVenta(Request $request)
+    {
+        return $this->handleApiAction(function () use ($request) {
+            $validate       = $request->validate([
+                'prov_id'   => 'required|exists:gp_proveedors,id',
+                'pv_id'     => 'required|exists:gp_punto_ventas,id'
+            ]);
+            $provId = data_get($validate,  'prov_id');
+            $pvId   = data_get($validate, 'pv_id');
+            $lista  = $this->carrierService->getCarrierDriversByProviderAndSalesPoint($provId, $pvId);
+            return $this->successResponse('Información Obtenida correctamente.!', $lista);
+        }, self::LOG_CHANNEL, 'listaChoferesPorProveedorPuntoVenta');
     }
 }

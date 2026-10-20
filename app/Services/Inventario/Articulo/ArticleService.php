@@ -4,6 +4,7 @@ namespace App\Services\Inventario\Articulo;
 
 use App\Enums\bodegas\AbcSegment;
 use App\Models\Articulos\GpArticulo;
+use App\Models\GpUnidadMedida;
 use App\Models\GpUsuario;
 use App\Services\Inventario\Articulo\Contracts\ArticleServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
@@ -17,8 +18,7 @@ class ArticleService implements ArticleServiceInterface
     public function __construct(
         protected readonly StockWarehouseServiceInterface $stockService,
 
-    )
-    {
+    ) {
         // Inyecta dependencias
     }
 
@@ -90,7 +90,7 @@ class ArticleService implements ArticleServiceInterface
 
 
     /** funcion para busqueda de items de venta */
-  public function searchArticlesWithDetails(array $filters) : SupportCollection
+    public function searchArticlesWithDetails(array $filters): SupportCollection
     {
         $articulos = GpArticulo::searchItemModel($filters);
 
@@ -180,6 +180,8 @@ class ArticleService implements ArticleServiceInterface
             $taxPercentage
         );
         // $article->ART_TIPO_COMPRA         = 'L';
+        $unmd = GpUnidadMedida::where('UMEDIDA_PLAN', $article->ART_PLAN_UMEDIDA)->value('UMEDIDA_BASE');
+        $article->setAttribute('ART_PLAN_UMEDIDA', $unmd);
         $article->ART_VALOR               = 0;
         $article->ART_VALOR_ORIGINAL      = 0;
         $article->ART_DESCRIPCION_ORIGINAL = $article->ART_DESCRIPCION;
@@ -201,6 +203,8 @@ class ArticleService implements ArticleServiceInterface
         $article = GpArticulo::where('es_servicio_logistico', true)
             ->where('ART_ESTADO', 'ACTIVO')
             ->firstOrFail();
+        $unmd = GpUnidadMedida::where('UMEDIDA_PLAN', $article->ART_PLAN_UMEDIDA)->value('UMEDIDA_BASE');
+        $article->setAttribute('ART_PLAN_UMEDIDA', $unmd);
         $article->setAttribute('ART_VALOR', 0);
         $article->setAttribute('ART_VALOR_ORIGINAL', 0);
         $article->setAttribute('ART_DESCRIPCION_ORIGINAL', $article->ART_DESCRIPCION);

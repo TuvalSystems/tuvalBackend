@@ -54,6 +54,14 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'           => '',
             'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'       => Carbon::parse(data_get($infoGuia, 'pedido.fecha_factura', '1900-01-01 00:00:00'))->format('Y-m-d H:i:s'),
             'orden_compra'                              => data_get($infoGuia, 'pedido.orden_de_compra', ''),
+
+            //paqueteria
+            'sucursal_destinatario_id'                  => data_get($infoGuia, 'pedido.sucursal_id', null),
+            'tipo_despacho_id'                          => data_get($infoGuia, 'pedido.tipo_despacho_id', null),
+            'proveedor_despacho_id'                     => data_get($infoGuia, 'pedido.proveedor_despacho_id', null),
+            'chofer_transportista_id'                   => data_get($payload, 'chofer_transportista_id', null),
+            'monto_orden_compra'                        => data_get($infoGuia, 'pedido.monto_flete', 0),
+            'requiere_orden_compra'                     => data_get($infoGuia, 'requiere_orden_compra', false)
         ]);
         return $gr;
     }
@@ -93,6 +101,10 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'observacion'                       => $guia->GUI_REM_OBSERVACION,
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
             'ordenCompra'                       => $ordenCompra ?? '',
+            'tipoDespachoId'                    => $guia->tipo_despacho_id,
+            'proveedorDespachoId'               => $guia->proveedor_despacho_id,
+            'choferTransportistaId'             => $guia->chofer_transportista_id,
+
         ];
     }
 

@@ -178,7 +178,7 @@ class DeliveryNoteCommonService implements DeliveryNoteCommonServiceInterface
 
 
 
-    public function getDirection($ptoWarehouse): string
+    public function getDirection(string $ptoWarehouse): string
     {
         $pto = GpPuntoVenta::where('PTO_VTA_ID', $ptoWarehouse)->select('PTO_VTA_DIRECCION_1', 'PTO_VTA_DIRECCION_2')->first();
         return $pto ? trim($pto->PTO_VTA_DIRECCION_1 . ' ' . $pto->PTO_VTA_DIRECCION_2) : '';

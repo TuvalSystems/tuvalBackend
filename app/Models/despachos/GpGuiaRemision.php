@@ -91,11 +91,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereTipo($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUserId($value)
- * @mixin \Eloquent
  */
 class GpGuiaRemision extends Model
 {
     use HasFactory;
+
+    protected $table = 'gp_guia_remisions';
     protected $fillable = [
         'tipo',
         'estado',
@@ -128,7 +129,25 @@ class GpGuiaRemision extends Model
         'procesado',
         'GUI_REM_CODIGO',
         'idempotency_key',
-        'orden_compra'
+        'orden_compra',
+
+        // nuevos campos
+        'sucursal_destinatario_id',
+        'tipo_despacho_id',
+        'proveedor_despacho_id',
+        'chofer_transportista_id',
+        'numero_orden_compra_gp',
+        'monto_orden_compra',
+        'requiere_orden_compra'
+    ];
+
+    protected $casts = [
+        'sucursal_destinatario_id'  => 'integer',
+        'tipo_despacho_id'          => 'integer',
+        'proveedor_despacho_id'     => 'integer',
+        'chofer_transportista_id'   => 'integer',
+        'monto_orden_compra'        => 'decimal:2',
+        'requiere_orden_compra'     => 'boolean'
     ];
 
     public function guiadetalle()

@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\ventas\AprobacionesController;
 use App\Http\Controllers\ventas\ClienteController;
+use App\Http\Controllers\ventas\ProveedoresController;
 use App\Http\Controllers\ventas\ReservasController;
 use Illuminate\Support\Facades\Mail;
 
@@ -261,6 +262,11 @@ Route::group(['prefix' => 'cobranzas'], function () {
 Route::prefix('gestion')->group(function () {
     Route::get('lista-sucursales', [GestionSucursalesController::class, 'listaSucursales']);
     Route::get('sucursal/detalle', [GestionSucursalesController::class, 'obtenerDetalleSucursal']);
+});
+
+
+Route::prefix('proveedores')->group(function () {
+    Route::get('lista-choferes-por-proveedores', [ProveedoresController::class, 'listaChoferesPorProveedorPuntoVenta']);
 });
 
 
