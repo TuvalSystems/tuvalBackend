@@ -20,14 +20,15 @@ class GuiaRemisionArchivoController extends Controller
     private const LOG_CHANNEL = 'stack';
 
     public function __construct(
-        protected readonly DeliveryNoteMediaServiceInterface $media
+        protected readonly DeliveryNoteMediaServiceInterface $media,
+        protected readonly DeliveryNoteQrService $qr
     ) {}
 
-    public function resolverQr(Request $request, DeliveryNoteQrService $qr): JsonResponse
+    public function resolverQr(Request $request): JsonResponse
     {
-        return $this->handleApiAction(function () use ($request, $qr): JsonResponse {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
             $validated = $request->validate(['codigo' => ['required', 'string', 'max:250']]);
-            $target = $qr->decode($validated['codigo']);
+            $target = $this->qr->decode($validated['codigo']);
             // Reutiliza la misma autorización que la consulta y carga de firmas.
             $files = $this->media->getGuideFiles($target['tipo'], $target['guia_id'], (int) $request->user()->id);
             $guide = $target['tipo'] === 'reserva'
