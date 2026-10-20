@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas;
 
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
+
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
@@ -41,6 +43,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         protected readonly DeliveryNoteDispatchParamsBuilderInterface $builderDispatch,
         protected readonly DeliveryNoteSalesTransferBuilderInterface $builder,
         protected readonly InvoiceServiceInterface $invoiceService,
+        protected readonly DeliveryNoteSignaturePdfServiceInterface $signaturePdf,
     ) {}
 
     public function createDeliveryNoteSalesTransfer(array $payload, GpUsuario $user)
@@ -483,6 +486,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
         return [
             'guia'          => $guia,
             'claveAcceso'   => $guia->GUI_REM_CODIGO,
+            'firmaGuia'     => $this->signaturePdf->forGuide($guia),
             'detalle'       => $detalle,
             'direccion'     => $this->common->getDirection($guia->GUI_REM_ESTABLECIMIENTO),
             'descripcion'   => $this->getDescriptionWarehouse($guia->GUI_REM_ESTABLECIMIENTO),

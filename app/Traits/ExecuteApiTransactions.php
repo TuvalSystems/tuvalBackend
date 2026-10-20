@@ -41,18 +41,18 @@ trait ExecuteApiTransactions
         $mensaje = $e->getMessage();
         $codigo = 500;
 
-        if ($e instanceof RuntimeException) {
+        if ($e instanceof HttpException) {
+            $codigo = $e->getStatusCode();
+        } elseif ($e instanceof ModelNotFoundException) {
+            $mensaje = 'El recurso solicitado no fue encontrado.';
+            $codigo = 404;
+        } elseif ($e instanceof RuntimeException) {
             $codigo = 409;
             $this->logException($canalLog, "Conflicto de Negocio en $contextoLog : ", [
                 'message' => $e->getMessage(),
                 'linea'   => $e->getLine(),
                 'file'    => $e->getFile()
             ], 'warning');
-        } elseif ($e instanceof HttpException) {
-            $codigo = $e->getStatusCode();
-        } elseif ($e instanceof ModelNotFoundException) {
-            $mensaje = 'El recurso solicitado no fue encontrado.';
-            $codigo = 404;
         } elseif ($e instanceof \DomainException) {
             $mensaje = $e->getMessage();
             $codigo = 422;

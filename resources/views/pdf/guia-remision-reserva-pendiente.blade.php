@@ -342,6 +342,9 @@
         </div>
         @endif
 
+        @include('pdf.partials.qr-guia')
+        @include('pdf.partials.firma-guia')
+
         <!-- foter -->
         <div>
             <p class="text-center"><b>Documento sin validez tributaria, consultar documento electrónico en

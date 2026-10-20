@@ -4,6 +4,8 @@ namespace App\Models\despachos;
 
 use App\Models\GpBodega;
 use App\Models\Concerns\HasDeliveryNoteWarehouses;
+use App\Models\Concerns\HasDeliveryNoteMedia;
+use Spatie\MediaLibrary\HasMedia;
 use App\Models\GpRelacionPuntoVentaBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -95,10 +97,11 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemision whereUserId($value)
  */
-class GpGuiaRemision extends Model
+class GpGuiaRemision extends Model implements HasMedia
 {
     use HasFactory;
     use HasDeliveryNoteWarehouses;
+    use HasDeliveryNoteMedia;
 
     protected $table = 'gp_guia_remisions';
     protected $fillable = [

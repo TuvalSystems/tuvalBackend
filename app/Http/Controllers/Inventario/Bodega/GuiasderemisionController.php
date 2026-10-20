@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Inventario\Bodega;
 
 use App\Http\Controllers\Controller;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
@@ -43,7 +44,8 @@ class GuiasderemisionController extends Controller
         protected readonly EntryServiceInterface $entryService,
         protected readonly DeliveryNoteSalesTransferServiceInterface $salesTransfer,
         protected readonly DeliveryNoteReplenishmentTransferServiceInterface $replenishment,
-        protected readonly OrderGuideServiceInterface $orderGuideService
+        protected readonly OrderGuideServiceInterface $orderGuideService,
+        protected readonly DeliveryNoteSignaturePdfServiceInterface $signaturePdf
     ) {}
 
     public function consultarGuiaGeneradaV1(Request $request): JsonResponse
@@ -115,6 +117,7 @@ class GuiasderemisionController extends Controller
 
         $data['peso'] = number_format($peso, 2, '.', '');
         $data['guia'] = $guia;
+        $data['firmaGuia'] = $this->signaturePdf->forGuide($guia);
         $data['detalle'] = $detalle;
         $data['transferencias'] = $arr_trans;
         $data['PTO_VTA_DESCRIPCION'] = $puntodeventa['PTO_VTA_DESCRIPCION'];

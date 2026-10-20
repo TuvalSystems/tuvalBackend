@@ -4,6 +4,8 @@ namespace App\Models\Reservas;
 
 use App\Models\GpCotizacion;
 use App\Models\Concerns\HasDeliveryNoteWarehouses;
+use App\Models\Concerns\HasDeliveryNoteMedia;
+use Spatie\MediaLibrary\HasMedia;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -85,10 +87,11 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|GpGuiaRemisionReserva whereUserId($value)
  * @mixin \Eloquent
  */
-class GpGuiaRemisionReserva extends Model
+class GpGuiaRemisionReserva extends Model implements HasMedia
 {
     use HasFactory;
     use HasDeliveryNoteWarehouses;
+    use HasDeliveryNoteMedia;
     protected $appends = ['quotes'];
 
     protected $fillable = [

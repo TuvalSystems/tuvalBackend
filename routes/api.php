@@ -347,6 +347,14 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
         Route::group(['prefix' => 'bodegas'], function () {
 
+            Route::prefix('guias-remision/{tipo}/{guia}/archivos')
+                ->where(['tipo' => 'despacho|reserva|reposicion|transferencia', 'guia' => '[0-9]+'])
+                ->controller(\App\Http\Controllers\Inventario\Bodega\GuiaRemisionConsultaArchivoController::class)
+                ->group(function () {
+                    Route::get('/', 'index');
+                    Route::get('{archivo}', 'show')->whereNumber('archivo');
+                });
+
             Route::post('dashboard', [DashboardController::class, 'dashboard']);
             Route::post('recibosdecompra/bandeja', [RecibosdecompraeleController::class, 'bandeja']);
             Route::post('recibosdecompra/detalle', [RecibosdecompraeleController::class, 'detalle']);
