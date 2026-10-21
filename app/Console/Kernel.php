@@ -160,6 +160,12 @@ class Kernel extends ConsoleKernel
 
     private function scheduleDispatches(Schedule $schedule)
     {
+        $schedule->command('guias:encolar-ordenes-compra')
+            ->timezone(self::TIMEZONE)
+            ->everyMinute()
+            ->withoutOverlapping(10)
+            ->runInBackground();
+
         $schedule->command('despachos:check-completed')
             ->timezone(self::TIMEZONE)
             ->between('06:00', '24:00')

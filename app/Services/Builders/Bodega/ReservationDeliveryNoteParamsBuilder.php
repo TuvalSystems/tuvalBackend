@@ -48,6 +48,11 @@ class ReservationDeliveryNoteParamsBuilder implements ReservationDeliveryNotePar
             'razon_social_destinatario'             => DeliveryNoteConstants::RAZON_SOCIAL_DESTINATARIO_DEFAULT,
             'ruta'                                  => $payload['ruta'],
             'fecha_emision_doc_sustento'            => DeliveryNoteConstants::FECHA_NULA_DATE,
+            'tipo_despacho_id'                     => data_get($payload, 'tipo_despacho_id'),
+            'fle_proveedor_id'                     => data_get($payload, 'fle_proveedor_id'),
+            'valor_orden_compra'                   => data_get($payload, 'valor_orden_compra'),
+            'requiere_orden_compra'                => data_get($payload, 'requiere_orden_compra', false),
+            'oc_generada'                         => false,
         ]);
         return $guia;
     }

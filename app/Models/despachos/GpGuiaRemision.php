@@ -145,7 +145,6 @@ class GpGuiaRemision extends Model implements HasMedia
         'tipo_despacho_id',
         'fle_proveedor_id',
         'flete_externo_id',
-        'numero_orden_compra_gp',
         'oc_generada',
         'valor_orden_compra',
         'requiere_orden_compra'
@@ -163,15 +162,14 @@ class GpGuiaRemision extends Model implements HasMedia
         'requiere_orden_compra'     => 'boolean'
     ];
 
-    public function setNumeroOrdenCompraGpAttribute($value): void
-    {
-        $this->attributes['numero_orden_compra_gp'] = $value;
-        $this->attributes['oc_generada'] = trim((string) $value) !== '';
-    }
-
     public function guiadetalle()
     {
         return $this->hasMany(GpGuiaRemisionDetalle::class, 'guia_remision_id');
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->hasOne(DeliveryNotePurchaseOrder::class, 'guia_remision_id');
     }
 
     public function guiadespacho()

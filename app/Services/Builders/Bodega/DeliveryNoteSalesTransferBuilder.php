@@ -48,6 +48,13 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'               => '',
             'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'           => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATE)->format('Y-m-d H:i:s'),
         ]);
+        $gr->fill([
+            'tipo_despacho_id' => data_get($payload, 'tipo_despacho_id'),
+            'fle_proveedor_id' => data_get($payload, 'fle_proveedor_id'),
+            'valor_orden_compra' => data_get($payload, 'valor_orden_compra'),
+            'requiere_orden_compra' => data_get($payload, 'requiere_orden_compra', false),
+            'oc_generada' => false,
+        ]);
         return $gr;
     }
      public function buildDeliveryNoteReplenishmentTransferHeader(array $payload, array $infoGuia): GpGuiaRemision
@@ -83,6 +90,13 @@ class DeliveryNoteSalesTransferBuilder implements DeliveryNoteSalesTransferBuild
             'GUI_REM_NUME_DOCU_SUSTENTO'                    => '',
             'GUI_REM_NUME_AUTO_DOCU_SUSTENTO'               => '',
             'GUI_REM_FECHA_EMISION_DOCU_SUSTENTO'           => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATE)->format('Y-m-d H:i:s'),
+        ]);
+        $gr->fill([
+            'tipo_despacho_id' => data_get($payload, 'tipo_despacho_id'),
+            'fle_proveedor_id' => data_get($payload, 'fle_proveedor_id'),
+            'valor_orden_compra' => data_get($payload, 'valor_orden_compra'),
+            'requiere_orden_compra' => data_get($payload, 'requiere_orden_compra', false),
+            'oc_generada' => false,
         ]);
         return $gr;
     }

@@ -22,7 +22,7 @@ class GpHttpClient
         $this->client = new Client(['timeout' => $this->timeout]);
     }
 
-    public function makeRequest(string $urlKey, string $method, array $data, $format = 'form')
+    public function makeRequest(string $urlKey, string $method, array $data, $format = 'form', bool $retryRequests = true)
     {
         $url = null;
         try {
@@ -45,25 +45,26 @@ class GpHttpClient
             $client = method_exists($client, 'connectTimeout')
                 ? $client->connectTimeout(3)
                 : $client->withOptions(['connect_timeout' => 3]);
-            $client = $client->retry(3, 200, function ($exception) {
-                // Reintentar SI es error de conexión (cURL 28, DNS, Host down)
-                if ($exception instanceof ConnectionException) {
-                    return true;
-                }
-                // Reintentar SI el servidor devuelve 5xx (Spring Boot está saturado o reiniciando)
-                if ($exception instanceof RequestException && $exception->response) {
-                    // Si el servidor spring boot se murió (500, 502, 503, 504), reintentamos
-                    if ($exception->response->status() > 500) {
+            if ($retryRequests) {
+                $client = $client->retry(3, 200, function ($exception) {
+                    // Reintentar SI es error de conexión (cURL 28, DNS, Host down)
+                    if ($exception instanceof ConnectionException) {
                         return true;
                     }
-                }
-                // 3. Para cualquier otra cosa (ej: 400 Bad Request, 404, o error lógico), NO reintentar
-                return false;
-            }) // 3 intentos, 200ms backoff
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'X-Correlation-Id' => $cid,
-                ]);
+                    // Reintentar SI el servidor devuelve 5xx (Spring Boot está saturado o reiniciando)
+                    if ($exception instanceof RequestException && $exception->response) {
+                        if ($exception->response->status() > 500) {
+                            return true;
+                        }
+                    }
+                    // Para errores lógicos o 4xx no reintentar.
+                    return false;
+                });
+            }
+            $client = $client->withHeaders([
+                'Accept' => 'application/json',
+                'X-Correlation-Id' => $cid,
+            ]);
 
             // Formato del body
             $client = ($format === 'json') ? $client->asJson() : $client->asForm();

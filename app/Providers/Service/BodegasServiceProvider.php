@@ -2,13 +2,6 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
-use App\Services\Inventario\Bodegas\DeliveryNoteQrService;
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
-use App\Services\Inventario\Bodegas\DeliveryNoteSignaturePdfService;
-use App\Services\Inventario\Bodegas\DeliveryNoteMediaService;
-
 use App\Services\Inventario\Articulo\ArticleSegmentConfigService;
 use App\Services\Inventario\Articulo\ArticleService;
 use App\Services\Inventario\Articulo\ArticleSyncService;
@@ -18,28 +11,36 @@ use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteDispatchServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNotePurchaseOrderServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteReplenishmentTransferServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSalesTransferServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptServiceInterface;
-use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\ReceivedDeliveryNoteServiceInterface;
+use App\Services\Inventario\Bodegas\Contracts\ReservationDeliveryNoteServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Services\Inventario\Bodegas\DashboardService;
 use App\Services\Inventario\Bodegas\DeliveryNoteCommonService;
 use App\Services\Inventario\Bodegas\DeliveryNoteDispatchService;
+use App\Services\Inventario\Bodegas\DeliveryNoteMediaService;
+use App\Services\Inventario\Bodegas\DeliveryNotePurchaseOrderService;
+use App\Services\Inventario\Bodegas\DeliveryNoteQrService;
 use App\Services\Inventario\Bodegas\DeliveryNoteReplenishmentTransferService;
 use App\Services\Inventario\Bodegas\DeliveryNoteSalesTransferService;
 use App\Services\Inventario\Bodegas\DeliveryNoteService;
+use App\Services\Inventario\Bodegas\DeliveryNoteSignaturePdfService;
 use App\Services\Inventario\Bodegas\DispatchService;
 use App\Services\Inventario\Bodegas\LogisticsOperationsService;
 use App\Services\Inventario\Bodegas\PurchaseReceiptLItemService;
 use App\Services\Inventario\Bodegas\PurchaseReceiptService;
-use App\Services\Inventario\Bodegas\ReservationDeliveryNoteService;
 use App\Services\Inventario\Bodegas\ReceivedDeliveryNoteService;
+use App\Services\Inventario\Bodegas\ReservationDeliveryNoteService;
 use App\Services\Inventario\Bodegas\TransferService;
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Services\Inventario\Reposiciones\ItemsLService;
@@ -55,6 +56,7 @@ class BodegasServiceProvider extends ServiceProvider implements DeferrableProvid
 
 
     public array $singletons = [
+        DeliveryNotePurchaseOrderServiceInterface::class           => DeliveryNotePurchaseOrderService::class,
         DeliveryNoteQrServiceInterface::class                       => DeliveryNoteQrService::class,
         DeliveryNoteSignaturePdfServiceInterface::class             => DeliveryNoteSignaturePdfService::class,
         DeliveryNoteMediaServiceInterface::class                    => DeliveryNoteMediaService::class,

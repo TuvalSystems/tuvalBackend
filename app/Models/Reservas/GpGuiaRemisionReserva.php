@@ -125,13 +125,28 @@ class GpGuiaRemisionReserva extends Model implements HasMedia
         'fecha_emision_doc_sustento',
         'rebajado',
         'idempotency_key',
+        'tipo_despacho_id',
+        'fle_proveedor_id',
+        'valor_orden_compra',
+        'requiere_orden_compra',
+        'oc_generada',
     ];
 
 
     protected $casts = [
         'bodega_origen_id' => 'integer',
         'bodega_destino_id' => 'integer',
+        'tipo_despacho_id' => 'integer',
+        'fle_proveedor_id' => 'integer',
+        'valor_orden_compra' => 'decimal:2',
+        'requiere_orden_compra' => 'boolean',
+        'oc_generada' => 'boolean',
     ];
+
+    public function purchaseOrder()
+    {
+        return $this->hasOne(\App\Models\despachos\DeliveryNotePurchaseOrder::class, 'guia_reserva_id');
+    }
 
     protected function serializeDate(DateTimeInterface $date)
     {
