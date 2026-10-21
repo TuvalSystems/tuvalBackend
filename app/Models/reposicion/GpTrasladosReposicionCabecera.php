@@ -2,8 +2,11 @@
 
 namespace App\Models\reposicion;
 
+use App\Models\GpBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * App\Models\reposicion\GpTrasladosReposicionCabecera
@@ -14,7 +17,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $Bodega_Destino
  * @property string $Codigo_Motivo
  * @property string|null $Motivo
- * @property string $Fecha_Documento
+ * @property \Illuminate\Support\Carbon $Fecha_Documento
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GpTrasladosReposicion> $detalles
+ * @property-read int|null $detalles_count
+ * @property-read GpBodega|null $bodegaOrigen
+ * @property-read GpBodega|null $bodegaDestino
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicionCabecera newModelQuery()
@@ -35,6 +42,15 @@ class GpTrasladosReposicionCabecera extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_traslados_reposicion_cabeceras';
+
+
+     protected $casts = [
+        'id' => 'integer',
+        'Fecha_Documento' => 'date:Y-m-d',
+        'created_at' => 'datetime:Y-m-d H:i:s',
+        'updated_at' => 'datetime:Y-m-d H:i:s',
+    ];
     protected $fillable = [
         'Documento',
         'Bodega_Origen',
@@ -43,4 +59,21 @@ class GpTrasladosReposicionCabecera extends Model
         'Fecha_Documento',
         'Motivo',
     ];
+
+
+
+    public function detalles(): HasMany
+    {
+        return $this->hasMany(GpTrasladosReposicion::class, 'cabecera_id', 'id');
+    }
+
+    public function bodegaOrigen(): BelongsTo
+    {
+        return $this->belongsTo(GpBodega::class, 'Bodega_Origen', 'BOD_BODEGA');
+    }
+
+    public function bodegaDestino(): BelongsTo
+    {
+        return $this->belongsTo(GpBodega::class, 'Bodega_Destino', 'BOD_BODEGA');
+    }
 }

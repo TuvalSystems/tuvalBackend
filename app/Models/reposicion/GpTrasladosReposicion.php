@@ -2,8 +2,11 @@
 
 namespace App\Models\reposicion;
 
+use App\Models\Articulos\GpArticulo;
+use App\Models\GpBodega;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * App\Models\reposicion\GpTrasladosReposicion
@@ -17,17 +20,21 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $ART_CODIGO_TRES_LETRAS
  * @property string|null $ART_PLAN_UMEDIDA
  * @property string|null $ART_PESO
- * @property string $cantidad
+ * @property string|null $cantidad
  * @property string $bodega_origen
  * @property string $bodega_destino
  * @property string $compartimiento
- * @property string|null $Fecha_Documento
- * @property string $reservado
- * @property string $trasladado
- * @property int|null $completado
+ * @property \Illuminate\Support\Carbon|null $Fecha_Documento
+ * @property string|null $reservado
+ * @property string|null $trasladado
+ * @property bool|null $completado
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property int|null $picking
+ * @property bool|null $picking
+ * @property-read GpTrasladosReposicionCabecera|null $cabecera
+ * @property-read GpArticulo|null $articulo
+ * @property-read GpBodega|null $bodegaOrigen
+ * @property-read GpBodega|null $bodegaDestino
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicion newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicion newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|GpTrasladosReposicion query()
@@ -57,6 +64,8 @@ class GpTrasladosReposicion extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_traslados_reposicions';
+
     protected $fillable = [
         'cabecera_id',
         'Documento',
@@ -74,6 +83,40 @@ class GpTrasladosReposicion extends Model
         'reservado',
         'trasladado',
         'completado',
-        'picking'
+        'picking',
     ];
+
+    protected $casts = [
+        'id'                => 'integer',
+        'cabecera_id'       => 'integer',
+        'ART_PESO'          => 'decimal:2',
+        'cantidad'          => 'decimal:2',
+        'reservado'         => 'decimal:2',
+        'trasladado'        => 'decimal:2',
+        'completado'        => 'boolean',
+        'picking'           => 'boolean',
+        'Fecha_Documento'   => 'date:Y-m-d',
+        'created_at'        => 'datetime:Y-m-d H:i:s',
+        'updated_at'        => 'datetime:Y-m-d H:i:s',
+    ];
+
+    public function cabecera(): BelongsTo
+    {
+        return $this->belongsTo(GpTrasladosReposicionCabecera::class, 'cabecera_id', 'id');
+    }
+
+    public function articulo(): BelongsTo
+    {
+        return $this->belongsTo(GpArticulo::class, 'ART_CODIGO', 'ART_CODIGO');
+    }
+
+    public function bodegaOrigen(): BelongsTo
+    {
+        return $this->belongsTo(GpBodega::class, 'bodega_origen', 'BOD_BODEGA');
+    }
+
+    public function bodegaDestino(): BelongsTo
+    {
+        return $this->belongsTo(GpBodega::class, 'bodega_destino', 'BOD_BODEGA');
+    }
 }

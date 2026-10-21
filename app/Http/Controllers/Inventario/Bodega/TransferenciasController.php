@@ -300,4 +300,18 @@ class TransferenciasController extends Controller
             return $this->buildErrorResponse($th->getMessage(), 500);
         }
     }
+
+
+    public function obtenerListaReposiciones(int $anio, int $mes, string $bodegaOrigen, string $bodegaDestino)
+    {
+        return $this->handleApiAction(function () use ($anio, $mes, $bodegaOrigen, $bodegaDestino) {
+            $lista = $this->transferService->getTransferRepositionsByDateAndWarehouses(
+                $anio,
+                $mes,
+                $bodegaOrigen,
+                $bodegaDestino
+            );
+            return $this->successResponse('Información Obtenida Correctamente.!', $lista);
+        }, 'guia_ventas', 'obtenerListaReposiciones');
+    }
 }

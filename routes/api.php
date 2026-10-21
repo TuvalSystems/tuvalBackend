@@ -662,4 +662,6 @@ Route::group(['prefix' => 'inventario'], function () {
         Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
     });
     Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
+    Route::get('lista-reposiciones/{anio}/{mes}/{bodegaOrigen}/{bodegaDestino}', [TransferenciasController::class, 'obtenerListaReposiciones']);
+
 });
