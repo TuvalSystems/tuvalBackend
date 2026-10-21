@@ -202,19 +202,19 @@ class DeliveryNotePurchaseOrderService implements DeliveryNotePurchaseOrderServi
 
     private function buildPayload(Model $guide): array
     {
-        $supplier = trim((string) GpProveedor::find($guide->fle_proveedor_id)?->PROV_RUC);
-        $user = trim((string) GpUsuario::find($guide->user_id)?->USERID);
-        $amount = (float) $guide->valor_orden_compra;
+        $supplier   = trim((string) GpProveedor::find($guide->fle_proveedor_id)?->PROV_RUC);
+        $user       = trim((string) GpUsuario::find($guide->user_id)?->USERID);
+        $amount     = (float) $guide->valor_orden_compra;
         if ($supplier === '' || $user === '' || !is_finite($amount) || $amount <= 0
             || !TipoDespacho::whereKey($guide->tipo_despacho_id)->exists()) {
             throw new DomainException('La guía requiere proveedor con PROV_RUC, usuario con USERID, tipo de despacho válido y valor de OC mayor a cero.');
         }
 
         return [
-            'proveedor' => $supplier,
-            'usuario' => $user,
-            'tipoDespachoId' => (int) $guide->tipo_despacho_id,
-            'valorOrdenCompra' => round($amount, 2),
+            'proveedor'         => $supplier,
+            'usuario'           => $user,
+            'tipoDespachoId'    => (int) $guide->tipo_despacho_id,
+            'valorOrdenCompra'  => round($amount, 2),
         ];
     }
 
