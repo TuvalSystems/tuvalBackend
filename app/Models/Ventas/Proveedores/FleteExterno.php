@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ChoferTransportista extends Model
+class FleteExterno extends Model
 {
     use HasFactory;
 
-    protected $table = 'chofer_transportistas';
+    protected $table = 'flete_externos';
     protected $fillable = [
         'proveedor_id',
         'nombre',

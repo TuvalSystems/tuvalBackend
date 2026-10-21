@@ -23,6 +23,7 @@ use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\Ventas\AprobacionesController;
 use App\Http\Controllers\Ventas\ClienteController;
 use App\Http\Controllers\Ventas\ProveedoresController;
+use App\Http\Controllers\Ventas\FleteExternoController;
 use App\Http\Controllers\Ventas\ReservasController;
 use Illuminate\Support\Facades\Mail;
 
@@ -266,7 +267,7 @@ Route::prefix('gestion')->group(function () {
 
 
 Route::prefix('proveedores')->group(function () {
-    Route::get('lista-choferes-por-proveedores', [ProveedoresController::class, 'listaChoferesPorProveedorPuntoVenta']);
+    Route::get('lista-fletes-externos-por-proveedores', [FleteExternoController::class, 'listaFletesExternosPorProveedorPuntoVenta']);
 });
 
 

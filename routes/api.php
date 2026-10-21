@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
 use App\Http\Controllers\Ventas\ClienteController;
 use App\Http\Controllers\Ventas\ProveedoresController;
+use App\Http\Controllers\Ventas\FleteExternoController;
 use App\Http\Controllers\Ventas\ReservasController;
 use App\Http\Controllers\Ventas\TipoDespachosController;
 
@@ -181,15 +182,15 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
                 Route::post('detalle', [ProveedoresController::class, 'obtenerDetalleProveedor']);
                 Route::post('sincronizar-punto-ventas', [ProveedoresController::class, 'sincronizarPuntoVentaPorProveedor']);
 
-                //choferes transportistas
-                Route::prefix('choferes-transportista')->group(function () {
-                    Route::post('lista', [ProveedoresController::class, 'listaChoferTransportista']);
-                    Route::post('crear-registro', [ProveedoresController::class, 'crearRegistroChoferTransportista']);
-                    Route::post('obtener-detalle', [ProveedoresController::class, 'obtenerDetalleChoferTransportista']);
-                    Route::put('actualizar-registro/{id}', [ProveedoresController::class, 'actualizarRegistroChoferTransportista']);
-                    Route::put('actualizar-estado/{id}', [ProveedoresController::class, 'actualizarEstadoChofeTransportista']);
-                    Route::post('validar-identificacion', [ProveedoresController::class, 'validarIdentificacionChoferTransportista']);
-                    Route::post('lista-por-proveedor-punto-venta', [ProveedoresController::class, 'listaChoferesPorProveedorPuntoVenta']);
+                // Fletes externos
+                Route::prefix('fletes-externos')->group(function () {
+                    Route::post('lista', [FleteExternoController::class, 'listaFleteExterno']);
+                    Route::post('crear-registro', [FleteExternoController::class, 'crearRegistroFleteExterno']);
+                    Route::post('obtener-detalle', [FleteExternoController::class, 'obtenerDetalleFleteExterno']);
+                    Route::put('actualizar-registro/{id}', [FleteExternoController::class, 'actualizarRegistroFleteExterno']);
+                    Route::put('actualizar-estado/{id}', [FleteExternoController::class, 'actualizarEstadoFleteExterno']);
+                    Route::post('validar-identificacion', [FleteExternoController::class, 'validarIdentificacionFleteExterno']);
+                    Route::post('lista-por-proveedor-punto-venta', [FleteExternoController::class, 'listaFletesExternosPorProveedorPuntoVenta']);
                 });
             });
 

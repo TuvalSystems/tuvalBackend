@@ -395,8 +395,8 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
             && !FreightApproval::hasValidApproval($quote->getAttributes(), $quote)
         ) {
             $quote->fill([
-                'usuario_flete_autorizador_id' => $gpUser->id,
-                'fecha_flete_autorizacion'  => $quote->fecha_hora_aprobacion_comercial,
+                'fle_usuario_aut_id' => $gpUser->id,
+                'fle_fecha_aut'  => $quote->fecha_hora_aprobacion_comercial,
             ]);
         }
         $camposModificados = array_keys($quote->getDirty());

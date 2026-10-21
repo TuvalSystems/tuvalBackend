@@ -184,10 +184,10 @@ class GpCotizacion extends Model implements HasMedia
         'vendedor_id',
         'tipo_despacho_id',
         'responsable_flete',
-        'proveedor_despacho_id',
+        'fle_proveedor_id',
         'peso',
-        'peso_flete',
-        'monto_flete',
+        'fle_peso',
+        'fle_valor',
         'cotizacion',
         'user_id',
         'sucursal_id',
@@ -246,10 +246,10 @@ class GpCotizacion extends Model implements HasMedia
         'fecha_hora_aprobacion_comercial',
         'proyecto',
         'import_job',
-        'usuario_flete_id',
-        'fecha_flete',
-        'usuario_flete_autorizador_id',
-        'fecha_flete_autorizacion',
+        'fle_usuario_id',
+        'fle_fecha',
+        'fle_usuario_aut_id',
+        'fle_fecha_aut',
         'facturar_ahora'
     ];
 

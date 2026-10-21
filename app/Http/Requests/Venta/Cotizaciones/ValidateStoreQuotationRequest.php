@@ -47,12 +47,12 @@ class ValidateStoreQuotationRequest extends FormRequest
             'forma_pago_id',
             'correo_electronico_sri',
             'proyecto',
-            'proveedor_despacho_id',
-            'monto_flete',
+            'fle_proveedor_id',
+            'fle_valor',
             'peso',
-            'peso_flete',
-            'usuario_flete_autorizador_id',
-            'fecha_flete_autorizacion',
+            'fle_peso',
+            'fle_usuario_aut_id',
+            'fle_fecha_aut',
         ];
 
         foreach ($fieldsToNull as $field) {
@@ -140,7 +140,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'modificador_global'                        => ['nullable', 'numeric'],
 
             'peso'                                      => ['nullable', 'numeric'],
-            'peso_flete'                                => ['nullable', 'numeric'],
+            'fle_peso'                                => ['nullable', 'numeric'],
             'descuento_articulo'                        => ['nullable', 'numeric'],
             'descuento_original'                        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
@@ -193,7 +193,7 @@ class ValidateStoreQuotationRequest extends FormRequest
             'items.*.proveedores'                       => ['nullable', 'array'],
 
             //flete detalle
-            'items.*.monto_flete'                       => ['nullable', 'numeric'],
+            'items.*.fle_valor'                       => ['nullable', 'numeric'],
             'items.*.precio_sin_flete'                  => ['required', 'numeric', 'min:0'],
             'items.*.es_servicio_logistico'              => ['required', 'boolean'],
 
@@ -218,10 +218,10 @@ class ValidateStoreQuotationRequest extends FormRequest
             //paqueteria o fletes
             'responsable_flete'         => ['required', 'string'],
             'tipo_despacho_id'          => ['required', 'integer'],
-            'proveedor_despacho_id'     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
-            'monto_flete'               => ['nullable', 'numeric'],
-            'usuario_flete_autorizador_id' => ['nullable', 'integer', 'exists:gp_usuarios,id'],
-            'fecha_flete_autorizacion'     => ['nullable', 'date'],
+            'fle_proveedor_id'     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
+            'fle_valor'               => ['nullable', 'numeric'],
+            'fle_usuario_aut_id' => ['nullable', 'integer', 'exists:gp_usuarios,id'],
+            'fle_fecha_aut'     => ['nullable', 'date'],
         ];
     }
 

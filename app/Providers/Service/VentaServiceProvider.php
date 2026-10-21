@@ -40,8 +40,8 @@ use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Services\Venta\Pedidos\InvoiceHistoryService;
 use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
 use App\Services\Venta\Pedidos\OrderGuideService;
-use App\Services\Venta\Proveedores\CarrierDriverService;
-use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
+use App\Services\Venta\Proveedores\ExternalFreightService;
+use App\Services\Venta\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
 use App\Services\Venta\Proveedores\ProviderService;
 use App\Services\Venta\QuotationCreatorService;
@@ -81,7 +81,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         //para el manejo de tipo de despachos
         DispatchTypeServiceInterface::class             => DispatchTypeService::class,
         ProviderServiceInterface::class                 => ProviderService::class,
-        CarrierDriverServiceInterface::class            => CarrierDriverService::class,
+        ExternalFreightServiceInterface::class            => ExternalFreightService::class,
 
         ClientCreatorServiceInterface::class            => ClientCreatorService::class,
         ClientGpSenderServiceInterface::class           => ClientGpSenderService::class,

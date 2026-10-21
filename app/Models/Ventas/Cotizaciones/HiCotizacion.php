@@ -24,10 +24,10 @@ class HiCotizacion extends Model
         'vendedor_id',
         'tipo_despacho_id',
         'responsable_flete',
-        'proveedor_despacho_id',
+        'fle_proveedor_id',
         'peso',
-        'peso_flete',
-        'monto_flete',
+        'fle_peso',
+        'fle_valor',
         'cot_id',
         'co_his',
         'cotizacion',
@@ -90,10 +90,10 @@ class HiCotizacion extends Model
         'user_rechazo_id',
         'fe_rechazo',
         'proyecto',
-        'usuario_flete_id',
-        'fecha_flete',
-        'usuario_flete_autorizador_id',
-        'fecha_flete_autorizacion',
+        'fle_usuario_id',
+        'fle_fecha',
+        'fle_usuario_aut_id',
+        'fle_fecha_aut',
         'facturar_ahora'
     ];
 

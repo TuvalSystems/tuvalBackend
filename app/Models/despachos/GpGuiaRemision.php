@@ -143,10 +143,11 @@ class GpGuiaRemision extends Model implements HasMedia
         // nuevos campos
         'sucursal_destinatario_id',
         'tipo_despacho_id',
-        'proveedor_despacho_id',
-        'chofer_transportista_id',
+        'fle_proveedor_id',
+        'flete_externo_id',
         'numero_orden_compra_gp',
-        'monto_orden_compra',
+        'oc_generada',
+        'valor_orden_compra',
         'requiere_orden_compra'
     ];
 
@@ -155,11 +156,18 @@ class GpGuiaRemision extends Model implements HasMedia
         'bodega_destino_id' => 'integer',
         'sucursal_destinatario_id'  => 'integer',
         'tipo_despacho_id'          => 'integer',
-        'proveedor_despacho_id'     => 'integer',
-        'chofer_transportista_id'   => 'integer',
-        'monto_orden_compra'        => 'decimal:2',
+        'fle_proveedor_id'          => 'integer',
+        'flete_externo_id'   => 'integer',
+        'valor_orden_compra'        => 'decimal:2',
+        'oc_generada'              => 'boolean',
         'requiere_orden_compra'     => 'boolean'
     ];
+
+    public function setNumeroOrdenCompraGpAttribute($value): void
+    {
+        $this->attributes['numero_orden_compra_gp'] = $value;
+        $this->attributes['oc_generada'] = trim((string) $value) !== '';
+    }
 
     public function guiadetalle()
     {

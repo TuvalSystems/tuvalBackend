@@ -510,8 +510,8 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             && !FreightApproval::hasValidApproval($order->getAttributes(), $order)
         ) {
             $order->fill([
-                'usuario_flete_autorizador_id' => $user->id,
-                'fecha_flete_autorizacion' => $order->fecha_hora_aprobacion_comercial,
+                'fle_usuario_aut_id' => $user->id,
+                'fle_fecha_aut' => $order->fecha_hora_aprobacion_comercial,
             ]);
         }
         $camposModificados = array_keys($order->getDirty());

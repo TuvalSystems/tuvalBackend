@@ -544,11 +544,11 @@ class InvoiceService implements InvoiceServiceInterface
             'proyecto'                     => $pedido->proyecto,
 
             //paqueteria
-            'monto_flete'                  => $pedido->monto_flete,
+            'fle_valor'                  => $pedido->fle_valor,
             'peso'                         => $pedido->peso,
-            'peso_flete'                   => $pedido->peso_flete,
+            'fle_peso'                   => $pedido->fle_peso,
             'tipo_despacho_id'             => $pedido->tipo_despacho_id,
-            'proveedor_despacho_id'        => $pedido->proveedor_despacho_id,
+            'fle_proveedor_id'        => $pedido->fle_proveedor_id,
         ];
     }
 
@@ -591,7 +591,7 @@ class InvoiceService implements InvoiceServiceInterface
                 'clase'                             => $detalle->cod_clase,
                 'configuracionItemL'                => $detalle->resultado_configuracion_item_l,
                 //paqueteria
-                'monto_flete'                       => $detalle->monto_flete
+                'fle_valor'                       => $detalle->fle_valor
             ];
         })->toArray();
     }

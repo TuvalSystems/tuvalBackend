@@ -3,14 +3,14 @@
 namespace App\Services\Venta\Proveedores;
 
 use App\Models\GpUsuario;
-use App\Models\Ventas\Proveedores\ChoferTransportista;
-use App\Services\Venta\Proveedores\Contracts\CarrierDriverServiceInterface;
+use App\Models\Ventas\Proveedores\FleteExterno;
+use App\Services\Venta\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Traits\CleansPayloadData;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
-class CarrierDriverService implements CarrierDriverServiceInterface
+class ExternalFreightService implements ExternalFreightServiceInterface
 {
     use CleansPayloadData;
     public function __construct()
@@ -18,7 +18,7 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         // Inyecta dependencias
     }
 
-    public function listCarrierDrivers(array $filters): LengthAwarePaginator
+    public function listExternalFreights(array $filters): LengthAwarePaginator
     {
         $search     = data_get($filters, 'search', '');
         $perpage    = data_get($filters, 'perpage', 10);
@@ -40,8 +40,8 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         ];
         $orderColumn = data_get($allowedSorts, $sortField, 'cht.created_at');
 
-        $query  = ChoferTransportista::query()
-            ->from('chofer_transportistas as cht')
+        $query  = FleteExterno::query()
+            ->from('flete_externos as cht')
             ->select([
                 'cht.id',
                 'cht.proveedor_id',
@@ -80,10 +80,10 @@ class CarrierDriverService implements CarrierDriverServiceInterface
     }
 
 
-    public function createRegisterCarrier(array $data, GpUsuario $user): ChoferTransportista
+    public function createExternalFreight(array $data, GpUsuario $user): FleteExterno
     {
         return DB::transaction(function () use ($data, $user) {
-            $cht = new ChoferTransportista();
+            $cht = new FleteExterno();
             $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
             $cht->nombre                    = $this->clean($data, 'nombre');
             $cht->identificacion            = $this->clean($data, 'identificacion');
@@ -96,15 +96,15 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         });
     }
 
-    public function getDetailCarrierDriver(int $id): ChoferTransportista
+    public function getExternalFreightDetail(int $id): FleteExterno
     {
-        return ChoferTransportista::where('id', $id)->first();
+        return FleteExterno::where('id', $id)->first();
     }
 
-    public function updateRegisterCarrier(int $id, array $data, GpUsuario $user): ChoferTransportista
+    public function updateExternalFreight(int $id, array $data, GpUsuario $user): FleteExterno
     {
         return DB::transaction(function () use ($id, $data, $user) {
-            $cht = ChoferTransportista::find($id);
+            $cht = FleteExterno::find($id);
             $cht->proveedor_id              = $this->clean($data, 'proveedor_id');
             $cht->nombre                    = $this->clean($data, 'nombre');
             $cht->identificacion            = $this->clean($data, 'identificacion');
@@ -119,19 +119,19 @@ class CarrierDriverService implements CarrierDriverServiceInterface
         });
     }
 
-    public function updateStatusCarrier(int $id): ChoferTransportista
+    public function updateExternalFreightStatus(int $id): FleteExterno
     {
         return DB::transaction(function () use ($id) {
-            $cht         = ChoferTransportista::find($id);
+            $cht         = FleteExterno::find($id);
             $cht->estado = $cht->estado  === true ? false : true;
             $cht->save();
             return $cht;
         });
     }
 
-    public function validateCarrierIdentify(string $identify, ?int $excludeId = null): bool
+    public function validateExternalFreightIdentity(string $identify, ?int $excludeId = null): bool
     {
-        return ChoferTransportista::where('identificacion', $identify)
+        return FleteExterno::where('identificacion', $identify)
             ->when(
                 $excludeId,
                 fn($query) => $query->where('id', '!=', $excludeId)
@@ -139,9 +139,9 @@ class CarrierDriverService implements CarrierDriverServiceInterface
     }
 
 
-    public function getCarrierDriversByProviderAndSalesPoint(int $provId, int $pvId): Collection
+    public function getExternalFreightsByProviderAndSalesPoint(int $provId, int $pvId): Collection
     {
-        return ChoferTransportista::whereHas('proveedor', function ($query) use ($provId, $pvId) {
+        return FleteExterno::whereHas('proveedor', function ($query) use ($provId, $pvId) {
             $query->where('gp_proveedors.id', $provId)
                 ->whereHas('puntosVenta', function ($q) use ($pvId) {
                     $q->where('gp_punto_ventas.id', $pvId);

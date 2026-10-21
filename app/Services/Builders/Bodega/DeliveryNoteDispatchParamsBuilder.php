@@ -58,9 +58,10 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             //paqueteria
             'sucursal_destinatario_id'                  => data_get($infoGuia, 'pedido.sucursal_id', null),
             'tipo_despacho_id'                          => data_get($infoGuia, 'pedido.tipo_despacho_id', null),
-            'proveedor_despacho_id'                     => data_get($infoGuia, 'pedido.proveedor_despacho_id', null),
-            'chofer_transportista_id'                   => data_get($payload, 'chofer_transportista_id', null),
-            'monto_orden_compra'                        => data_get($infoGuia, 'pedido.monto_flete', 0),
+            'fle_proveedor_id'                          => data_get($infoGuia, 'pedido.fle_proveedor_id', null),
+            'flete_externo_id'                   => data_get($payload, 'flete_externo_id', null),
+            'valor_orden_compra'                        => data_get($infoGuia, 'pedido.fle_valor', 0),
+            'oc_generada'                              => false,
             'requiere_orden_compra'                     => data_get($infoGuia, 'requiere_orden_compra', false)
         ]);
         return $gr;
@@ -102,8 +103,9 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
             'ordenCompra'                       => $ordenCompra ?? '',
             'tipoDespachoId'                    => $guia->tipo_despacho_id,
-            'proveedorDespachoId'               => $guia->proveedor_despacho_id,
-            'choferTransportistaId'             => $guia->chofer_transportista_id,
+            'proveedorDespachoId'               => $guia->fle_proveedor_id,
+            // El contrato de la API de GP mantiene este nombre externo.
+            'choferTransportistaId'             => $guia->flete_externo_id,
 
         ];
     }

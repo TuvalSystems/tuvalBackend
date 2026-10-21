@@ -119,16 +119,16 @@ class QuotationBuilder implements QuotationBuilderInterface
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
         ]);
         $cot->fill(\Illuminate\Support\Arr::only($data, [
-            'tipo_despacho_id', 'proveedor_despacho_id', 'responsable_flete',
-            'peso', 'peso_flete', 'monto_flete',
+            'tipo_despacho_id', 'fle_proveedor_id', 'responsable_flete',
+            'peso', 'fle_peso', 'fle_valor',
         ]));
-        foreach (['peso', 'peso_flete', 'monto_flete'] as $field) {
+        foreach (['peso', 'fle_peso', 'fle_valor'] as $field) {
             $cot->setAttribute($field, $cot->getAttribute($field) ?? 0);
         }
         $cot->fill($freightAuthorization);
         $cot->fill([
-            'usuario_flete_id' => $source?->usuario_flete_id,
-            'fecha_flete' => $source?->fecha_flete,
+            'fle_usuario_id' => $source?->fle_usuario_id,
+            'fle_fecha' => $source?->fle_fecha,
         ]);
         return $cot;
     }
@@ -244,14 +244,14 @@ class QuotationBuilder implements QuotationBuilderInterface
             //paqueteria
             'responsable_flete'                 => data_get($data, 'responsable_flete'),
             'tipo_despacho_id'                  => $typeDispatch->id,
-            'monto_flete'                       => data_get($data, 'monto_flete') ?? 0,
+            'fle_valor'                       => data_get($data, 'fle_valor') ?? 0,
             'peso'                              => data_get($data, 'peso') ?? 0,
-            'peso_flete'                        => data_get($data, 'peso_flete') ?? 0,
-            'proveedor_despacho_id'             => data_get($data, 'proveedor_despacho_id', null),
-            'usuario_flete_id'                  => data_get($data, 'monto_flete') > 0 ? $user->id : null,
-            'fecha_flete'                       => data_get($data, 'monto_flete') > 0 ? now() : null,
-            'fecha_flete_autorizacion'          => $freightAuthorization['fecha_flete_autorizacion'],
-            'usuario_flete_autorizador_id'      => $freightAuthorization['usuario_flete_autorizador_id'],
+            'fle_peso'                        => data_get($data, 'fle_peso') ?? 0,
+            'fle_proveedor_id'             => data_get($data, 'fle_proveedor_id', null),
+            'fle_usuario_id'                  => data_get($data, 'fle_valor') > 0 ? $user->id : null,
+            'fle_fecha'                       => data_get($data, 'fle_valor') > 0 ? now() : null,
+            'fle_fecha_aut'          => $freightAuthorization['fle_fecha_aut'],
+            'fle_usuario_aut_id'      => $freightAuthorization['fle_usuario_aut_id'],
             'facturar_ahora'                    => data_get($data, 'facturar_ahora',false),
         ]);
     }
@@ -292,7 +292,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'resultado_configuracion_item_l' => data_get($articles, 'resultado_configuracion_item_l'),
 
             //campos de paqueteria
-            'monto_flete'                   => data_get($articles, 'monto_flete', 0),
+            'fle_valor'                   => data_get($articles, 'fle_valor', 0),
             'precio_sin_flete'              => data_get($articles, 'precio_sin_flete', 0),
             'lista_precio'                  => $lvlPrice,
             'es_servicio_logistico'        => data_get($articles, 'es_servicio_logistico'),
@@ -448,7 +448,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'user_id'                           => $quote->user_id,
             'pv_id'                             => $quote->pv_id,
             'tipo_despacho_id'                  => $quote->tipo_despacho_id,
-            'proveedor_despacho_id'             => $quote->proveedor_despacho_id ?? null,
+            'fle_proveedor_id'             => $quote->fle_proveedor_id ?? null,
             'vendedor_id'                       => $quote->vendedor_id,
             'sucursal_id'                       => $quote->sucursal_id,
             'sucursal_facturacion_id'           => $quote->sucursal_facturacion_id,
@@ -510,13 +510,13 @@ class QuotationBuilder implements QuotationBuilderInterface
             'proyecto'                          => $quote->proyecto,
             //paqueteria
             'peso'                              => $quote->peso ?? 0,
-            'peso_flete'                        => $quote->peso_flete ?? 0,
-            'monto_flete'                       => $quote->monto_flete ?? 0,
+            'fle_peso'                        => $quote->fle_peso ?? 0,
+            'fle_valor'                       => $quote->fle_valor ?? 0,
             'responsable_flete'                 => $quote->responsable_flete,
-            'usuario_flete_id'                  => $quote->usuario_flete_id,
-            'fecha_flete'                       => $quote->fecha_flete,
-            'fecha_flete_autorizacion'          => $quote->fecha_flete_autorizacion,
-            'usuario_flete_autorizador_id'      => $quote->usuario_flete_autorizador_id,
+            'fle_usuario_id'                  => $quote->fle_usuario_id,
+            'fle_fecha'                       => $quote->fle_fecha,
+            'fle_fecha_aut'          => $quote->fle_fecha_aut,
+            'fle_usuario_aut_id'      => $quote->fle_usuario_aut_id,
             'facturar_ahora'                    => $quote->facturar_ahora,
         ]);
         return $hi;
@@ -559,7 +559,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'cod_linea'                         => $detail->cod_linea,
             'cod_clase'                         => $detail->cod_clase,
             'resultado_configuracion_item_l'    => $detail->resultado_configuracion_item_l,
-            'monto_flete'                       => $detail->monto_flete,
+            'fle_valor'                       => $detail->fle_valor,
             'precio_sin_flete'                  => $detail->precio_sin_flete,
             'lista_precio'                      => $detail->lista_precio,
              'es_servicio_logistico'            => $detail->es_servicio_logistico,

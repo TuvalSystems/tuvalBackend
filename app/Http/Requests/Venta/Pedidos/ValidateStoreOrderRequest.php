@@ -42,13 +42,13 @@ class ValidateStoreOrderRequest extends FormRequest
             'nota_operaciones',
             'forma_pago_id',
             'correo_electronico_sri',
-            'proveedor_despacho_id',
+            'fle_proveedor_id',
             'proyecto',
-            'monto_flete',
+            'fle_valor',
             'peso',
-            'peso_flete',
-            'usuario_flete_autorizador_id',
-            'fecha_flete_autorizacion',
+            'fle_peso',
+            'fle_usuario_aut_id',
+            'fle_fecha_aut',
         ];
 
         foreach ($fieldsToNull as $field) {
@@ -111,10 +111,10 @@ class ValidateStoreOrderRequest extends FormRequest
             'pv_id'                                     => ['required', 'integer', 'exists:gp_punto_ventas,id'],
             'responsable_flete'                         => ['required', 'string'],
             'tipo_despacho_id'                          => ['required', 'integer', 'exists:tipo_despachos,id'],
-            'proveedor_despacho_id'                     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
-            'monto_flete'                               => ['nullable', 'numeric'],
-            'usuario_flete_autorizador_id'              => ['nullable', 'integer', 'exists:gp_usuarios,id'],
-            'fecha_flete_autorizacion'                  => ['nullable', 'date'],
+            'fle_proveedor_id'                     => ['nullable', 'integer', 'exists:gp_proveedors,id'],
+            'fle_valor'                               => ['nullable', 'numeric'],
+            'fle_usuario_aut_id'              => ['nullable', 'integer', 'exists:gp_usuarios,id'],
+            'fle_fecha_aut'                  => ['nullable', 'date'],
             'bodega_facturacion'                        => ['required', 'string'],
             'fecha_entrega'                             => ['nullable', 'string'],
             'direccion_facturacion_id'                  => ['required'],
@@ -145,7 +145,7 @@ class ValidateStoreOrderRequest extends FormRequest
             'modificador_global'                        => ['nullable', 'numeric'],
 
             'peso'                                      => ['nullable', 'numeric'],
-            'peso_flete'                                => ['nullable', 'numeric'],
+            'fle_peso'                                => ['nullable', 'numeric'],
             'descuento_articulo'                        => ['nullable', 'numeric'],
             'descuento_original'                        => ['nullable', 'numeric'],
             // --- VALIDACIÓN DE ITEMS -    --
@@ -153,7 +153,7 @@ class ValidateStoreOrderRequest extends FormRequest
 
             'items.*.id'                                => ['nullable', 'integer'],
             'items.*.art_id'                            => ['nullable', 'integer', 'exists:gp_articulos,id'],
-            'items.*.monto_flete'                       => ['nullable', 'numeric'],
+            'items.*.fle_valor'                       => ['nullable', 'numeric'],
             'items.*.precio_sin_flete'                  => ['required', 'numeric', 'min:0'],
             'items.*.lista_precio'                      => ['nullable', 'string'],
             'items.*.es_servicio_logistico'              => ['required', 'boolean'],

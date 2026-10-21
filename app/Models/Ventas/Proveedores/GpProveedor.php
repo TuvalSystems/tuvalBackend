@@ -38,12 +38,16 @@ class GpProveedor extends Model
         'PROV_IMPUESTO',
         'PROV_ESTADO',
         'es_transportista',
+        'fle_usuario_id',
+        'fle_fecha',
         'usuario_modifica_id',
         'fecha_modificacion'
     ];
 
     protected $casts = [
         'es_transportista'      => 'boolean',
+        'fle_usuario_id'        => 'integer',
+        'fle_fecha'             => 'datetime:Y-m-d H:i:s',
         'usuario_modifica_id'   => 'integer',
         'fecha_modificacion'    => 'datetime:Y-m-d H:i:s',
         'created_at'            => 'datetime:Y-m-d H:i:s',
@@ -56,9 +60,9 @@ class GpProveedor extends Model
     }
 
 
-    public function choferesTransportistas(): HasMany
+    public function fletesExternos(): HasMany
     {
-        return $this->hasMany(ChoferTransportista::class, 'proveedor_id');
+        return $this->hasMany(FleteExterno::class, 'proveedor_id');
     }
 
     public function puntosVenta(): BelongsToMany

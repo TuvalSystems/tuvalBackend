@@ -17,17 +17,17 @@ class FreightApproval
 
     public static function hasValidApproval(array $data, ?Model $source): bool
     {
-        if (!$source || !$source->usuario_flete_autorizador_id || !$source->fecha_flete_autorizacion) {
+        if (!$source || !$source->fle_usuario_aut_id || !$source->fle_fecha_aut) {
             return false;
         }
 
-        foreach (['tipo_despacho_id', 'proveedor_despacho_id', 'responsable_flete'] as $field) {
+        foreach (['tipo_despacho_id', 'fle_proveedor_id', 'responsable_flete'] as $field) {
             if ((string) data_get($data, $field) !== (string) $source->getAttribute($field)) {
                 return false;
             }
         }
 
-        foreach (['monto_flete', 'peso_flete'] as $field) {
+        foreach (['fle_valor', 'fle_peso'] as $field) {
             if (round((float) data_get($data, $field, 0), 2) !== round((float) $source->getAttribute($field), 2)) {
                 return false;
             }
@@ -41,8 +41,8 @@ class FreightApproval
         $approved = self::hasValidApproval($data, $source);
 
         return [
-            'usuario_flete_autorizador_id' => $approved ? $source->usuario_flete_autorizador_id : null,
-            'fecha_flete_autorizacion' => $approved ? $source->fecha_flete_autorizacion : null,
+            'fle_usuario_aut_id' => $approved ? $source->fle_usuario_aut_id : null,
+            'fle_fecha_aut' => $approved ? $source->fle_fecha_aut : null,
         ];
     }
 }

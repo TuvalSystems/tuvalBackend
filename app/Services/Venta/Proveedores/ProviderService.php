@@ -47,6 +47,8 @@ class ProviderService implements ProviderServiceInterface
                 'prv.PROV_CONTACTO as contacto',
                 'prv.PROV_DIRECCION_1 as direccion',
                 'prv.es_transportista',
+                'prv.fle_usuario_id',
+                'prv.fle_fecha',
                 'prv.PROV_ESTADO as estado',
                 'prv.created_at'
             ]);
@@ -66,11 +68,17 @@ class ProviderService implements ProviderServiceInterface
 
     public function updateCarrierStatus(int $id, GpUsuario $user): void
     {
-        $prov                       = GpProveedor::find($id);
-        $prov->es_transportista     = $prov->es_transportista === true ? false : true;
-        $prov->usuario_modifica_id  = $user->id;
-        $prov->fecha_modificacion   = now();
-        $prov->save();
+        DB::transaction(function () use ($id, $user) {
+            $prov = GpProveedor::whereKey($id)->lockForUpdate()->firstOrFail();
+            $prov->es_transportista = !$prov->es_transportista;
+            if ($prov->es_transportista) {
+                $prov->fle_usuario_id = $user->id;
+                $prov->fle_fecha = now();
+            }
+            $prov->usuario_modifica_id = $user->id;
+            $prov->fecha_modificacion = now();
+            $prov->save();
+        });
     }
 
     public function updateStatus(int $id, GpUsuario $user): void
