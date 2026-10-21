@@ -16,12 +16,6 @@
         @if(!empty($firmaGuia['identificacion_firmante']))
             <p style="margin: 2px 0;">Identificación: {{ $firmaGuia['identificacion_firmante'] }}</p>
         @endif
-        @if(!empty($firmaGuia['usuario']))
-            <p style="margin: 2px 0; font-size: 9px;">Registrada por: {{ $firmaGuia['usuario'] }}</p>
-        @endif
-        @if(!empty($firmaGuia['fecha']))
-            <p style="margin: 2px 0; font-size: 9px;">Fecha: {{ $firmaGuia['fecha'] }} (Ecuador)</p>
-        @endif
     </div>
 </div>
 @endif
