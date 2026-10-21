@@ -378,7 +378,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::prefix('articulos')->group(function () {
                 Route::get('configuracion-nivel', [ArticuloController::class, 'obtenerConfiguracionColorSegmento']);
                 Route::post('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
-                  Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
+                Route::post('alternativas-item-l', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
             });
         });
         Route::group(['prefix' => 'consultas'], function () {
@@ -593,7 +593,6 @@ Route::group(['prefix' => 'consultas-externas'], function () {
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
     Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
-
 });
 
 // para la sincronizacion global de articulo 1 por registro
@@ -602,6 +601,5 @@ Route::group(['prefix' => 'inventario'], function () {
         Route::post('sincronizar', [ArticuloController::class, 'sincronizarDesdeApi']);
     });
     Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
-
-
+    Route::get('lista-reposiciones/{anio}/{mes}/{bodegaOrigen}/{bodegaDestino}', [TransferenciasController::class, 'obtenerListaReposiciones']);
 });

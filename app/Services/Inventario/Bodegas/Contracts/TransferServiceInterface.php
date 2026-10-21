@@ -3,6 +3,7 @@
 namespace App\Services\Inventario\Bodegas\Contracts;
 
 use App\Models\GpUsuario;
+use Illuminate\Support\Collection;
 
 interface TransferServiceInterface
 {
@@ -16,5 +17,6 @@ interface TransferServiceInterface
     public function printPickingSalesTransfers(array $payload);
     public function checkOrderTranfer();
     public function cancelPicking(array $payload, GpUsuario $user);
-     public function fetchPendingSalesTransferDeliveryNotes(string $ptoVtaOrigen, string $ptoVtaDestino);
+   public function fetchPendingSalesTransferDeliveryNotes(string $ptoVtaOrigen, string $ptoVtaDestino);
+   public function getTransferRepositionsByDateAndWarehouses(int $anio, int $month, string $whOrigin, string $whDestino) : Collection;
 }

@@ -8,6 +8,7 @@ use App\Models\GpPedido;
 use App\Models\GpPuntoVenta;
 use App\Models\GpRelacionPuntoVentaBodega;
 use App\Models\GpUsuario;
+use App\Models\reposicion\GpTrasladosReposicionCabecera;
 use App\Models\traslados\GpTrasladosVentas;
 use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Str;
 
 class TransferService implements TransferServiceInterface
@@ -211,7 +213,7 @@ class TransferService implements TransferServiceInterface
                 ->all(),
             'direccion' => $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'],
         ];
-        
+
         $html   = view('pdf.picking-transferencia-venta', $viewData)->render();
         $pdf    = app('dompdf.wrapper');
         $pdf->setPaper('a4', 'portrait');
@@ -262,5 +264,37 @@ class TransferService implements TransferServiceInterface
             return [];
         }
         return $this->repository->findGuidesPendingByOriginWarehouse($waOrigin, $waDestination);
+    }
+
+
+
+    public function getTransferRepositionsByDateAndWarehouses(int $anio, int $month, string $whOrigin, string $whDestino) : SupportCollection
+    {
+        $transfers = GpTrasladosReposicionCabecera::with('detalles')
+            ->whereYear('Fecha_Documento', $anio)
+            ->whereMonth('Fecha_Documento', $month)
+            ->where('Bodega_Origen', $whOrigin)
+            ->where('Bodega_Destino', $whDestino)
+            ->get();
+
+        return $transfers->map(function ($trf) {
+            return [
+
+                'documento'         => $trf->Documento,
+                'bodegaOrigen'      => $trf->Bodega_Origen,
+                'bodegaDestino'     => $trf->Bodega_Destino,
+                'fechaDocumento'    => $trf->Fecha_Documento,
+                'detalle'           => $trf->detalles->map(function($det){
+                    return [
+                        'artCodigo'         => $det->ART_CODIGO,
+                        'descripcion'       => $det->ART_DESCRIPCION,
+                        'codigo3l'          => $det->ART_CODIGO_TRES_LETRAS,
+                        'cantidad'          => $det->cantidad,
+                        'compartimiento'    => $det->compartimiento,
+                        'fechaDocumento'    => $det->Fecha_Documento
+                    ];
+                }),
+            ];
+        })->values();
     }
 }
