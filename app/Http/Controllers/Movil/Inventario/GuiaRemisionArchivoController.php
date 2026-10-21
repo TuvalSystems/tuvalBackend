@@ -65,11 +65,12 @@ class GuiaRemisionArchivoController extends Controller
         return $this->handleApiAction(function () use ($request, $tipo, $guia): JsonResponse {
             $validated = $request->validate([
                 'firma' => ['required', 'file', 'image', 'mimetypes:image/png', 'max:2048'],
-                'nombre_firmante' => ['nullable', 'string', 'max:200'],
+                'nombre_firmante' => ['required', 'string', 'max:200'],
+                'identificacion_firmante' => ['required', 'string', 'max:30'],
             ]);
             $user = $request->user();
             $data = $this->media->storeSignature($tipo, $guia, $request->file('firma'),
-                (int) $user->id, data_get($validated, 'nombre_firmante'));
+                (int) $user->id, $validated['nombre_firmante'], $validated['identificacion_firmante']);
             return $this->successResponse('Firma guardada.', $data, 201);
         }, self::LOG_CHANNEL, 'GuiaRemisionArchivoController@firma');
     }

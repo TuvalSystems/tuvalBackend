@@ -13,6 +13,9 @@
         @else
             <p style="margin: 2px 0;">Firma de recepción</p>
         @endif
+        @if(!empty($firmaGuia['identificacion_firmante']))
+            <p style="margin: 2px 0;">Identificación: {{ $firmaGuia['identificacion_firmante'] }}</p>
+        @endif
         @if(!empty($firmaGuia['usuario']))
             <p style="margin: 2px 0; font-size: 9px;">Registrada por: {{ $firmaGuia['usuario'] }}</p>
         @endif
