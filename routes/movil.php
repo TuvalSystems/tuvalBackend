@@ -7,7 +7,7 @@ use App\Http\Controllers\Movil\Menu\MobileMenuController;
 use App\Http\Controllers\Movil\SteamTrapController;
 use App\Http\Controllers\Movil\Inventario\GuiaRemisionController;
 use App\Http\Controllers\Movil\Inventario\GuiaRemisionArchivoController;
-use App\Http\Controllers\ventas\ClienteController;
+use App\Http\Controllers\Ventas\ClienteController;
 use Illuminate\Support\Facades\Route;
 
 /*

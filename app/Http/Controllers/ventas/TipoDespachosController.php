@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\ventas;
+namespace App\Http\Controllers\Ventas;
 
 use App\Enums\Ventas\DispatchTypeEnum;
 use App\Http\Controllers\Controller;

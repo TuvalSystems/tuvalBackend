@@ -168,4 +168,13 @@ class ApiGpEndpoints
     public const ARTICULOS_CONSULTAR_LISTA_TRAMPAS_VAPOR = 'api/articulos/seleccion-trampas-items';
     public const ARTICULOS_OBTENER_CLASIFICACION    = 'api/articulos/obtener-clasificacion';
     public const ARTICULOS_OBTENER_CONFIGURACION_SEGMENTO = 'api/articulos/configuracion-segmentacion';
+
+
+    // ---
+    // 🔄 12. Endpoints de  orden de compra de guia de remision
+    // ---
+
+    public const ORDEN_COMPRA_CREAR_GUIA_REMISION = 'api/ventas/orden-compra/crear-orden-compra-guia';
+    
+
 }

@@ -504,8 +504,37 @@ class DispatchService implements DispatchServiceInterface
             return false;
         }
         $orderDispatch = GpOrdenDespacho::where('pedido_id', $orderId)->first();
-        $report = $this->getPickingItems($pedido);
-        if ($report->isEmpty() && $orderDispatch) {
+        if (!$orderDispatch || !in_array($orderDispatch->estado, ['pendiente', 'liberada'], true)) {
+            return;
+        }
+
+        // Una reserva o la falta de stock no eliminan la obligación de despachar.
+        $details = GpPedidoDetalle::where('pedido_id', $orderId)
+            ->where(function ($query) {
+                $query->where('ART_TIPO_COMPRA', '!=', 'L')->orWhereNull('ART_TIPO_COMPRA');
+            })
+            ->get();
+
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $returns = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', '=', 'gp_devoluciones_detalles.devolucion_id')
+            ->whereIn('gp_devoluciones_detalles.detalle_id', $details->pluck('id'))
+            ->where('gp_devoluciones_detalles.despachado_parcial', 0)
+            ->whereIn('gp_devoluciones.estado', ['procesado', 'anulada'])
+            ->selectRaw('gp_devoluciones_detalles.detalle_id, SUM(gp_devoluciones_detalles.devuelto) as total_devuelto')
+            ->groupBy('gp_devoluciones_detalles.detalle_id')
+            ->pluck('total_devuelto', 'detalle_id');
+
+        $hasPending = $details->contains(function ($detail) use ($returns) {
+            return (float) $detail->ART_CANTIDAD
+                - (float) $detail->trasladado
+                - (float) $returns->get($detail->id, 0) > 0;
+        });
+
+        // No cancelar por un despacho completo: debe existir una devolución efectiva.
+        if (!$hasPending && $returns->sum() > 0) {
             $orderDispatch->estado = 'cancelada';
             $orderDispatch->fecha_hora_liberacion = null;
             $orderDispatch->save();
