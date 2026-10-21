@@ -145,10 +145,9 @@ class DevolucionService implements DevolucionServiceInterface
         });
 
         try {
-            $this->dispatchService->cancelDispatchIfEmptyPicking($orderId);
             $this->processInvoiceAnulation($data, $newDev);
         } catch (Exception $e) {
-            Log::error("Error De proceso processInvoiceAnulation o cancelDispatchIfEmptyPicking: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
+            Log::error("Error De proceso processInvoiceAnulation: Devolución {$newDev->id} creada, pero falló la anulación: " . $e->getMessage());
             if ($newDev->estado !== DevolutionStatus::NO_PROCESADO) {
                 $newDev->update([
                     'estado'            =>  DevolutionStatus::NO_PROCESADO,
