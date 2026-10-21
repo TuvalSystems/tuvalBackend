@@ -14,7 +14,7 @@ interface DeliveryNoteMediaServiceInterface
     public function downloadConsultationFile(string $type, int $guideId, int $mediaId, int $userId): StreamedResponse;
 
     public function storeSignature(string $type, int $guideId, UploadedFile $signature,
-        int $userId, ?string $signer = null): array;
+        int $userId, ?string $signer = null, ?string $identification = null): array;
 
     public function storeDocuments(string $type, int $guideId, array $documents, int $userId): array;
 

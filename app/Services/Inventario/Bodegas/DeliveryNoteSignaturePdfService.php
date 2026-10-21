@@ -31,6 +31,7 @@ class DeliveryNoteSignaturePdfService implements DeliveryNoteSignaturePdfService
         return [
             'imagen' => 'data:image/png;base64,' . base64_encode($disk->get($path)),
             'firmante' => $signature->getCustomProperty('nombre_firmante'),
+            'identificacion_firmante' => $signature->getCustomProperty('identificacion_firmante'),
             'usuario' => $userName ?? $signature->getCustomProperty('user_login'),
             'fecha' => $uploadedAt ? Carbon::parse($uploadedAt)->timezone('America/Guayaquil')->format('d/m/Y H:i:s') : null,
         ];

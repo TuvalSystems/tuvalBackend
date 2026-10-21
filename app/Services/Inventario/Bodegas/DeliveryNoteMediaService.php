@@ -25,10 +25,10 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
     }
 
     public function storeSignature(string $type, int $guideId, UploadedFile $signature,
-        int $userId, ?string $signer = null): array
+        int $userId, ?string $signer = null, ?string $identification = null): array
     {
         $guide = $this->resolve($type, $guideId, $userId);
-        return $this->store($guide, [$signature], 'firmas', $userId, $signer);
+        return $this->store($guide, [$signature], 'firmas', $userId, $signer, $identification);
     }
 
     public function storeDocuments(string $type, int $guideId, array $documents, int $userId): array
@@ -91,6 +91,7 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
             'tamano' => $media->size,
             'creado_en' => $media->created_at?->toIso8601String(),
             'nombre_firmante' => $media->getCustomProperty('nombre_firmante'),
+            'identificacion_firmante' => $media->getCustomProperty('identificacion_firmante'),
             'subido_por' => [
                 'id' => $media->getCustomProperty('user_id'),
                 'nombre' => $media->getCustomProperty('user_name')
@@ -108,7 +109,7 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
     }
 
     protected function store(GpGuiaRemision|GpGuiaRemisionReserva $guide, array $files,
-        string $collection, int $userId, ?string $signer = null): array
+        string $collection, int $userId, ?string $signer = null, ?string $identification = null): array
     {
         $expected = $guide instanceof GpGuiaRemision && $guide->tipo === 'despacho' ? 'enviada' : 'recibida';
         if ($guide->estado !== $expected) {
@@ -131,6 +132,7 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
                     ->withCustomProperties($audit + [
                         'original_name' => basename($file->getClientOriginalName()),
                         'nombre_firmante' => $signer,
+                        'identificacion_firmante' => $identification,
                     ])->toMediaCollection($collection);
             }
         } catch (\Throwable $exception) {
