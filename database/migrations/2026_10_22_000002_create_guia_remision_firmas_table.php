@@ -41,18 +41,18 @@ return new class extends Migration
                         $properties = json_decode($file->custom_properties, true) ?: [];
                         $user = DB::table('gp_usuarios')->where('id', $properties['user_id'] ?? null)->first();
                         DB::table('guia_remision_firmas')->updateOrInsert([$field => $file->model_id], [
-                            'media_id' => $file->id,
-                            'nombre_firmante' => $properties['nombre_firmante'] ?? null,
-                            'identificacion_firmante' => $properties['identificacion_firmante'] ?? null,
-                            'latitud' => $properties['latitud'] ?? null,
-                            'longitud' => $properties['longitud'] ?? null,
-                            'precision_ubicacion' => $properties['precision_ubicacion'] ?? null,
-                            'fecha_firma' => empty($properties['fecha_firma']) ? null : Carbon::parse($properties['fecha_firma'])->utc(),
-                            'usuario_id' => $user?->id,
-                            'usuario_nombre' => $properties['user_name'] ?? $user?->USERNAME,
-                            'usuario_login' => $properties['user_login'] ?? $user?->USERID,
-                            'created_at' => empty($properties['uploaded_at']) ? $file->created_at : Carbon::parse($properties['uploaded_at'])->utc(),
-                            'updated_at' => $file->updated_at,
+                            'media_id'                 => $file->id,
+                            'nombre_firmante'          => $properties['nombre_firmante'] ?? null,
+                            'identificacion_firmante'  => $properties['identificacion_firmante'] ?? null,
+                            'latitud'                  => $properties['latitud'] ?? null,
+                            'longitud'                 => $properties['longitud'] ?? null,
+                            'precision_ubicacion'      => $properties['precision_ubicacion'] ?? null,
+                            'fecha_firma'              => empty($properties['fecha_firma']) ? null : Carbon::parse($properties['fecha_firma'])->utc(),
+                            'usuario_id'               => $user?->id,
+                            'usuario_nombre'           => $properties['user_name'] ?? $user?->USERNAME,
+                            'usuario_login'            => $properties['user_login'] ?? $user?->USERID,
+                            'created_at'               => empty($properties['uploaded_at']) ? $file->created_at : Carbon::parse($properties['uploaded_at'])->utc(),
+                            'updated_at'               => $file->updated_at,
                         ]);
                         foreach (['nombre_firmante', 'identificacion_firmante', 'latitud', 'longitud',
                             'precision_ubicacion', 'fecha_firma', 'user_id', 'user_name', 'user_login', 'uploaded_at'] as $key) {
@@ -78,10 +78,10 @@ return new class extends Migration
                 foreach (['nombre_firmante', 'identificacion_firmante', 'latitud', 'longitud', 'precision_ubicacion', 'fecha_firma'] as $field) {
                     $properties[$field] = $signature->$field;
                 }
-                $properties['user_id'] = $signature->usuario_id;
-                $properties['user_name'] = $signature->usuario_nombre;
-                $properties['user_login'] = $signature->usuario_login;
-                $properties['uploaded_at'] = $signature->created_at;
+                $properties['user_id']      = $signature->usuario_id;
+                $properties['user_name']    = $signature->usuario_nombre;
+                $properties['user_login']   = $signature->usuario_login;
+                $properties['uploaded_at']  = $signature->created_at;
                 DB::table('media')->where('id', $media->id)->update(['custom_properties' => json_encode($properties)]);
             }
         });
