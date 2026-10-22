@@ -28,4 +28,21 @@ use Illuminate\Database\Eloquent\Model;
 class GpUnidadMedida extends Model
 {
     use HasFactory;
+
+    protected $table = 'gp_unidad_medidas';
+
+    protected $fillable = [
+        'UMEDIDA_PLAN',
+        'UMEDIDA_BASE',
+        'UMEDIDA_CANTIDAD_DECIMAL',
+    ];
+
+    protected $casts = [
+        'id'                        => 'integer',
+        'UMEDIDA_PLAN'              => 'string',
+        'UMEDIDA_BASE'              => 'string',
+        'UMEDIDA_CANTIDAD_DECIMAL'  => 'integer',
+        'created_at'                => 'datetime:Y-m-d H:i:s',
+        'updated_at'                => 'datetime:Y-m-d H:i:s',
+    ];
 }

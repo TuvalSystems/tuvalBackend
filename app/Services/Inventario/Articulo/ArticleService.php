@@ -179,9 +179,7 @@ class ArticleService implements ArticleServiceInterface
             $excludedArticleCodes,
             $taxPercentage
         );
-        // $article->ART_TIPO_COMPRA         = 'L';
-        $unmd = GpUnidadMedida::where('UMEDIDA_PLAN', $article->ART_PLAN_UMEDIDA)->value('UMEDIDA_BASE');
-        $article->setAttribute('ART_PLAN_UMEDIDA', $unmd);
+        $article->ART_TIPO_COMPRA         = 'L';
         $article->ART_VALOR               = 0;
         $article->ART_VALOR_ORIGINAL      = 0;
         $article->ART_DESCRIPCION_ORIGINAL = $article->ART_DESCRIPCION;

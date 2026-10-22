@@ -292,7 +292,7 @@ Route::group(['prefix' => 'inventario-web'], function () {
         Route::get('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
         Route::get('lista-alternativas', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
         Route::get('item-logistico', [ArticuloController::class, 'obtenerArticuloLogistico']);
-
+         Route::get('item-l', [ArticuloController::class, 'buscarArticuloL']);
 
         });
 });

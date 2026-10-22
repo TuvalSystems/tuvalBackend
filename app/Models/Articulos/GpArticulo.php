@@ -135,6 +135,7 @@ class GpArticulo extends Model
     ];
 
     protected $casts = [
+        'ART_PESO'             => 'decimal:2',
         'ART_IMP_VTA'           => 'float',
         'es_servicio_logistico' => 'boolean',
         'created_at'            => 'datetime:Y-m-d H:i:s',

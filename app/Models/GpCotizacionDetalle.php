@@ -79,6 +79,7 @@ class GpCotizacionDetalle extends Model
     use HasFactory;
 
     protected $casts = [
+        'ART_PESO'             => 'decimal:2',
         'validador_l'           => 'boolean',
         'es_servicio_logistico' => 'boolean'
     ];

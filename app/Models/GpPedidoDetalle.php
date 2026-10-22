@@ -104,6 +104,7 @@ class GpPedidoDetalle extends Model
     ];
 
     protected $casts = [
+        'ART_PESO'                 => 'decimal:2',
         'ART_DECIMAL_CANTIDAD'      => 'integer',
         'CHECK_ALTERNATIVO'         => 'boolean',
         'ART_VALOR'                 => 'float',
