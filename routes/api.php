@@ -26,6 +26,7 @@ use App\Http\Controllers\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Gestion\GestionSucursalesController;
 use App\Http\Controllers\Admin\UserNotificationController;
 use App\Http\Controllers\Inventario\Articulo\ArticuloController;
+use App\Http\Controllers\Inventario\Bodega\GuiaRemisionConsultaArchivoController;
 use App\Http\Controllers\Ventas\ClienteController;
 use App\Http\Controllers\Ventas\ProveedoresController;
 use App\Http\Controllers\Ventas\FleteExternoController;
@@ -350,7 +351,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
             Route::prefix('guias-remision/{tipo}/{guia}/archivos')
                 ->where(['tipo' => 'despacho|reserva|reposicion|transferencia', 'guia' => '[0-9]+'])
-                ->controller(\App\Http\Controllers\Inventario\Bodega\GuiaRemisionConsultaArchivoController::class)
+                ->controller(GuiaRemisionConsultaArchivoController::class)
                 ->group(function () {
                     Route::get('/', 'index');
                     Route::get('{archivo}', 'show')->whereNumber('archivo');
@@ -574,8 +575,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             //documentos aplicacion
             Route::post('actualizar-aplicaciones-pendientes', [CobranzasController::class, 'actualizarListaDocumentosAplicacion']);
 
-            //validacion de aplicacion de pagos a faturas
-            // Route::post('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+           
 
             //desaplicaciones
             Route::prefix('desaplicaciones')->group(function () {
