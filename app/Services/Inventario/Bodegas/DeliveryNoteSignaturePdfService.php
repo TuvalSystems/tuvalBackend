@@ -12,7 +12,8 @@ class DeliveryNoteSignaturePdfService implements DeliveryNoteSignaturePdfService
 {
     public function forGuide(GpGuiaRemision|GpGuiaRemisionReserva $guide): ?array
     {
-        $signature = $guide->getFirstMedia('firmas');
+        $record = $guide->firma()->with('media')->first();
+        $signature = $record?->media;
         if (!$signature) {
             return null;
         }
@@ -23,8 +24,8 @@ class DeliveryNoteSignaturePdfService implements DeliveryNoteSignaturePdfService
         }
         return [
             'imagen' => 'data:image/png;base64,' . base64_encode($disk->get($path)),
-            'firmante' => $signature->getCustomProperty('nombre_firmante'),
-            'identificacion_firmante' => $signature->getCustomProperty('identificacion_firmante'),
+            'firmante' => $record->nombre_firmante,
+            'identificacion_firmante' => $record->identificacion_firmante,
         ];
     }
 }

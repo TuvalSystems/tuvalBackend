@@ -79,32 +79,37 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
 
     protected function files(GpGuiaRemision|GpGuiaRemisionReserva $guide): array
     {
-        $guide->load('media');
+        $guide->load(['media', 'firma']);
         $legacyUsers = GpUsuario::whereIn('id', $guide->media
             ->filter(fn (Media $media) => !$media->hasCustomProperty('user_name'))
             ->map(fn (Media $media) => $media->getCustomProperty('user_id'))->filter()->unique())
             ->get(['id', 'USERID', 'USERNAME'])->keyBy('id');
-        $format = fn (Media $media) => [
+        $format = function (Media $media) use ($guide, $legacyUsers) {
+            $signature = $media->collection_name === 'firmas' && $guide->firma?->media_id === $media->id
+                ? $guide->firma : null;
+            return [
             'id' => $media->id,
             'nombre' => $media->getCustomProperty('original_name', $media->file_name),
             'mime_type' => $media->mime_type,
             'tamano' => $media->size,
             'creado_en' => $media->created_at?->toIso8601String(),
-            'nombre_firmante' => $media->getCustomProperty('nombre_firmante'),
-            'identificacion_firmante' => $media->getCustomProperty('identificacion_firmante'),
-            'latitud' => $media->getCustomProperty('latitud'),
-            'longitud' => $media->getCustomProperty('longitud'),
-            'precision_ubicacion' => $media->getCustomProperty('precision_ubicacion'),
-            'fecha_firma' => $media->getCustomProperty('fecha_firma'),
+            'nombre_firmante' => $signature?->nombre_firmante,
+            'identificacion_firmante' => $signature?->identificacion_firmante,
+            'latitud' => $signature?->latitud,
+            'longitud' => $signature?->longitud,
+            'precision_ubicacion' => $signature?->precision_ubicacion,
+            'fecha_firma' => $signature?->fecha_firma?->utc()->toIso8601String(),
             'subido_por' => [
-                'id' => $media->getCustomProperty('user_id'),
-                'nombre' => $media->getCustomProperty('user_name')
+                'id' => $signature?->usuario_id ?? $media->getCustomProperty('user_id'),
+                'nombre' => $signature?->usuario_nombre ?? $media->getCustomProperty('user_name')
                     ?? $legacyUsers->get($media->getCustomProperty('user_id'))?->USERNAME,
-                'usuario' => $media->getCustomProperty('user_login')
+                'usuario' => $signature?->usuario_login ?? $media->getCustomProperty('user_login')
                     ?? $legacyUsers->get($media->getCustomProperty('user_id'))?->USERID,
             ],
-            'subido_en' => $media->getCustomProperty('uploaded_at') ?? $media->created_at?->toIso8601String(),
+            'subido_en' => $signature?->created_at?->toIso8601String()
+                ?? $media->getCustomProperty('uploaded_at') ?? $media->created_at?->toIso8601String(),
         ];
+        };
 
         return [
             'firmas' => $guide->getMedia('firmas')->map($format)->values()->all(),
@@ -131,17 +136,26 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
         try {
             foreach ($files as $file) {
                 /** @var UploadedFile $file */
-                $created[] = $guide->addMedia($file)
+                $media = $guide->addMedia($file)
                     ->usingFileName(Str::uuid() . '.' . $file->guessExtension())
-                    ->withCustomProperties($audit + [
+                    ->withCustomProperties(($collection === 'firmas' ? [] : $audit) + [
                         'original_name' => basename($file->getClientOriginalName()),
+                    ])->toMediaCollection($collection);
+                $created[] = $media;
+                if ($collection === 'firmas') {
+                    $guide->firma()->updateOrCreate([], [
+                        'media_id' => $media->id,
                         'nombre_firmante' => $signer,
                         'identificacion_firmante' => $identification,
                         'latitud' => $location['latitud'] ?? null,
                         'longitud' => $location['longitud'] ?? null,
                         'precision_ubicacion' => $location['precision_ubicacion'] ?? null,
                         'fecha_firma' => $location['fecha_firma'] ?? null,
-                    ])->toMediaCollection($collection);
+                        'usuario_id' => $userId,
+                        'usuario_nombre' => $user->USERNAME,
+                        'usuario_login' => $user->USERID,
+                    ]);
+                }
             }
         } catch (\Throwable $exception) {
             foreach ($created as $media) {

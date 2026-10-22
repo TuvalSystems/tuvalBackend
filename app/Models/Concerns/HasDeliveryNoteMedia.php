@@ -2,6 +2,9 @@
 
 namespace App\Models\Concerns;
 
+use App\Models\despachos\GuiaRemisionFirma;
+use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 trait HasDeliveryNoteMedia
@@ -16,8 +19,16 @@ trait HasDeliveryNoteMedia
     public function getCodigoQrAttribute(): ?string
     {
         return $this->getKey()
-            ? app(\App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface::class)->code($this)
+            ? app(DeliveryNoteQrServiceInterface::class)->code($this)
             : null;
+    }
+
+    public function firma()
+    {
+        $foreignKey = $this instanceof GpGuiaRemisionReserva
+            ? 'guia_reserva_id' : 'guia_remision_id';
+
+        return $this->hasOne(GuiaRemisionFirma::class, $foreignKey);
     }
 
     public function registerMediaCollections(): void
@@ -25,7 +36,10 @@ trait HasDeliveryNoteMedia
         // Los archivos se sirven mediante la API autenticada de la guia.
         $this->addMediaCollection('firmas')->useDisk('local')->acceptsMimeTypes(['image/png'])->singleFile();
         $this->addMediaCollection('documentos')->useDisk('local')->acceptsMimeTypes([
-            'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
         ]);
     }
 }
