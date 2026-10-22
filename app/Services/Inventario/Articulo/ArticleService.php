@@ -179,6 +179,10 @@ class ArticleService implements ArticleServiceInterface
             $excludedArticleCodes,
             $taxPercentage
         );
+        if ($article === null) {
+            return null;
+        }
+
         $article->ART_TIPO_COMPRA         = 'L';
         $article->ART_VALOR               = 0;
         $article->ART_VALOR_ORIGINAL      = 0;
