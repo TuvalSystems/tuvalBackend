@@ -59,7 +59,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'sucursal_destinatario_id'                  => data_get($infoGuia, 'pedido.sucursal_id', null),
             'tipo_despacho_id'                          => data_get($infoGuia, 'pedido.tipo_despacho_id', null),
             'fle_proveedor_id'                          => data_get($infoGuia, 'pedido.fle_proveedor_id', null),
-            'flete_externo_id'                   => data_get($payload, 'flete_externo_id', null),
+            'fle_externo_id'                   => data_get($payload, 'fle_externo_id', null),
             'valor_orden_compra'                        => data_get($infoGuia, 'pedido.fle_valor', 0),
             'oc_generada'                              => false,
             'requiere_orden_compra'                     => data_get($infoGuia, 'requiere_orden_compra', false)
@@ -105,7 +105,7 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'tipoDespachoId'                    => $guia->tipo_despacho_id,
             'proveedorDespachoId'               => $guia->fle_proveedor_id,
             // El contrato de la API de GP mantiene este nombre externo.
-            'choferTransportistaId'             => $guia->flete_externo_id,
+            'choferTransportistaId'             => $guia->fle_externo_id,
 
         ];
     }

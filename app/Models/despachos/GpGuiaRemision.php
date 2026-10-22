@@ -144,7 +144,7 @@ class GpGuiaRemision extends Model implements HasMedia
         'sucursal_destinatario_id',
         'tipo_despacho_id',
         'fle_proveedor_id',
-        'flete_externo_id',
+        'fle_externo_id',
         'oc_generada',
         'valor_orden_compra',
         'requiere_orden_compra'
@@ -156,7 +156,7 @@ class GpGuiaRemision extends Model implements HasMedia
         'sucursal_destinatario_id'  => 'integer',
         'tipo_despacho_id'          => 'integer',
         'fle_proveedor_id'          => 'integer',
-        'flete_externo_id'   => 'integer',
+        'fle_externo_id'   => 'integer',
         'valor_orden_compra'        => 'decimal:2',
         'oc_generada'              => 'boolean',
         'requiere_orden_compra'     => 'boolean'
