@@ -25,10 +25,10 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
     }
 
     public function storeSignature(string $type, int $guideId, UploadedFile $signature,
-        int $userId, ?string $signer = null, ?string $identification = null): array
+        int $userId, ?string $signer = null, ?string $identification = null, array $location = []): array
     {
         $guide = $this->resolve($type, $guideId, $userId);
-        return $this->store($guide, [$signature], 'firmas', $userId, $signer, $identification);
+        return $this->store($guide, [$signature], 'firmas', $userId, $signer, $identification, $location);
     }
 
     public function storeDocuments(string $type, int $guideId, array $documents, int $userId): array
@@ -92,6 +92,10 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
             'creado_en' => $media->created_at?->toIso8601String(),
             'nombre_firmante' => $media->getCustomProperty('nombre_firmante'),
             'identificacion_firmante' => $media->getCustomProperty('identificacion_firmante'),
+            'latitud' => $media->getCustomProperty('latitud'),
+            'longitud' => $media->getCustomProperty('longitud'),
+            'precision_ubicacion' => $media->getCustomProperty('precision_ubicacion'),
+            'fecha_firma' => $media->getCustomProperty('fecha_firma'),
             'subido_por' => [
                 'id' => $media->getCustomProperty('user_id'),
                 'nombre' => $media->getCustomProperty('user_name')
@@ -109,7 +113,7 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
     }
 
     protected function store(GpGuiaRemision|GpGuiaRemisionReserva $guide, array $files,
-        string $collection, int $userId, ?string $signer = null, ?string $identification = null): array
+        string $collection, int $userId, ?string $signer = null, ?string $identification = null, array $location = []): array
     {
         $expected = $guide instanceof GpGuiaRemision && $guide->tipo === 'despacho' ? 'enviada' : 'recibida';
         if ($guide->estado !== $expected) {
@@ -133,6 +137,10 @@ class DeliveryNoteMediaService implements DeliveryNoteMediaServiceInterface
                         'original_name' => basename($file->getClientOriginalName()),
                         'nombre_firmante' => $signer,
                         'identificacion_firmante' => $identification,
+                        'latitud' => $location['latitud'] ?? null,
+                        'longitud' => $location['longitud'] ?? null,
+                        'precision_ubicacion' => $location['precision_ubicacion'] ?? null,
+                        'fecha_firma' => $location['fecha_firma'] ?? null,
                     ])->toMediaCollection($collection);
             }
         } catch (\Throwable $exception) {

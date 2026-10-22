@@ -67,10 +67,19 @@ class GuiaRemisionArchivoController extends Controller
                 'firma' => ['required', 'file', 'image', 'mimetypes:image/png', 'max:2048'],
                 'nombre_firmante' => ['required', 'string', 'max:200'],
                 'identificacion_firmante' => ['required', 'string', 'max:30'],
+                'latitud' => ['required', 'numeric', 'between:-90,90'],
+                'longitud' => ['required', 'numeric', 'between:-180,180'],
+                'precision_ubicacion' => ['required', 'numeric', 'min:0'],
+                'fecha_firma' => ['required', 'date'],
             ]);
             $user = $request->user();
             $data = $this->media->storeSignature($tipo, $guia, $request->file('firma'),
-                (int) $user->id, $validated['nombre_firmante'], $validated['identificacion_firmante']);
+                (int) $user->id, $validated['nombre_firmante'], $validated['identificacion_firmante'], [
+                    'latitud' => (float) $validated['latitud'],
+                    'longitud' => (float) $validated['longitud'],
+                    'precision_ubicacion' => (float) $validated['precision_ubicacion'],
+                    'fecha_firma' => \Illuminate\Support\Carbon::parse($validated['fecha_firma'])->utc()->toIso8601String(),
+                ]);
             return $this->successResponse('Firma guardada.', $data, 201);
         }, self::LOG_CHANNEL, 'GuiaRemisionArchivoController@firma');
     }
