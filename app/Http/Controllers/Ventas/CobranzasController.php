@@ -68,10 +68,10 @@ class CobranzasController extends Controller
             'comprobante' => ['required', 'string', 'max:100'],
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->paymentReceiptLookupService->getPaymentsByDepositReference($validated['comprobante']),
-        ]);
+        return $this->handleApiAction(function () use ($validated): JsonResponse {
+            $payments = $this->paymentReceiptLookupService->getPaymentsByDepositReference($validated['comprobante']);
+            return $this->successResponse('Consulta de cobros realizada correctamente', $payments, 200);
+        }, 'cobranzas', 'consultarCobroPorComprobante');
     }
 
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
