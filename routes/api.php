@@ -551,7 +551,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('consultaretencion', [CobranzasController::class, 'consultaretencion']);
             Route::post('consultacheque', [CobranzasController::class, 'consultacheque']);
             Route::post('consultadeposito', [CobranzasController::class, 'consultadeposito']);
-            Route::post('consultar-cobro-por-comprobante', [CobranzasController::class, 'consultarCobroPorComprobante']);
+
 
             Route::get('estadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
             Route::get('estadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
@@ -651,6 +651,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
 Route::group(['prefix' => 'consultas-externas'], function () {
+    Route::prefix('cobranzas')->group(function () {
+        Route::get('consultar-cobro-por-comprobante', [CobranzasController::class, 'consultarCobroPorComprobante']);
+    });
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
