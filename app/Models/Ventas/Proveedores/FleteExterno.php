@@ -20,9 +20,7 @@ class FleteExterno extends Model
         'placa',
         'estado',
         'usuario_ingreso_id',
-        'fecha_ingreso',
         'usuario_modifica_id',
-        'fecha_modificacion'
     ];
 
     protected $casts = [
@@ -30,9 +28,7 @@ class FleteExterno extends Model
         'tipo_identificacion_id' => 'integer',
         'estado'                => 'boolean',
         'usuario_ingreso_id'    => 'integer',
-        'fecha_ingreso'         => 'datetime:Y-m-d H:i:s',
         'usuario_modifica_id'   => 'integer',
-        'fecha_modificacion'    => 'datetime:Y-m-d H:i:s',
         'created_at'            => 'datetime:Y-m-d H:i:s',
         'updated_at'            => 'datetime:Y-m-d H:i:s',
     ];

@@ -90,7 +90,6 @@ class ExternalFreightService implements ExternalFreightServiceInterface
             $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
             $cht->placa                     = $this->clean($data, 'placa');
             $cht->usuario_ingreso_id        = $user->id;
-            $cht->fecha_ingreso             = now();
             $cht->save();
             return $cht;
         });
@@ -111,7 +110,6 @@ class ExternalFreightService implements ExternalFreightServiceInterface
             $cht->tipo_identificacion_id    = $this->clean($data, 'tipo_identificacion_id');
             $cht->placa                     = $this->clean($data, 'placa');
             $cht->usuario_modifica_id       = $user->id;
-            $cht->fecha_modificacion        = now();
             $cht->save();
 
 
