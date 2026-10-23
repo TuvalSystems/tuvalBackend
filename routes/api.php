@@ -551,6 +551,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
             Route::post('consultaretencion', [CobranzasController::class, 'consultaretencion']);
             Route::post('consultacheque', [CobranzasController::class, 'consultacheque']);
             Route::post('consultadeposito', [CobranzasController::class, 'consultadeposito']);
+            Route::post('consultar-cobro-por-comprobante', [CobranzasController::class, 'consultarCobroPorComprobante']);
 
             Route::get('estadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
             Route::get('estadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
