@@ -22,6 +22,8 @@ use App\Models\Articulos\GpArticulo;
 use App\Models\GpCotizacionDetalleStock;
 use App\Models\Reservas\GpCotizacionReservaLog;
 use App\Services\Api\Cobros\ApiBillingService;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -495,11 +497,24 @@ class QuotationService implements QuotationServiceInterface
             return $item;
         });
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
+        $tipoDespacho = TipoDespacho::find($quote->tipo_despacho_id);
+        $requiereAprobacionFlete = FreightApproval::requiresApprovalForType($tipoDespacho)
+            && !FreightApproval::hasValidApproval($quote->toArray(), $quote);
+
         return [
             'estadodecuenta'    => $estadoCuenta,
             'detalle'           => $detalle,
             'segmento'          => $segmento,
             'nivelPrecio'       => $nivelPrecio,
+            'tipo_despacho_id'  => $quote->tipo_despacho_id,
+            'tipo_despacho'     => $tipoDespacho?->descripcion,
+            'fle_usuario_aut_id' => $quote->fle_usuario_aut_id,
+            'fle_fecha_aut'     => $quote->fle_fecha_aut,
+            'fle_valor'         => $quote->fle_valor,
+            'requiere_aprobacion_flete' => $requiereAprobacionFlete,
+            'motivo_aprobacion_flete' => $requiereAprobacionFlete
+                ? "Requiere aprobación de flete por tipo de despacho: {$tipoDespacho->descripcion}."
+                : null,
             'proyecto'          => $this->orderAndQuotationService->getDescriptionProjectSeller($quote->proyecto)
         ];
     }
@@ -631,7 +646,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function calculatePorcentilDiscountAndPrice(GpCotizacionDetalle &$detalle)
     {
-        $detalle->priceChange       = round($this->orderAndQuotationService->calculatePriceVariationPercentage($detalle->ART_VALOR_ORIGINAL, $detalle->ART_VALOR), 3);
+        $detalle->priceChange       = round($this->orderAndQuotationService->calculatePriceVariationPercentage($detalle->ART_VALOR_ORIGINAL, $detalle->precio_sin_flete), 3);
         $detalle->discountChange    = round($this->orderAndQuotationService->calculateDiscountChange($detalle->descuento_original, $detalle->descuento), 3);
     }
 

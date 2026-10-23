@@ -14,6 +14,8 @@ use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
 use Carbon\Carbon;
 use App\Models\GpPedido;
+use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Services\Aprobaciones\Utils\FreightApproval;
 use App\Models\GpCliente;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\GpPuntoVenta;
@@ -197,7 +199,7 @@ class OrderService implements OrderServiceInterface
 
         $sucursal = GpClienteSucursal::find($pedido['sucursal_facturacion_id'])?->toArray();
         $pedido['sucursal'] = $sucursal;
-        $pedido['vendedor'] = GpVendedor::where('VEND_ID', $sucursal['CLI_SUC_VENDEDOR'])->first()->toarray();
+        $pedido['vendedor'] = GpVendedor::where('id', $pedido['vendedor_id'])->first()->toarray();
         $ptoVenta = GpPuntoVenta::where('PTO_VTA_ID', $pedido['PTO_VTA_ID'])->first()->toArray();
         $pedido['direccion'] = trim(($ptoVenta['PTO_VTA_DIRECCION_1'] ?? '') . ' ' . ($ptoVenta['PTO_VTA_DIRECCION_2'] ?? ''));
         $pedido['telefono'] = $ptoVenta['PTO_VTA_FONO_1'] ?? '';
@@ -282,6 +284,9 @@ class OrderService implements OrderServiceInterface
         $pedido                 = GpPedido::find($data['id']);
         $documentosPdf          = $this->orderAndQuotationService->getFormattedPdfMedia($pedido);
         $projectString          = $this->orderAndQuotationService->getDescriptionProjectSeller($orderHeader->proyecto);
+        $tipoDespacho = TipoDespacho::find($orderHeader->tipo_despacho_id);
+        $requiereAprobacionFlete = FreightApproval::requiresApprovalForType($tipoDespacho)
+            && !FreightApproval::hasValidApproval($orderHeader->toArray(), $orderHeader);
         return [
             'detalle' => $enrichedDetails['details'],
             'estadodecuenta' => [
@@ -299,6 +304,15 @@ class OrderService implements OrderServiceInterface
             'nivelPrecio'           => $nivelPrecio,
             'imagenesOperaciones'   => $imagenesOperaciones,
             'documentosPdf'         => $documentosPdf,
+            'tipo_despacho_id'      => $orderHeader->tipo_despacho_id,
+            'tipo_despacho'         => $tipoDespacho?->descripcion,
+            'fle_usuario_aut_id'    => $orderHeader->fle_usuario_aut_id,
+            'fle_fecha_aut'         => $orderHeader->fle_fecha_aut,
+            'fle_valor'             => $orderHeader->fle_valor,
+            'requiere_aprobacion_flete' => $requiereAprobacionFlete,
+            'motivo_aprobacion_flete' => $requiereAprobacionFlete
+                ? "Requiere aprobación de flete por tipo de despacho: {$tipoDespacho->descripcion}."
+                : null,
             'proyecto'              => $projectString
         ];
     }
@@ -342,7 +356,7 @@ class OrderService implements OrderServiceInterface
             if ($stock && $stock->seleccionado > 0 && $item->ART_TIPO_COMPRA != 'L') {
                 $hasExisting = true;
             }
-            $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->ART_VALOR), 3);
+            $item->priceChange      = round($this->orderAndQuotationService->calculatePriceVariationPercentage($item->ART_VALOR_ORIGINAL, $item->precio_sin_flete), 3);
             $item->discountChange   = round($this->orderAndQuotationService->calculateDiscountChange($item->descuento_original, $item->descuento), 3);
             $item->reglasAprobacion = $reglasAprobacion;
 

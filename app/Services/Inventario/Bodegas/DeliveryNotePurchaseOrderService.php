@@ -215,6 +215,8 @@ class DeliveryNotePurchaseOrderService implements DeliveryNotePurchaseOrderServi
             'usuario'           => $user,
             'tipoDespachoId'    => (int) $guide->tipo_despacho_id,
             'valorOrdenCompra'  => round($amount, 2),
+            'bodega'            => trim((string) $guide->bodega_origen),
+            'numGuia'           => trim((string) $guide->GUI_REM_GUIA_REMISION),
         ];
     }
 
