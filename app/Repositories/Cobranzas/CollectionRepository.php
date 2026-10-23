@@ -10,12 +10,14 @@ use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaMonto;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class CollectionRepository implements CollectionRepositoryInterface
 {
-    public function getPaymentsByDepositReference(string $reference): \Illuminate\Support\Collection
+    public function getPaymentsByDepositReference(string $reference): Collection
     {
-        return \Illuminate\Support\Facades\DB::table('VW_ConsultaComprobanteCobro')
+        return DB::table('VW_ConsultaComprobanteCobro')
             ->where('comprobante', $reference)
             ->select(
                 'numero_recibo',
