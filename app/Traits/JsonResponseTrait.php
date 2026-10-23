@@ -25,6 +25,10 @@ trait JsonResponseTrait
 
     protected function errorResponse(string $message, $errors = null, int $code = 500): JsonResponse
     {
+        if ($code >= 500 && !config('app.debug')) {
+            $message = 'Ha ocurrido un error interno.';
+            $errors = null;
+        }
         return response()->json([
             'success' => false,
             'error' => $message,
@@ -35,6 +39,9 @@ trait JsonResponseTrait
 
     protected function buildErrorResponse(string $message, int $statusCode): JsonResponse
     {
+        if ($statusCode >= 500 && !config('app.debug')) {
+            $message = 'Ha ocurrido un error interno.';
+        }
         return response()->json(['success' => false, 'error' => $message, 'errors' => []], $statusCode);
     }
 

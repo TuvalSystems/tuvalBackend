@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/login', [AuthMobileController::class, 'login']);
+Route::post('/login', [AuthMobileController::class, 'login'])->middleware('throttle:login');
 
 /*
 |--------------------------------------------------------------------------
@@ -32,7 +32,7 @@ Route::get('/app/latest', [AppController::class, 'latest']);
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'abilities:mobile'])->group(function () {
+Route::middleware(['auth:sanctum', 'active.account', 'abilities:mobile'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------

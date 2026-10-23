@@ -13,7 +13,11 @@ class UserController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    public function __construct(protected readonly UserServiceInterface $service) {}
+    public function __construct(protected readonly UserServiceInterface $service)
+    {
+        $this->middleware('web.section:sistemas-seguridad-usuarios')
+            ->except(['actualizarContrasena', 'obtenerUsuarioApp']);
+    }
 
     public function listaUsuarios(Request $request)
     {

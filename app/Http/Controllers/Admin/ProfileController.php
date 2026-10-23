@@ -13,7 +13,9 @@ class ProfileController extends Controller
     use JsonResponseTrait, ExecuteApiTransactions;
     public function  __construct(
         protected readonly ProfileServiceInterface $profile
-    ) {}
+    ) {
+        $this->middleware('web.section:sistemas-seguridad-perfiles');
+    }
 
     public function lista(Request $request)
     {

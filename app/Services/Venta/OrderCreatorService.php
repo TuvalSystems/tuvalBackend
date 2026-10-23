@@ -385,8 +385,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 continue;
             }
 
-            $cleanName = str_replace(' ', '_', $file->getClientOriginalName());
-            $uniqueName = time() . '_' . $cleanName;
+            $uniqueName = \App\Supports\SafeUploadName::image($file);
 
             $path = $file->storeAs(
                 "pedidos/operaciones_img/{$pedido->id}",
@@ -442,8 +441,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
-            $uniqueName     = time() . '_' . $cleanName;
+            $uniqueName     = \App\Supports\SafeUploadName::pdf($file);
 
             $order
                 ->addMedia($file)

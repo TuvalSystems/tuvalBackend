@@ -78,7 +78,7 @@ return array(
          * direct class use like:
          * $dompdf = new DOMPDF();  $dompdf->load_html($htmldata); $dompdf->render(); $pdfdata = $dompdf->output();
          */
-        "chroot" => realpath(base_path()),
+        "chroot" => [public_path(), storage_path('app'), storage_path('fonts')],
 
         /**
          * Protocol whitelist
@@ -91,6 +91,7 @@ return array(
          * @var array
          */
         'allowed_protocols' => [
+            "data://" => ["rules" => []],
             "file://" => ["rules" => []],
             "http://" => ["rules" => []],
             "https://" => ["rules" => []]

@@ -17,7 +17,10 @@ class AdminController extends Controller
     public function __construct(
         protected readonly AdminLogServiceInterface $admin,
         protected readonly LocationServiceInterface $location
-    ) {}
+    ) {
+        $this->middleware('web.section:sistemas-sync-logs,sistemas-logs')
+            ->only(['listaLogs', 'obtenerDetalleLog']);
+    }
 
     public function listaLogs(Request $request)
     {

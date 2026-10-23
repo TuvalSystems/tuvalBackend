@@ -118,13 +118,13 @@ class UserService implements UserServiceInterface
 
 
 
-    protected function isValidUserWeb(GpUsuario $user, string $password): void
+    protected function isValidUserWeb(?GpUsuario $user, string $password): void
     {
         if (!$user) {
-            throw new \RuntimeException('Opps! Verifique las credenciales o el perfil asignado');
+            throw new \Illuminate\Auth\AuthenticationException();
         }
         if (!Hash::check($password, $user->password)) {
-            throw new \RuntimeException('Las credenciales no coinciden');
+            throw new \Illuminate\Auth\AuthenticationException();
         }
 
         if (!$user->status) {
@@ -227,11 +227,11 @@ class UserService implements UserServiceInterface
     public function isValidUserMobile(?GpUsuario $user, string $password)
     {
         if (!$user) {
-            throw new \RuntimeException('Opps! Verifique las credenciales o el perfil móvil asignado');
+            throw new \Illuminate\Auth\AuthenticationException();
         }
 
         if (!Hash::check($password, $user->password)) {
-            throw new \RuntimeException('Las credenciales no coinciden');
+            throw new \Illuminate\Auth\AuthenticationException();
         }
 
         if (!$user->status) {
@@ -287,6 +287,7 @@ class UserService implements UserServiceInterface
         $user->password             = Hash::make($user->USERID);
         $user->process_job          = 1;
         $user->save();
+        $user->tokens()->delete();
         return $user->refresh();
     }
 
@@ -305,6 +306,9 @@ class UserService implements UserServiceInterface
         }
         $user->status = $user->status === true ? false : true;
         $user->save();
+        if (!$user->status) {
+            $user->tokens()->delete();
+        }
     }
 
 
@@ -340,8 +344,10 @@ class UserService implements UserServiceInterface
         $sortOrder = $sortOrder === 'asc' ? 'asc' : 'desc';
         $query = $gpUser->notifications()->whereNull('read_at')
             ->when($search, function ($que) use ($search) {
-                $que->where('data->title', 'like', "%{$search}%")
-                    ->orWhere('data->message', 'like', "%{$search}%");
+                $que->where(function ($query) use ($search) {
+                    $query->where('data->title', 'like', "%{$search}%")
+                        ->orWhere('data->message', 'like', "%{$search}%");
+                });
             });
         if ($sortBy && in_array($sortBy, $allowedSorts, true)) {
             // ordenar por título (campo JSON)

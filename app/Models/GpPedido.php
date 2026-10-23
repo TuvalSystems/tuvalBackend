@@ -288,7 +288,7 @@ class GpPedido extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('documentos_pdf');
+        $this->addMediaCollection('documentos_pdf')->acceptsMimeTypes(['application/pdf']);
     }
 
     protected function serializeDate(DateTimeInterface $date)

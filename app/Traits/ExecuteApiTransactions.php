@@ -41,7 +41,10 @@ trait ExecuteApiTransactions
         $mensaje = $e->getMessage();
         $codigo = 500;
 
-        if ($e instanceof HttpException) {
+        if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+            $mensaje = 'Las credenciales no son válidas.';
+            $codigo = 401;
+        } elseif ($e instanceof HttpException) {
             $codigo = $e->getStatusCode();
         } elseif ($e instanceof ModelNotFoundException) {
             $mensaje = 'El recurso solicitado no fue encontrado.';

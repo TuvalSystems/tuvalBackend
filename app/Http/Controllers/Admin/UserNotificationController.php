@@ -15,8 +15,8 @@ class UserNotificationController extends Controller
 
     public function index(Request $request)
     {
-        $user = $request->input('userId');
-        $perPage = $request->input('perPage', 10);
+        $user = $request->user()?->id ?? $request->input('userId');
+        $perPage = max(1, min(100, (int) $request->input('perPage', 10)));
         $search = $request->input('search', null);
         $sortOrder = $request->input('orderBy', null);
         $sortBy = $request->input('sortBy', null);
@@ -32,7 +32,7 @@ class UserNotificationController extends Controller
     public function marcarNotificacion(Request $request)
     {
         $notifyId = $request->input('notifyId');
-        $user = $request->input('userId');
+        $user = $request->user()?->id ?? $request->input('userId');
         try {
             $data = $this->userService->markAsReadNotify($notifyId, $user);
             return $this->successResponse('Notificacion marcada con exito', $data, 200);
@@ -43,7 +43,7 @@ class UserNotificationController extends Controller
 
     public function marcarTodasNotificaciones(Request $request)
     {
-        $user = $request->input('userId');
+        $user = $request->user()?->id ?? $request->input('userId');
         try {
             $this->userService->markAllReadNotify($user);
             return $this->successResponse('Todas las notificaciones marcadas con exito', null, 200);

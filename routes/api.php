@@ -45,10 +45,10 @@ use App\Http\Controllers\Ventas\TipoDespachosController;
 */
 
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 
-Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
+Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -622,7 +622,7 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
         Route::group(['prefix' => 'admin'], function () {
-            Route::post('lista-logs', [AdminController::class, 'ListaLogs']);
+            Route::post('lista-logs', [AdminController::class, 'listaLogs']);
             Route::get('detalle-logs/{id}', [AdminController::class, 'obtenerDetalleLog']);
             Route::post('app/versions/list', [AppController::class, 'index']);
             Route::post('app/versions', [AppController::class, 'store']);

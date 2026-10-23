@@ -14,7 +14,10 @@ class AppController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    public function __construct(protected readonly AppServiceInterface $appService) {}
+    public function __construct(protected readonly AppServiceInterface $appService)
+    {
+        $this->middleware('web.section:sistemas-movil-gestion-versiones')->except('latest');
+    }
 
     public function index(Request $request): JsonResponse
     {

@@ -20,7 +20,10 @@ class SectionsController extends Controller
     public function  __construct(
         protected readonly MenuServiceInterface $menu,
         protected readonly SectionServiceInterface $sections
-    ) {}
+    ) {
+        $this->middleware('web.section:sistemas-seguridad-secciones,backend-secciones')
+            ->except('obtenerMenuActivo');
+    }
 
 
     //nuevo proceso de secciones

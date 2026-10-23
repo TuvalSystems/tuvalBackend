@@ -294,8 +294,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
 
-            $cleanName = str_replace(' ', '_', $file->getClientOriginalName());
-            $uniqueName = time() . '_' . $cleanName;
+            $uniqueName = \App\Supports\SafeUploadName::image($file);
 
             $path = $file->storeAs(
                 "cotizaciones/operaciones_img/{$cotizacion->id}",
@@ -396,8 +395,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $cleanName      = (string) Str::of($originalName)->replace(' ', '_')->ascii();
-            $uniqueName     = time() . '_' . $cleanName;
+            $uniqueName     = \App\Supports\SafeUploadName::pdf($file);
 
             $quote
                 ->addMedia($file)

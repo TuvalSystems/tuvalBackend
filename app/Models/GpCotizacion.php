@@ -268,7 +268,7 @@ class GpCotizacion extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         // $this->addMediaCollection('imagenes_operaciones'); //esto aun no
-        $this->addMediaCollection('documentos_pdf');
+        $this->addMediaCollection('documentos_pdf')->acceptsMimeTypes(['application/pdf']);
     }
 
     public function detallecotizacion()
