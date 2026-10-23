@@ -13,6 +13,24 @@ use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 
 class CollectionRepository implements CollectionRepositoryInterface
 {
+    public function getPaymentsByDepositReference(string $reference): \Illuminate\Support\Collection
+    {
+        return GpCobrosDeposito::query()
+            ->from('gp_cobros_depositos as dep')
+            ->join('gp_cobros as co', 'co.id', '=', 'dep.cobro_id')
+            ->join('gp_clientes as cli', 'cli.id', '=', 'co.cliente_id')
+            ->where('dep.comprobante', $reference)
+            ->select(
+                'co.numero_recibo',
+                'co.cliente_id',
+                'cli.CLI_RAZON_SOCIAL as cli_razon_social',
+                'cli.CLI_RUC as cli_ruc',
+                'dep.comprobante',
+                'co.fecha'
+            )
+            ->get();
+    }
+
 
     /*
      * Obtiene los saldos aplicados por el id de la caja y una fecha especifica
