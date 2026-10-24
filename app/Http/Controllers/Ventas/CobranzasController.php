@@ -43,7 +43,6 @@ use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use App\Services\Cobranzas\Contracts\PaymentReceiptLookupServiceInterface;
 
 class CobranzasController extends Controller
 {
@@ -53,7 +52,6 @@ class CobranzasController extends Controller
 
     public function __construct(
         protected readonly CollectionServiceInterface $collectionService,
-        protected readonly PaymentReceiptLookupServiceInterface $paymentReceiptLookupService,
         protected readonly CustomerPaymentApplicationServiceInterface $customer,
         protected readonly CollectionUnapplicationServiceInterface $unapplycation,
         protected readonly HistoricalDepositProcessorServiceInterface $historyDeposits,
@@ -62,18 +60,6 @@ class CobranzasController extends Controller
         protected readonly CollectionGpSenderServiceInterface $sendCollectionService,
         protected readonly CashRegisterClosureServiceInterface $cashClosureService
     ) {}
-    public function consultarCobroPorComprobante(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'comprobante' => ['required', 'string', 'max:100'],
-        ]);
-
-        return $this->handleApiAction(function () use ($validated): JsonResponse {
-            $payments = $this->paymentReceiptLookupService->getPaymentsByDepositReference($validated['comprobante']);
-            return $this->successResponse('Consulta de cobros realizada correctamente', $payments, 200);
-        }, 'cobranzas', 'consultarCobroPorComprobante');
-    }
-
     public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         $data = $request->validate([
