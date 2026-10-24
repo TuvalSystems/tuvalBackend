@@ -18,15 +18,12 @@ use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
 use App\Services\Cobranzas\CustomerPaymentApplicationService;
 use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
 use App\Services\Cobranzas\Depositos\HistoricalDepositProcessorService;
-use App\Services\Cobranzas\PaymentReceiptLookupService;
-use App\Services\Cobranzas\Contracts\PaymentReceiptLookupServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class CollectionServiceProvider extends ServiceProvider
 {
 
     public array $singletons = [
-        PaymentReceiptLookupServiceInterface::class => PaymentReceiptLookupService::class,
         CollectionServiceInterface::class                   => CollectionService::class,
         CustomerPaymentApplicationServiceInterface::class   => CustomerPaymentApplicationService::class,
         CollectionUnapplicationServiceInterface::class      => CollectionUnapplicationService::class,
