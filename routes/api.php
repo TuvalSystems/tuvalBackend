@@ -589,6 +589,9 @@ Route::middleware(['auth:sanctum',  'abilities:web'])->group(function () {
 
 
 Route::group(['prefix' => 'consultas-externas'], function () {
+    Route::prefix('cobranzas')->group(function () {
+        Route::get('consultar-cobro-por-comprobante', [CobranzasController::class, 'consultarCobroPorComprobante']);
+    });
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
     Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
