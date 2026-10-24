@@ -4,6 +4,8 @@ namespace App\Repositories\Cobranzas\Contracts;
 
 interface CollectionRepositoryInterface
 {
+    public function getPaymentsByDepositReference(string $reference): \Illuminate\Support\Collection;
+
 
     public function getAppliedBalancesByBox(int $boxId, string $date);
     public function getDepositsByBox(int $boxId, string $date);

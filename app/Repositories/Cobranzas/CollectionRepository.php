@@ -10,9 +10,28 @@ use App\Models\Cobranzas\GpCobrosRetenciones;
 use App\Models\GpCobrosAplicacionMonto;
 use App\Models\GpCobrosTarjetaMonto;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class CollectionRepository implements CollectionRepositoryInterface
 {
+    public function getPaymentsByDepositReference(string $reference): Collection
+    {
+        return DB::table('VW_ConsultaComprobanteCobro')
+            ->where('comprobante', $reference)
+            ->select(
+                'numero_recibo',
+                'cliente_id',
+                'cli_razon_social',
+                'cli_ruc',
+                'comprobante',
+                'fecha'
+            )
+            ->get();
+    }
+
+
+
     /*
      * Obtiene los saldos aplicados por el id de la caja y una fecha especifica
      * @param int $boxId
