@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/login', [AuthMobileController::class, 'login'])->middleware('throttle:login');
+Route::post('/login', [AuthMobileController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------

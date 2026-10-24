@@ -45,7 +45,7 @@ use App\Http\Controllers\Ventas\TipoDespachosController;
 */
 
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/login', [AuthController::class, 'login']);
 
 
 Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(function () {
