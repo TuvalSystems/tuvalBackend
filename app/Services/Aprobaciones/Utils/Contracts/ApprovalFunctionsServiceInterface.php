@@ -2,8 +2,8 @@
 
 namespace App\Services\Aprobaciones\Utils\Contracts;
 
-use App\Models\GpDatosItemsL;
-use App\Models\GpPedido;
+use App\Models\Inventario\Articulos\GpDatosItemsL;
+use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Database\Eloquent\Collection;
 
 interface ApprovalFunctionsServiceInterface

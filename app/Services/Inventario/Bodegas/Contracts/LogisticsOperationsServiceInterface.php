@@ -2,7 +2,7 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
-use App\Models\despachos\GpGuiaRemision;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 
 interface LogisticsOperationsServiceInterface
 {

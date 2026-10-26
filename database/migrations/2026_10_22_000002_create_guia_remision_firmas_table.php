@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use Carbon\Carbon;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;

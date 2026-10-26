@@ -3,8 +3,8 @@
 namespace App\Jobs\Venta\Reservas;
 
 use App\Events\Venta\Reservas\ReservedListAuthorizedChanged;
-use App\Models\GpCotizacion;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

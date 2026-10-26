@@ -2,11 +2,11 @@
 
 namespace App\Services\Funciones;
 
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodegaRelacionada;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;

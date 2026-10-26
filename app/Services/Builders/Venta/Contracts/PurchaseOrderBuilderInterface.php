@@ -2,11 +2,11 @@
 
 namespace App\Services\Builders\Venta\Contracts;
 
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\ordendecompra\GpOrdenDeCompra;
-use App\Models\Ventas\Proveedores\GpProveedor;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleProveedores;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompra;
+use App\Models\Compras\Proveedores\GpProveedor;
 
 
 interface PurchaseOrderBuilderInterface

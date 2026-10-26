@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Cobranzas;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;

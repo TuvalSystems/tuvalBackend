@@ -2,7 +2,7 @@
 
 namespace App\Observers\Cobranzas\CobrosFacturas;
 
-use App\Models\Cobranzas\GpCobro;
+use App\Models\Cobranzas\Cobros\GpCobro;
 
 class GpCobrosObserver
 {

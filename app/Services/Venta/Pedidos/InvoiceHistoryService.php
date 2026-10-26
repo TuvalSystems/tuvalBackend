@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Pedidos;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;

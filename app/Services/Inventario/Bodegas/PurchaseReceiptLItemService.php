@@ -3,12 +3,12 @@
 namespace App\Services\Inventario\Bodegas;
 
 use App\Jobs\Bodegas\NotifyPurchaseReceiptItemLJob;
-use App\Models\GpCliente;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpUsuario;
-use App\Models\ordendecompra\GpOrdenDeCompra;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleProveedores;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompra;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use App\Services\Api\Transacciones\ApiGpReceivedItemL;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;

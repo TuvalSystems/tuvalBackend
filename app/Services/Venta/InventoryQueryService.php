@@ -3,9 +3,9 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\GpCliente;
-use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;

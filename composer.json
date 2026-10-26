@@ -42,6 +42,7 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
+            "app/Supports/model_aliases.php",
             "app/Supports/helpers.php"
         ]
     },

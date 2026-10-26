@@ -3,14 +3,14 @@
 namespace App\Services\Aprobaciones;
 
 
-use App\Models\GpPedido;
-use App\Models\GpCotizacion;
-use App\Models\GpPuntoVenta;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpRegistroCopia;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Documentos\GpRegistroCopia;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
-use App\Models\GpCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
@@ -18,7 +18,7 @@ use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use App\Traits\RegisterAudit;
 use App\Services\Aprobaciones\Utils\FreightApproval;
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Inventario\Despachos\TipoDespacho;
 
 
 class ApprovalService implements ApprovalServiceInterface

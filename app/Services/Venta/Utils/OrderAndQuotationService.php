@@ -2,19 +2,19 @@
 
 namespace App\Services\Venta\Utils;
 
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacion;
-use App\Models\GpRegistroCopia;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Documentos\GpRegistroCopia;
 use App\Services\Api\ApiGpService;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpCotizacionImagen;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpPedidoImagen;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleProveedores;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleStock;
+use App\Models\Ventas\Cotizaciones\GpCotizacionImagen;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
+use App\Models\Ventas\Pedidos\GpPedidoImagen;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;

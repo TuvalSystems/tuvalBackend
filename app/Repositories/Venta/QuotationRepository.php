@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Venta;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 

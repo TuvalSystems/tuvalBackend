@@ -2,7 +2,7 @@
 
 namespace App\Imports;
 
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\ToModel;

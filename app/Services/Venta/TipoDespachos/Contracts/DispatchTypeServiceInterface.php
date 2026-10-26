@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\TipoDespachos\Contracts;
 
-use App\Models\GpUsuario;
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

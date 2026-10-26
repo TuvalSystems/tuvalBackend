@@ -2,9 +2,9 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpUsuario;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Support\Collection;
 
 interface DeliveryNoteCommonServiceInterface

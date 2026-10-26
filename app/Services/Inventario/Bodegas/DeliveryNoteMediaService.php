@@ -4,9 +4,9 @@ namespace App\Services\Inventario\Bodegas;
 
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\Reservas\GpGuiaRemisionReserva;
-use App\Models\GpUsuario;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

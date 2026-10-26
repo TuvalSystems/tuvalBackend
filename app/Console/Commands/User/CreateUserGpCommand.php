@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands\User;
 
-use App\Models\GpUsuario;
-use App\Models\User;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Admin\Usuarios\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;

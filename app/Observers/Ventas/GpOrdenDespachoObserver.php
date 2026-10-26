@@ -2,7 +2,7 @@
 
 namespace App\Observers\Ventas;
 
-use App\Models\GpOrdenDespacho;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
 
 class GpOrdenDespachoObserver
 {

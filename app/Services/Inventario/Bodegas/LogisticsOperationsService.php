@@ -3,11 +3,11 @@
 namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Support\Facades\Log;

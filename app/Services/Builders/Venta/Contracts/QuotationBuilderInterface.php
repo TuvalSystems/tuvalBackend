@@ -2,19 +2,19 @@
 
 namespace App\Services\Builders\Venta\Contracts;
 
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpCliente;
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpCotizacionDetalleStock;
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleProveedores;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleStock;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Ventas\Cotizaciones\HiCotizacion;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalle;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleProveedores;
 use App\Models\Ventas\Cotizaciones\HiCotizacionDetalleStock;
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use App\Models\Ventas\Vendedores\GpVendedor;
 
 interface QuotationBuilderInterface

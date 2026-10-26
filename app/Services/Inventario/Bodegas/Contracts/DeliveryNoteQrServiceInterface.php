@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 
 interface DeliveryNoteQrServiceInterface
 {

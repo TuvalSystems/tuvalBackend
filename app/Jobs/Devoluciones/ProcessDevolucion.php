@@ -2,8 +2,8 @@
 
 namespace App\Jobs\Devoluciones;
 
-use App\Models\devoluciones\GpDevolucionErroresJob;
-use App\Models\devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevolucionErroresJob;
+use App\Models\Devoluciones\GpDevoluciones;
 use App\Services\Devoluciones\DevolucionJobService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;

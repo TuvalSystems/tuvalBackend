@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventario\Articulo;
 
-use App\Models\Articulos\ConfiguracionNivelesArticulo;
-use App\Models\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\ConfiguracionNivelesArticulo;
+use App\Models\Inventario\Articulos\GpArticulo;
 use App\Services\Api\Bodegas\ApiGestionArticleService;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use App\Traits\CleansPayloadData;

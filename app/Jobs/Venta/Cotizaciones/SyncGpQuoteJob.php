@@ -3,9 +3,9 @@
 namespace App\Jobs\Venta\Cotizaciones;
 
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
-use App\Models\GpCotizacion;
-use App\Models\GpUsuario;
+use App\Models\Admin\Sync\SyncLog;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Imports\Contracts\QuoteImportsInterface;
 use Illuminate\Bus\Queueable;

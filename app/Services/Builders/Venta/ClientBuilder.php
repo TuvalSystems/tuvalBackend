@@ -3,9 +3,9 @@
 namespace App\Services\Builders\Venta;
 
 use App\Enums\Ventas\TaxRateEnum;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Traits\CleansPayloadData;
 use Carbon\Carbon;

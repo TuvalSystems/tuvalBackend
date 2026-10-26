@@ -2,7 +2,7 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 

@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\GpCotizacion;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface QuotationCreatorServiceInterface
 {

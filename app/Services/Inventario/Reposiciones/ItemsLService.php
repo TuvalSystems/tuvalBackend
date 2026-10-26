@@ -3,9 +3,9 @@
 namespace App\Services\Inventario\Reposiciones;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpDatosItemsL;
-use App\Models\GpTempCart;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\GpDatosItemsL;
+use App\Models\Ventas\Carrito\GpTempCart;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 

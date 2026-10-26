@@ -2,14 +2,14 @@
 
 namespace App\Services\Inventario\Bodegas;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\traslados\GpTrasladosVentas;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
 use App\Services\Api\Bodegas\ApiDeliverNoteService;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteParamsBuilderInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteCommonServiceInterface;

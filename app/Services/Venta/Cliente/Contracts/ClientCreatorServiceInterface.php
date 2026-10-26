@@ -1,7 +1,7 @@
 <?php
 namespace App\Services\Venta\Cliente\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface ClientCreatorServiceInterface
 {

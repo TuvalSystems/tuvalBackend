@@ -3,7 +3,7 @@
 namespace App\Services\Api\Core;
 
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
+use App\Models\Admin\Sync\SyncLog;
 use Illuminate\Support\Facades\Http;
 
 class SeedBillingHttpClient

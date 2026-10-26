@@ -3,13 +3,13 @@
 namespace App\Services\Movil\Gestion;
 
 use App\Mail\Cotizacion\CotizacionBorradorAppMail;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacion;
-use App\Models\GpDescuentoFormaPago;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpUsuario;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
 use App\Notifications\User\UserNotification;
 use App\Services\Api\ApiGpService;

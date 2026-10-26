@@ -1,7 +1,7 @@
 <?php
 namespace App\Services\Movil\Gestion\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface SteamTrapServiceInterface
 {

@@ -2,7 +2,7 @@
 
 namespace App\Mail\Cotizacion;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;

@@ -2,8 +2,8 @@
 
 namespace App\Services\GestionOperativa\Contracts;
 
-use App\Models\GpClienteSucursal;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface ClientBranchServiceInterface

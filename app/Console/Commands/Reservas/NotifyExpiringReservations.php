@@ -4,7 +4,7 @@ namespace App\Console\Commands\Reservas;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use App\Models\Reservas\GpReserva;
+use App\Models\Ventas\Reservas\GpReserva;
 use Illuminate\Support\Facades\Log;
 use App\Notifications\User\UserNotification;
 

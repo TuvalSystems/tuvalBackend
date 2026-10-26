@@ -2,8 +2,8 @@
 
 namespace App\Jobs\Venta\Reservas;
 
-use App\Models\GpUsuario;
-use App\Models\GpCotizacion;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use Illuminate\Bus\Queueable;
 use App\Mail\Reservas\DemandaMail;
 use App\Mail\Reservas\ReservaMail;

@@ -2,8 +2,8 @@
 
 namespace App\Repositories\Bodegas;
 
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Repositories\Bodegas\Contracts\PurchaseReceipRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 

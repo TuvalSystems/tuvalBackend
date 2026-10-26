@@ -2,10 +2,10 @@
 
 namespace App\Services\Builders\Bodega\Contracts;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpUsuario;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface DeliveryNoteSalesTransferBuilderInterface
 {

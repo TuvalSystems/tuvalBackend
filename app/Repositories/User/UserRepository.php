@@ -2,7 +2,7 @@
 
 namespace App\Repositories\User;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;

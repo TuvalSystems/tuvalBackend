@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use App\Models\Cobranzas\GpCobro;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\GpCotizacion;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpPedido;
+use App\Models\Cobranzas\Cobros\GpCobro;
+use App\Models\Devoluciones\GpDevoluciones;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Ventas\Pedidos\GpPedido;
 use App\Observers\Cobranzas\CobrosFacturas\GpCobrosObserver;
 use App\Observers\Devoluciones\GpDevolucionesObserver;
 use App\Observers\Ventas\GpCotizacionObserver;

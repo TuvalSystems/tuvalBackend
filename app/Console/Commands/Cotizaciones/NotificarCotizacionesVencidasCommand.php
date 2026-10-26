@@ -4,7 +4,7 @@ namespace App\Console\Commands\Cotizaciones;
 
 use App\Jobs\Venta\Cotizaciones\NotifyUnsoldQuotesJob;
 use App\Mail\Cotizacion\RecordatorioCotizacionNoVentaMail;
-use App\Models\GpPuntoVenta;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Services\Venta\Contracts\QuotationServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Console\Command;

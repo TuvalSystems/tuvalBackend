@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Admin\Canton;
-use App\Models\Admin\Parroquia;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Parroquia;
 use Illuminate\Database\Seeder;
 
 class ParroquiaSeeder extends Seeder

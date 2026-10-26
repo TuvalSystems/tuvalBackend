@@ -3,10 +3,10 @@
 namespace App\Jobs\Venta\Pedidos;
 
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpUsuario;
+use App\Models\Admin\Sync\SyncLog;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Imports\Contracts\OrdersImportInterface;
 use Illuminate\Bus\Queueable;

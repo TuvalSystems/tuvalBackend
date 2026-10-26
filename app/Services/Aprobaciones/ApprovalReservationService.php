@@ -2,8 +2,8 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Models\GpCotizacionDetalle;
-use App\Models\Reservas\GpReserva;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Ventas\Reservas\GpReserva;
 use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;

@@ -2,11 +2,11 @@
 
 namespace App\Services\Builders\Bodega\Contracts;
 
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpUsuario;
-use App\Models\Reservas\GpGuiaRemisionReserva;
-use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReservaDetalle;
 
 interface ReservationDeliveryNoteParamsBuilderInterface
 {

@@ -3,16 +3,16 @@
 namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\GpCronLog;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpPuntoVenta;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Devoluciones\GpDevolucionesDetalle;
+use App\Models\Integraciones\Sincronizacion\GpCronLog;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use App\Services\Api\ApiGpService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;

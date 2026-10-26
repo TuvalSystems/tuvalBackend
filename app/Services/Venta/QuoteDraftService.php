@@ -3,8 +3,8 @@
 namespace App\Services\Venta;
 
 use App\Enums\Ventas\QuotationMode;
-use App\Models\borradores\CotizacionBorrador;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Cotizaciones\Borradores\CotizacionBorrador;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;

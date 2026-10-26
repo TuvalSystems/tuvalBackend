@@ -2,7 +2,7 @@
 
 namespace App\Services\Aprobaciones\Utils;
 
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 

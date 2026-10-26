@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Ventas\Pedidos;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\GpClienteSucursal;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Traits\JsonResponseTrait;
 use App\Services\Api\ApiGpService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Pedidos\ValidateStoreOrderRequest;
-use App\Models\Articulos\GpArticulo;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Devoluciones\GpDevoluciones;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;

@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers\Inventario\Transferencias;
 
-use App\Models\GpPedido;
-use App\Models\GpPuntoVenta;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 use App\Http\Controllers\Integraciones\Soap\WebserviceController;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
 use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;

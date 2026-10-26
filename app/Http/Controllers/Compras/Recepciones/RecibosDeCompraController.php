@@ -8,9 +8,9 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Support\Facades\Log;
 

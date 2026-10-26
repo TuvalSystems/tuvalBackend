@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Cotizaciones;
 
-use App\Models\GpProspecto;
+use App\Models\Ventas\Clientes\GpProspecto;
 use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 
 class ProspectQuoteService implements ProspectQuoteServiceInterface

@@ -1,7 +1,7 @@
 <?php
 namespace App\Services\Venta\Cotizaciones\Contracts;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 
 interface QuotationHistoryCreatorServiceInterface
 {

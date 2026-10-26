@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Cotizaciones;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Models\Ventas\Cotizaciones\HiCotizacion;
 use App\Services\Builders\Venta\Contracts\QuotationBuilderInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;

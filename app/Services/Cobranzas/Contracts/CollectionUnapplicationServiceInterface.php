@@ -1,7 +1,7 @@
 <?php
 namespace App\Services\Cobranzas\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface CollectionUnapplicationServiceInterface
 {

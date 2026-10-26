@@ -2,14 +2,14 @@
 
 namespace App\Services\Builders\Cobranzas\CobrosFacturas\Contracts;
 
-use App\Models\Cobranzas\GpCobro;
-use App\Models\Cobranzas\GpCobrosCheques;
-use App\Models\Cobranzas\GpCobrosChequesMonto;
-use App\Models\Cobranzas\GpCobrosDeposito;
-use App\Models\Cobranzas\GpCobrosRetenciones;
-use App\Models\GpCaja;
-use App\Models\GpCobrosAplicacionMonto;
-use App\Models\GpCobrosTarjetaMonto;
+use App\Models\Cobranzas\Cobros\GpCobro;
+use App\Models\Cobranzas\Cheques\GpCobrosCheques;
+use App\Models\Cobranzas\Cheques\GpCobrosChequesMonto;
+use App\Models\Cobranzas\Depositos\GpCobrosDeposito;
+use App\Models\Cobranzas\Retenciones\GpCobrosRetenciones;
+use App\Models\Cobranzas\Cajas\GpCaja;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosAplicacionMonto;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaMonto;
 
 interface CollectionRegistrationBuilderInterface
 {

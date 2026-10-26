@@ -2,13 +2,13 @@
 
 namespace App\Services\Admin\Sync;
 
-use App\Models\Admin\Canton;
-use App\Models\Admin\Provincia;
-use App\Models\Admin\Region;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpPuntoVenta;
-use App\Models\Ventas\Cliente\ClienteConfiguracion;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Provincia;
+use App\Models\Admin\Ubicaciones\Region;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Ventas\Clientes\ClienteConfiguracion;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
 use App\Services\Api\Admin\ApiSync;

@@ -2,7 +2,7 @@
 
 namespace App\Models\Concerns;
 
-use App\Models\GpBodega;
+use App\Models\Inventario\Bodegas\GpBodega;
 use Illuminate\Database\Eloquent\Model;
 
 /**

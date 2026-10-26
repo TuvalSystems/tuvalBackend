@@ -2,9 +2,9 @@
 
 namespace App\Services\Cobranzas;
 
-use App\Models\Cobranzas\CobroValidacionFactura;
-use App\Models\GpCliente;
-use App\Models\GpUsuario;
+use App\Models\Cobranzas\Cobros\CobroValidacionFactura;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 use App\Services\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;

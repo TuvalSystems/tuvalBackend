@@ -2,14 +2,14 @@
 
 namespace App\Services\Builders\Venta;
 
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpUsuario;
-use App\Models\Reservas\GpCotizacionReservaDetalleLog;
-use App\Models\Reservas\GpCotizacionReservaLog;
-use App\Models\Reservas\GpPedidoReservaDetalleLog;
-use App\Models\Reservas\GpPedidoReservaLog;
-use App\Models\Reservas\GpReserva;
-use App\Models\Reservas\GpTrasladosReservas;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Reservas\GpCotizacionReservaDetalleLog;
+use App\Models\Ventas\Reservas\GpCotizacionReservaLog;
+use App\Models\Ventas\Reservas\GpPedidoReservaDetalleLog;
+use App\Models\Ventas\Reservas\GpPedidoReservaLog;
+use App\Models\Ventas\Reservas\GpReserva;
+use App\Models\Ventas\Reservas\GpTrasladosReservas;
 use App\Services\Builders\Venta\Contracts\ReservedBuilderInterface;
 use Carbon\Carbon;
 

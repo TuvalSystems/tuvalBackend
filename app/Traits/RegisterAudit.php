@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Models\Gestion\Auditoria;
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Database\Eloquent\Model;
 
 trait RegisterAudit
@@ -17,7 +17,7 @@ trait RegisterAudit
     ): void {
         Auditoria::create([
             'user_id'        => $user->id,
-            'auditable_type' => get_class($model),
+            'auditable_type' => $model->getMorphClass(),
             'auditable_id'   => $model->id,
             'action'         => $action,
             'old_values'     => $oldData,

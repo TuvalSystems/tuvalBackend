@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Inventario\Transporte;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpTransportista;
-use App\Models\GpVehiculo;
+use App\Models\Inventario\Transporte\GpTransportista;
+use App\Models\Inventario\Transporte\GpVehiculo;
 use Illuminate\Http\Request;
 
 class TransportesController extends Controller

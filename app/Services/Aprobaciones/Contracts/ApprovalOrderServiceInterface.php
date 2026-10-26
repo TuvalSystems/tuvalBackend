@@ -2,8 +2,8 @@
 
 namespace App\Services\Aprobaciones\Contracts;
 
-use App\Models\GpPedido;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 

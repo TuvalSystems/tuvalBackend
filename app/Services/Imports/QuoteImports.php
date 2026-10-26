@@ -2,7 +2,7 @@
 
 namespace App\Services\Imports;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Services\Api\ApiGpService;
 use App\Services\Imports\Contracts\QuoteImportsInterface;
 use Illuminate\Support\Collection;

@@ -157,8 +157,8 @@ class OrderJobService
                 try {
                     DB::transaction(function () use ($order, $today, &$metrics) {
                         // 3) Re-carga con lock para evitar doble facturación concurrente
-                        /** @var \App\Models\GpPedido $fresh */
-                        $fresh = \App\Models\GpPedido::query()
+                        /** @var \App\Models\Ventas\Pedidos\GpPedido $fresh */
+                        $fresh = \App\Models\Ventas\Pedidos\GpPedido::query()
                             ->whereKey($order->id)
                             ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
                             ->first();

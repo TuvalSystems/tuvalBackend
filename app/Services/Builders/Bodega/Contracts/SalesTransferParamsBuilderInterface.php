@@ -2,9 +2,9 @@
 
 namespace App\Services\Builders\Bodega\Contracts;
 
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 
 interface SalesTransferParamsBuilderInterface
 {

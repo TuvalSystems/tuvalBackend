@@ -2,13 +2,13 @@
 
 namespace App\Models\Ventas\Cotizaciones;
 
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionVentaMotivo;
-use App\Models\GpPedido;
-use App\Models\GpProspecto;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionVentaMotivo;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Clientes\GpProspecto;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

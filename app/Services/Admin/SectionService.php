@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use App\Models\Section;
+use App\Models\Admin\Secciones\Section;
 use App\Services\Admin\Contracts\SectionServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

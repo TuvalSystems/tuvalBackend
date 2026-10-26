@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Articulos;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\GpArticulo;
 use App\Services\Inventario\Reposiciones\ItemsLService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;

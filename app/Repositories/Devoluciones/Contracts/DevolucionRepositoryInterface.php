@@ -2,10 +2,10 @@
 
 namespace App\Repositories\Devoluciones\Contracts;
 
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\GpCliente;
-use App\Models\GpPedido;
-use App\Models\GpPuntoVenta;
+use App\Models\Devoluciones\GpDevoluciones;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 interface DevolucionRepositoryInterface

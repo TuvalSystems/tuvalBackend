@@ -2,7 +2,7 @@
 
 namespace App\Observers\Devoluciones;
 
-use App\Models\devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevoluciones;
 
 class GpDevolucionesObserver
 {

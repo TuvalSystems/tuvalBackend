@@ -2,8 +2,8 @@
 
 namespace App\Services\Imports;
 
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use App\Services\Api\ApiGpService;
 use App\Services\Imports\Contracts\OrdersImportInterface;
 use Illuminate\Support\Facades\Log;

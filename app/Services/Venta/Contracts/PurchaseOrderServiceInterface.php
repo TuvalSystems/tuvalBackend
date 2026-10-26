@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 
 interface PurchaseOrderServiceInterface
 {

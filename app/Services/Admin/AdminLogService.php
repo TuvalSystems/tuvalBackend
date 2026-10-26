@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use App\Models\Admin\SyncLog;
+use App\Models\Admin\Sync\SyncLog;
 use App\Services\Admin\Contracts\AdminLogServiceInterface;
 
 class AdminLogService implements AdminLogServiceInterface

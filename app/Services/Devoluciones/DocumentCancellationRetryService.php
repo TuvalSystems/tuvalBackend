@@ -4,10 +4,10 @@ namespace App\Services\Devoluciones;
 
 use App\Enums\devoluciones\InvoiceAnulationStatus;
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
+use App\Models\Admin\Sync\SyncLog;
 use App\Mail\Devoluciones\FacturasNoAnuladasMail;
-use App\Models\devoluciones\GpFacturaAnulada;
-use App\Models\GpPedido;
+use App\Models\Devoluciones\GpFacturaAnulada;
+use App\Models\Ventas\Pedidos\GpPedido;
 use App\Services\Api\ApiSeedBillingService;
 use App\Services\Devoluciones\Contracts\DocumentCancellationRetryServiceInterface;
 use Carbon\Carbon;

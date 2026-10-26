@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\GpPedido;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface OrderServiceInterface
 {

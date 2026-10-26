@@ -2,7 +2,7 @@
 
 namespace App\Services\Devoluciones\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface DevolucionServiceInterface

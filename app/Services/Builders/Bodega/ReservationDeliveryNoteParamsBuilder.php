@@ -5,11 +5,11 @@ namespace App\Services\Builders\Bodega;
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\ReasonForTransfer;
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpUsuario;
-use App\Models\Reservas\GpGuiaRemisionReserva;
-use App\Models\Reservas\GpGuiaRemisionReservaDetalle;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReservaDetalle;
 use App\Services\Builders\Bodega\Contracts\ReservationDeliveryNoteParamsBuilderInterface;
 use Carbon\Carbon;
 

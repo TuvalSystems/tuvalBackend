@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\GpArticulo;
 
 interface InventoryQueryServiceInterface
 {

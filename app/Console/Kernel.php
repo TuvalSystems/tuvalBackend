@@ -3,8 +3,8 @@
 namespace App\Console;
 
 use App\Jobs\Devoluciones\EnqueueDevoluciones;
-use App\Models\Admin\SyncLog;
-use App\Models\borradores\CotizacionBorrador;
+use App\Models\Admin\Sync\SyncLog;
+use App\Models\Ventas\Cotizaciones\Borradores\CotizacionBorrador;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 

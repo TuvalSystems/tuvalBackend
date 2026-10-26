@@ -3,12 +3,12 @@
 namespace App\Services\Venta\Cliente;
 
 use App\Jobs\Venta\Cliente\SendClientToGpJob;
-use App\Models\Admin\Canton;
-use App\Models\Admin\Provincia;
-use App\Models\Admin\Region;
-use App\Models\GpCliente;
-use App\Models\GpUsuario;
-use App\Models\Ventas\TipoIdentificacion;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Provincia;
+use App\Models\Admin\Ubicaciones\Region;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Clientes\TipoIdentificacion;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;

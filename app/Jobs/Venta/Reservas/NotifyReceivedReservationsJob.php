@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Venta\Reservas;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

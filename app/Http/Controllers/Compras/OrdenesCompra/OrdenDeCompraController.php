@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Compras\OrdenesCompra;
 use App\Http\Controllers\Integraciones\Soap\WebserviceController;
 use App\Http\Controllers\Controller;
 
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\ordendecompra\GpOrdenDeCompraGeneradoDetalle;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 

@@ -2,7 +2,7 @@
 
 namespace App\Services\Cobranzas\Depositos;
 
-use App\Models\Cobranzas\GpCobrosDeposito;
+use App\Models\Cobranzas\Depositos\GpCobrosDeposito;
 use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 

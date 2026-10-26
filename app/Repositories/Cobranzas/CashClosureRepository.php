@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Cobranzas;
 
-use App\Models\GpCierreCaja;
+use App\Models\Cobranzas\Cajas\GpCierreCaja;
 use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 
 class CashClosureRepository implements CashClosureRepositoryInterface

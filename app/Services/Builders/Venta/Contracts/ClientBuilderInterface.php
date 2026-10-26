@@ -2,9 +2,9 @@
 
 namespace App\Services\Builders\Venta\Contracts;
 
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface ClientBuilderInterface
 {

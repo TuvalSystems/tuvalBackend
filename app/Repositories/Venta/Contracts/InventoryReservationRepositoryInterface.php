@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Venta\Contracts;
 
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 interface InventoryReservationRepositoryInterface

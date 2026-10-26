@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Admin\Canton;
-use App\Models\Admin\Provincia;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Provincia;
 use Illuminate\Database\Seeder;
 
 class CantonSeeder extends Seeder

@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands\Ventas;
 
-use App\Models\GpCotizacion;
-use App\Models\GpPedido;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Console\Command;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 

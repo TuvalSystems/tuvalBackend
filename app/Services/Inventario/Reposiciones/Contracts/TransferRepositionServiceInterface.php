@@ -2,7 +2,7 @@
 
 namespace App\Services\Inventario\Reposiciones\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface TransferRepositionServiceInterface
 {

@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Inventario\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\ordendecompra\GpOrdenDeCompraGenerado;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\Reservas\GpGuiaRemisionReserva;
-use App\Models\Reservas\GpTrasladosReservas;
-use App\Models\Section;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Devoluciones\GpDevoluciones;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
+use App\Models\Ventas\Reservas\GpTrasladosReservas;
+use App\Models\Admin\Secciones\Section;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

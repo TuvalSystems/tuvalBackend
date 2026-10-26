@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 
 class UserFactory extends Factory
 {
+    protected $model = \App\Models\Admin\Usuarios\User::class;
+
     /**
      * Define the model's default state.
      *

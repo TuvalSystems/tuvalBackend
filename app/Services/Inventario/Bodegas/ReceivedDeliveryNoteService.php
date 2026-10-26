@@ -4,7 +4,7 @@ namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
 use App\Enums\bodegas\guiaremision\DeliveryNoteType;
-use App\Models\GpBodega;
+use App\Models\Inventario\Bodegas\GpBodega;
 use App\Services\Inventario\Bodegas\Contracts\ReceivedDeliveryNoteServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;

@@ -2,7 +2,7 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Support\Collection;
 
 interface TransferServiceInterface

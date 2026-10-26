@@ -2,7 +2,7 @@
 
 namespace App\Services\Devoluciones\Contracts;
 
-use App\Models\devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevoluciones;
 
 interface ReInvoiceServiceInterface
 {

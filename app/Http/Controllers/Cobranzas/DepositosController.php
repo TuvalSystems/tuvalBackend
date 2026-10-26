@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Cobranzas;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use App\Models\Cobranzas\GpCobro;
-use App\Models\Cobranzas\GpCobrosDeposito;
+use App\Models\Cobranzas\Cobros\GpCobro;
+use App\Models\Cobranzas\Depositos\GpCobrosDeposito;
 use App\Notifications\User\UserNotification;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;

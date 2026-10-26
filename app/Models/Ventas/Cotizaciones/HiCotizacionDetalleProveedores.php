@@ -2,8 +2,8 @@
 
 namespace App\Models\Ventas\Cotizaciones;
 
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 
 use App\Enums\Ventas\OrderStatus;
 use App\Http\Controllers\Integraciones\Soap\WebserviceController;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpDatosItemsL;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpTempCart;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Inventario\Articulos\GpDatosItemsL;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\Ventas\Carrito\GpTempCart;
 use App\Models\Ventas\Vendedores\GpVendedor;
 
 class FuncionesController extends Controller

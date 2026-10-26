@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\Ventas\Consultas;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpCaja;
-use App\Models\GpPuntoVenta;
+use App\Models\Cobranzas\Cajas\GpCaja;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use App\Models\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 use App\Http\Controllers\Compartido\FuncionesController;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\reposicion\GpTrasladosReposicion;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;
 use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
 use App\Traits\ExecuteApiTransactions;

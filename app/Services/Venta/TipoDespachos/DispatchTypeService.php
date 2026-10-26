@@ -2,9 +2,9 @@
 
 namespace App\Services\Venta\TipoDespachos;
 
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;

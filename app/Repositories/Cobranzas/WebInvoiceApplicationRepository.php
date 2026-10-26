@@ -2,13 +2,13 @@
 
 namespace App\Repositories\Cobranzas;
 
-use App\Models\Cobranzas\GpCobrosChequesFacturas;
-use App\Models\Cobranzas\GpCobrosDepositosFacturas;
-use App\Models\Cobranzas\GpCobrosEfectivoFactura;
-use App\Models\Cobranzas\GpCobrosRetenciones;
-use App\Models\GpCobrosAplicacionFactura;
-use App\Models\GpCobrosTarjetaFactura;
-use App\Models\GpPedido;
+use App\Models\Cobranzas\Cheques\GpCobrosChequesFacturas;
+use App\Models\Cobranzas\Depositos\GpCobrosDepositosFacturas;
+use App\Models\Cobranzas\Efectivo\GpCobrosEfectivoFactura;
+use App\Models\Cobranzas\Retenciones\GpCobrosRetenciones;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosAplicacionFactura;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaFactura;
+use App\Models\Ventas\Pedidos\GpPedido;
 use App\Repositories\Cobranzas\Contracts\WebInvoiceApplicationRepositoryInterface;
 
 class WebInvoiceApplicationRepository implements WebInvoiceApplicationRepositoryInterface

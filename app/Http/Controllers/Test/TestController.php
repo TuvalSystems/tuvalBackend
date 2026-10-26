@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Test;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpPedido;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\TestUserNotification;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Movil\Inventario\GuiasRemision;
 
 use App\Http\Controllers\Controller;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteMediaServiceInterface;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use App\Traits\ExecuteApiTransactions;

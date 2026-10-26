@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface OrderCreatorServiceInterface
 {

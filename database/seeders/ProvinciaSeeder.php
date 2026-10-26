@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Admin\Provincia;
-use App\Models\Admin\Region;
+use App\Models\Admin\Ubicaciones\Provincia;
+use App\Models\Admin\Ubicaciones\Region;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 

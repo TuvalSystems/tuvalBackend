@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Secciones;
 
 use App\Http\Requests\Admin\StoreSectionRequest;
 use App\Http\Requests\Admin\UpdateSectionRequest;
-use App\Models\Section;
+use App\Models\Admin\Secciones\Section;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\Admin\Contracts\SectionServiceInterface;
 use App\Traits\ExecuteApiTransactions;

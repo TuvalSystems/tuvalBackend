@@ -2,7 +2,7 @@
 
 namespace App\Repositories\User\Contracts;
 
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface UserRepositoryInterface
 {

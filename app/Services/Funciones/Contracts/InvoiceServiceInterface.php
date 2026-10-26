@@ -2,7 +2,7 @@
 
 namespace App\Services\Funciones\Contracts;
 
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 
 interface InvoiceServiceInterface
 {

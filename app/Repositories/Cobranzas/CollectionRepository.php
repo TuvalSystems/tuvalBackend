@@ -3,12 +3,12 @@
 namespace App\Repositories\Cobranzas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
-use App\Models\Cobranzas\GpCobrosCheques;
-use App\Models\Cobranzas\GpCobrosDeposito;
-use App\Models\Cobranzas\GpCobrosEfectivoMonto;
-use App\Models\Cobranzas\GpCobrosRetenciones;
-use App\Models\GpCobrosAplicacionMonto;
-use App\Models\GpCobrosTarjetaMonto;
+use App\Models\Cobranzas\Cheques\GpCobrosCheques;
+use App\Models\Cobranzas\Depositos\GpCobrosDeposito;
+use App\Models\Cobranzas\Efectivo\GpCobrosEfectivoMonto;
+use App\Models\Cobranzas\Retenciones\GpCobrosRetenciones;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosAplicacionMonto;
+use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaMonto;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

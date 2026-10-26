@@ -2,10 +2,10 @@
 
 namespace App\Services\Admin;
 
-use App\Models\Admin\Canton;
-use App\Models\Admin\Parroquia;
-use App\Models\Admin\Provincia;
-use App\Models\Admin\Region;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Parroquia;
+use App\Models\Admin\Ubicaciones\Provincia;
+use App\Models\Admin\Ubicaciones\Region;
 use App\Services\Admin\Contracts\LocationServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 

@@ -2,8 +2,8 @@
 
 namespace App\Services\Comercial;
 
-use App\Models\GpUsuario;
-use App\Models\Usuario\UsuarioVisibilidadLista;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Admin\Usuarios\UsuarioVisibilidadLista;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Ventas\Vendedores\VendedorAtributoValor;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;

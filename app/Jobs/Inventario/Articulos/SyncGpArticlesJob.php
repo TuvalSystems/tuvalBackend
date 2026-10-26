@@ -3,9 +3,9 @@
 namespace App\Jobs\Inventario\Articulos;
 
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpUsuario;
+use App\Models\Admin\Sync\SyncLog;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
 use Illuminate\Bus\Queueable;

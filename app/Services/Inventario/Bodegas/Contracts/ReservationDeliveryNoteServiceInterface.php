@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas\Contracts;
 
-use App\Models\GpUsuario;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 

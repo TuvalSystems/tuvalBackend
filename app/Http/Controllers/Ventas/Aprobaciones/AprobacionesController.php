@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Ventas\Aprobaciones;
 
 use App\Enums\devoluciones\DevolutionStatus;
-use App\Models\GpCliente;
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
-use App\Models\GpOrdenDespacho;
-use App\Models\GpClienteSucursal;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Http\Controllers\Controller;
-use App\Models\devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevoluciones;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;

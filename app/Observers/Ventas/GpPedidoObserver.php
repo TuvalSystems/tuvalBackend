@@ -2,7 +2,7 @@
 
 namespace App\Observers\Ventas;
 
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 
 class GpPedidoObserver
 {

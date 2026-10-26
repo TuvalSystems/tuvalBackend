@@ -2,8 +2,8 @@
 
 namespace App\Services\Cobranzas;
 
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\Cobranzas\Contracts\CashClosureRepositoryInterface;
 use App\Repositories\Cobranzas\Contracts\CollectionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;

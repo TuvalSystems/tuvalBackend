@@ -3,8 +3,8 @@
 namespace App\Jobs\Cobranzas\CobrosFacturas;
 
 use App\Enums\Admin\Sync\StatusSync;
-use App\Models\Admin\SyncLog;
-use App\Models\Cobranzas\GpCobro;
+use App\Models\Admin\Sync\SyncLog;
+use App\Models\Cobranzas\Cobros\GpCobro;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Cache\Repository;

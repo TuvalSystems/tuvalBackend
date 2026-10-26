@@ -2,9 +2,9 @@
 
 namespace App\Models\Ventas\Vendedores;
 
-use App\Models\GpCliente;
-use App\Models\GpUsuario;
-use App\Models\Ventas\TipoVendedor;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Vendedores\TipoVendedor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

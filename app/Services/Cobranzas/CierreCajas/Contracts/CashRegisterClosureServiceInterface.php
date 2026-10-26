@@ -2,8 +2,8 @@
 
 namespace App\Services\Cobranzas\CierreCajas\Contracts;
 
-use App\Models\GpCierreCaja;
-use App\Models\GpUsuario;
+use App\Models\Cobranzas\Cajas\GpCierreCaja;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface CashRegisterClosureServiceInterface
 {

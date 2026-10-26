@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\GpCotizacionVentaMotivo;
+use App\Models\Ventas\Cotizaciones\GpCotizacionVentaMotivo;
 use Illuminate\Database\Seeder;
 
 class listaRecordatorio extends Seeder

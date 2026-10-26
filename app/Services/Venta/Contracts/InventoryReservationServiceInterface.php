@@ -2,9 +2,9 @@
 
 namespace App\Services\Venta\Contracts;
 
-use App\Models\GpCotizacion;
-use App\Models\GpUsuario;
-use App\Models\Reservas\GpReserva;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Reservas\GpReserva;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;

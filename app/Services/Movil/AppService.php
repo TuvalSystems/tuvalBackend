@@ -3,7 +3,7 @@
 namespace App\Services\Movil;
 
 use App\Exceptions\Movil\AppVersionException;
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Movil\AppVersion;
 use App\Services\Movil\Contracts\AppServiceInterface;
 use App\Traits\RegisterAudit;

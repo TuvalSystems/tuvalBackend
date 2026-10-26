@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Ventas\Clientes;
 
 use App\Http\Controllers\Controller;
-use App\Models\GpUsuario;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
 use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
 use App\Services\Venta\Contracts\ClientQueryServiceInterface;

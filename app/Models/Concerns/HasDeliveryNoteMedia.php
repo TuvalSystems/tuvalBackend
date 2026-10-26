@@ -2,8 +2,8 @@
 
 namespace App\Models\Concerns;
 
-use App\Models\despachos\GuiaRemisionFirma;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GuiaRemisionFirma;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
 use Spatie\MediaLibrary\InteractsWithMedia;
 

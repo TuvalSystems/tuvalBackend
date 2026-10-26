@@ -4,10 +4,10 @@ namespace App\Services\Builders\Bodega;
 
 use App\Constants\Bodegas\DeliveryNoteConstants;
 use App\Enums\bodegas\guiaremision\DeliveryNoteStatus;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpUsuario;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Bodega\Contracts\DeliveryNoteSalesTransferBuilderInterface;
 use Carbon\Carbon;
 

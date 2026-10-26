@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Proveedores\Contracts;
 
-use App\Models\GpUsuario;
-use App\Models\Ventas\Proveedores\FleteExterno;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Compras\Proveedores\FleteExterno;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

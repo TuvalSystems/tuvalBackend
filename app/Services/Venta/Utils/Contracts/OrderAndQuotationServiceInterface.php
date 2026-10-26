@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Utils\Contracts;
 
-use App\Models\GpCotizacion;
-use App\Models\GpPedido;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
 

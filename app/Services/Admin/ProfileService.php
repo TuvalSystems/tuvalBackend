@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use App\Models\Perfiles;
+use App\Models\Admin\Perfiles\Perfiles;
 use App\Services\Admin\Contracts\ProfileServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 

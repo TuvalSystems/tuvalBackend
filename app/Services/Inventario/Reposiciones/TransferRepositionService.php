@@ -4,13 +4,13 @@ namespace App\Services\Inventario\Reposiciones;
 
 
 use App\Http\Controllers\Integraciones\Soap\WebserviceController;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\despachos\GpGuiaRemisionTransferencia;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpUsuario;
-use App\Models\reposicion\GpTrasladosReposicion;
-use App\Models\reposicion\GpTrasladosReposicionCabecera;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicionCabecera;
 use App\Services\Api\ApiGpService;
 use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;

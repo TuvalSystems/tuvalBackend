@@ -3,22 +3,22 @@
 namespace App\Http\Controllers\Devoluciones;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Http\Request;
-use App\Models\GpOrdenDespacho;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
-use App\Models\devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevoluciones;
 use App\Notifications\User\UserNotification;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Comercial\CommercialVisibilityService;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;

@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Models\Cobranzas\Cajas;
+
+use App\Models\Admin\Usuarios\GpUsuario;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja
+ *
+ * @property int $id
+ * @property int|null $user_id
+ * @property int|null $caja_id
+ * @property string $CAJ_USER_USUARIO
+ * @property string $CAJ_USER_CAJA
+ * @property int $estado
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Cobranzas\Cajas\GpCaja|null $caja
+ * @property-read \App\Models\Admin\Usuarios\User|null $usuario
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja query()
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereCAJUSERCAJA($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereCAJUSERUSUARIO($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereCajaId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereEstado($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|GpRelacionUsuarioCaja whereUserId($value)
+ * @mixin \Eloquent
+ */
+class GpRelacionUsuarioCaja extends Model
+{
+    use HasFactory;
+
+    protected $table = 'gp_relacion_usuario_cajas';
+
+    protected $fillable = [
+        'user_id',
+        'caja_id',
+        'estado'
+    ];
+
+
+
+    public function caja()
+    {
+        return $this->belongsTo(GpCaja::class, 'caja_id');
+    }
+
+
+    public function usuario()
+    {
+        return $this->belongsTo(GpUsuario::class, 'user_id');
+    }
+}

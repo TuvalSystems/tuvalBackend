@@ -19,7 +19,7 @@ class CreateAuditoriasTable extends Migration
             // Usuario que realiza la acción
             $table->unsignedBigInteger('user_id')->nullable();
 
-            // Campos polimórficos (Guardarán: App\Models\Gestion\GpClienteSucursal y el ID)
+            // Campos polimórficos: guardan el tipo estable de Eloquent y el ID.
             $table->string('auditable_type');
             $table->unsignedBigInteger('auditable_id');
 

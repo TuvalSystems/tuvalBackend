@@ -4,13 +4,13 @@ namespace App\Services\Cobranzas\CobrosFacturas;
 
 use App\Enums\Cobranzas\CobrosFacturas\CollectionStatusEnum;
 use App\Jobs\Cobranzas\CobrosFacturas\SendCollectionToGpJob;
-use App\Models\Cobranzas\GpCobro;
-use App\Models\GpCaja;
-use App\Models\GpCajaBancos;
-use App\Models\GpPuntoVenta;
-use App\Models\GpRelacionPuntoVentaCaja;
-use App\Models\GpRelacionUsuarioCaja;
-use App\Models\GpUsuario;
+use App\Models\Cobranzas\Cobros\GpCobro;
+use App\Models\Cobranzas\Cajas\GpCaja;
+use App\Models\Cobranzas\Bancos\GpCajaBancos;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaCaja;
+use App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 

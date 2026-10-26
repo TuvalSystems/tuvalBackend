@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Proveedores;
 
-use App\Models\GpUsuario;
-use App\Models\Ventas\Proveedores\FleteExterno;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Compras\Proveedores\FleteExterno;
 use App\Services\Venta\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Traits\CleansPayloadData;
 use Illuminate\Database\Eloquent\Collection;

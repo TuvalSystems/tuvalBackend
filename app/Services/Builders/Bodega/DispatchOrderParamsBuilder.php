@@ -2,8 +2,8 @@
 
 namespace App\Services\Builders\Bodega;
 
-use App\Models\GpOrdenDespacho;
-use App\Models\GpPedido;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Ventas\Pedidos\GpPedido;
 use App\Services\Builders\Bodega\Contracts\DispatchOrderParamsBuilderInterface;
 
 class DispatchOrderParamsBuilder implements DispatchOrderParamsBuilderInterface

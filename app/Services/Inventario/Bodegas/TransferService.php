@@ -3,13 +3,13 @@
 namespace App\Services\Inventario\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpBodega;
-use App\Models\GpPedido;
-use App\Models\GpPuntoVenta;
-use App\Models\GpRelacionPuntoVentaBodega;
-use App\Models\GpUsuario;
-use App\Models\reposicion\GpTrasladosReposicionCabecera;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Inventario\Bodegas\GpBodega;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Inventario\Reposiciones\GpTrasladosReposicionCabecera;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 use App\Notifications\User\UserNotification;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use App\Services\Funciones\Contracts\InvoiceServiceInterface;

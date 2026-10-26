@@ -2,7 +2,7 @@
 
 namespace App\Services\Venta\Cliente\Contracts;
 
-use App\Models\GpClienteSucursal;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
 
 interface ClientGpSenderServiceInterface
 {

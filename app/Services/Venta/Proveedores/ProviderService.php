@@ -2,8 +2,8 @@
 
 namespace App\Services\Venta\Proveedores;
 
-use App\Models\GpUsuario;
-use App\Models\Ventas\Proveedores\GpProveedor;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Compras\Proveedores\GpProveedor;
 use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;

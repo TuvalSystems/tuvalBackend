@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin\Contracts;
 
-use App\Models\Section;
+use App\Models\Admin\Secciones\Section;
 
 interface SectionServiceInterface
 {

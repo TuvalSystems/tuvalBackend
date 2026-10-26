@@ -2,8 +2,8 @@
 
 namespace App\Services\Cobranzas\CobrosFacturas\Contracts;
 
-use App\Models\Cobranzas\GpCobro;
-use App\Models\GpUsuario;
+use App\Models\Cobranzas\Cobros\GpCobro;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface CollectionRegistrationServiceInterface
 {

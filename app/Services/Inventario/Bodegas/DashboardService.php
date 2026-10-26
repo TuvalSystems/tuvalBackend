@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventario\Bodegas;
 
-use App\Models\GpOrdenDespacho;
-use App\Models\GpRelacionPuntoVentaBodega;
+use App\Models\Inventario\Despachos\GpOrdenDespacho;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Services\Inventario\Bodegas\Contracts\DashboardServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;

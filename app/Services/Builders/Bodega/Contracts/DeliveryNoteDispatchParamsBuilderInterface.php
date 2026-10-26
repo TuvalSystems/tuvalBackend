@@ -2,9 +2,9 @@
 
 namespace App\Services\Builders\Bodega\Contracts;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\despachos\GpGuiaRemisionDetalle;
-use App\Models\GpUsuario;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
 
 interface DeliveryNoteDispatchParamsBuilderInterface
 {

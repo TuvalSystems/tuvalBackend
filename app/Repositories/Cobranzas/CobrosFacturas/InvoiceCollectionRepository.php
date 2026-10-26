@@ -2,8 +2,8 @@
 
 namespace App\Repositories\Cobranzas\CobrosFacturas;
 
-use App\Models\GpCaja;
-use App\Models\GpUsuario;
+use App\Models\Cobranzas\Cajas\GpCaja;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 

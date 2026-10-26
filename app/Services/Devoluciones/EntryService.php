@@ -2,9 +2,9 @@
 
 namespace App\Services\Devoluciones;
 
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpUsuario;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 
 class EntryService implements EntryServiceInterface

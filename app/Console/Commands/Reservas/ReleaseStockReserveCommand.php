@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands\Reservas;
 
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalleStock;
-use App\Models\Reservas\GpReserva;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleStock;
+use App\Models\Ventas\Reservas\GpReserva;
 use App\Notifications\User\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;

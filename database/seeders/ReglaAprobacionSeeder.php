@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\aprobacion\GpReglaAprobacion;
+use App\Models\Ventas\Aprobaciones\GpReglaAprobacion;
 use Illuminate\Database\Seeder;
 
 class ReglaAprobacionSeeder extends Seeder

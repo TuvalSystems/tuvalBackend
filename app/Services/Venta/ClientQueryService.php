@@ -2,13 +2,13 @@
 
 namespace App\Services\Venta;
 
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCondicionPago;
-use App\Models\GpGrupoCliente;
-use App\Models\GpProspecto;
-use App\Models\GpUsuario;
-use App\Models\Ventas\TipoIdentificacion;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\CondicionesPago\GpCondicionPago;
+use App\Models\Ventas\Clientes\GpGrupoCliente;
+use App\Models\Ventas\Clientes\GpProspecto;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Clientes\TipoIdentificacion;
 use App\Services\Api\ApiGpService;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\Funciones\Contracts\FunctionsServiceInterface;

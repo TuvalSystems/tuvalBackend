@@ -3,8 +3,8 @@
 namespace App\Repositories\Bodegas;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\traslados\GpTrasladosVentas;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Inventario\Transferencias\GpTrasladosVentas;
 use App\Repositories\Bodegas\Contracts\TransferRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 

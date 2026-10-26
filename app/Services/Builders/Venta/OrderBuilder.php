@@ -4,14 +4,14 @@ namespace App\Services\Builders\Venta;
 
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\TaxRateEnum;
-use App\Models\GpPedido;
-use App\Models\GpCotizacion;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Services\Aprobaciones\Utils\FreightApproval;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPedidoDetalleProveedores;
-use App\Models\GpPedidoDetalleStock;
-use App\Models\GpPuntoVenta;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleProveedores;
+use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Venta\Contracts\OrderBuilderInterface;
 
 class OrderBuilder implements OrderBuilderInterface

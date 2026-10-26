@@ -2,8 +2,8 @@
 
 namespace App\Services\Inventario\Articulo\Contracts;
 
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpUsuario;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Admin\Usuarios\GpUsuario;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection as SupportCollection;

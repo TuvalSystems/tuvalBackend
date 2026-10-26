@@ -3,8 +3,8 @@
 namespace App\Services\Aprobaciones;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use App\Services\Aprobaciones\Contracts\ApprovalDevolutionServiceInterface;
 use DateTime;
 use Illuminate\Support\Arr;

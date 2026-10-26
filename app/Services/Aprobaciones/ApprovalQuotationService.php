@@ -2,18 +2,18 @@
 
 namespace App\Services\Aprobaciones;
 
-use App\Models\aprobacion\GpReglaAprobacion;
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\GpPuntoVenta;
-use App\Models\GpRegistroCopia;
-use App\Models\GpUsuario;
+use App\Models\Ventas\Aprobaciones\GpReglaAprobacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Ventas\Documentos\GpRegistroCopia;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
 use App\Services\Aprobaciones\Utils\FreightApproval;
-use App\Models\Ventas\TipoDespachos\TipoDespacho;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Traits\RegisterAudit;

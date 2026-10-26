@@ -4,8 +4,8 @@ namespace App\Services\Inventario\Bodegas;
 
 use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteSignaturePdfServiceInterface;
 
-use App\Models\despachos\GpGuiaRemision;
-use App\Models\Reservas\GpGuiaRemisionReserva;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
+use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
 use Illuminate\Support\Facades\Storage;
 
 class DeliveryNoteSignaturePdfService implements DeliveryNoteSignaturePdfServiceInterface

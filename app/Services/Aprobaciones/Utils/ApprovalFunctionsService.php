@@ -2,17 +2,17 @@
 
 namespace App\Services\Aprobaciones\Utils;
 
-use App\Models\aprobacion\GpReglaAprobacion;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpCliente;
-use App\Models\GpCotizacion;
-use App\Models\GpCotizacionDetalle;
-use App\Models\GpCotizacionDetalleProveedores;
-use App\Models\GpDatosItemsL;
-use App\Models\GpDescuentoFormaPago;
-use App\Models\GpPedido;
-use App\Models\GpPedidoDetalle;
-use App\Models\Reservas\GpCotizacionReservaLog;
+use App\Models\Ventas\Aprobaciones\GpReglaAprobacion;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
+use App\Models\Ventas\Cotizaciones\GpCotizacionDetalleProveedores;
+use App\Models\Inventario\Articulos\GpDatosItemsL;
+use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Ventas\Pedidos\GpPedidoDetalle;
+use App\Models\Ventas\Reservas\GpCotizacionReservaLog;
 use App\Services\Api\ApiGpService;
 use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 use Illuminate\Database\Eloquent\Collection;

@@ -3,13 +3,13 @@
 namespace App\Services\Builders\Devolucion;
 
 use App\Enums\devoluciones\InvoiceAnulationStatus;
-use App\Models\devoluciones\GpDevoluciones;
-use App\Models\devoluciones\GpDevolucionesDetalle;
-use App\Models\devoluciones\GpFacturaAnulada;
-use App\Models\GpIngreso;
-use App\Models\GpIngresosDetalle;
-use App\Models\GpPedido;
-use App\Models\GpUsuario;
+use App\Models\Devoluciones\GpDevoluciones;
+use App\Models\Devoluciones\GpDevolucionesDetalle;
+use App\Models\Devoluciones\GpFacturaAnulada;
+use App\Models\Compras\Recepciones\GpIngreso;
+use App\Models\Compras\Recepciones\GpIngresosDetalle;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Devolucion\Contracts\DevolucionParamsBuilderInterface;
 use Illuminate\Support\Arr;
 

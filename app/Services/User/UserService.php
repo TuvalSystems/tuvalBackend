@@ -2,18 +2,18 @@
 
 namespace App\Services\User;
 
-use App\Models\GpUsuario;
-use App\Models\GpPuntoVenta;
-use App\Models\Ventas\Proveedores\GpProveedor;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
+use App\Models\Compras\Proveedores\GpProveedor;
 use App\Traits\JsonResponseTrait;
-use App\Models\GpCondicionPago;
+use App\Models\Ventas\CondicionesPago\GpCondicionPago;
 use App\Services\Api\ApiGpService;
-use App\Models\GpDescuentoFormaPago;
+use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Collection;
-use App\Models\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Models\GpRelacionUsuarioPuntoVenta;
-use App\Models\Perfiles;
+use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodegaRelacionada;
+use App\Models\Admin\Usuarios\GpRelacionUsuarioPuntoVenta;
+use App\Models\Admin\Perfiles\Perfiles;
 use App\Services\Admin\Contracts\MenuServiceInterface;
 use App\Services\Movil\Menu\Contracts\MobileMenuServiceInterface;
 use App\Services\User\Contracts\UserServiceInterface;

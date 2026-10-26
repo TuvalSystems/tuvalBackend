@@ -3,9 +3,9 @@
 namespace App\Services\Inventario\Articulo;
 
 use App\Enums\bodegas\AbcSegment;
-use App\Models\Articulos\GpArticulo;
-use App\Models\GpUnidadMedida;
-use App\Models\GpUsuario;
+use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\GpUnidadMedida;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Inventario\Articulo\Contracts\ArticleServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Database\Eloquent\Collection;

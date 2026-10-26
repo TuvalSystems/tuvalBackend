@@ -2,14 +2,14 @@
 
 namespace App\Services\GestionOperativa;
 
-use App\Models\Admin\Canton;
-use App\Models\Admin\Provincia;
-use App\Models\Admin\Region;
-use App\Models\GpCliente;
-use App\Models\GpClienteSucursal;
-use App\Models\GpCotizacion;
-use App\Models\GpPedido;
-use App\Models\GpUsuario;
+use App\Models\Admin\Ubicaciones\Canton;
+use App\Models\Admin\Ubicaciones\Provincia;
+use App\Models\Admin\Ubicaciones\Region;
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\Cotizaciones\GpCotizacion;
+use App\Models\Ventas\Pedidos\GpPedido;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Builders\Venta\Contracts\ClientBuilderInterface;
 use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
 use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
