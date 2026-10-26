@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Gestion\Sucursales;
 
 use App\Http\Controllers\Controller;
-use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
+use App\Services\Gestion\Sucursales\Contracts\ClientBranchServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin\Notificaciones;
 
 use App\Http\Controllers\Controller;
-use App\Services\User\Contracts\UserServiceInterface;
+use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 

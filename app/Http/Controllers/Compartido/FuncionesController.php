@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Compartido;
 use App\Http\Controllers\Controller;
 
 use App\Enums\Ventas\OrderStatus;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Models\Inventario\Articulos\GpDatosItemsL;
@@ -20,7 +20,7 @@ class FuncionesController extends Controller
 
     public function stockarticulobodega($consulta_bodega, $arr_bodegas = null): array
     {
-        $webservices = new WebserviceController;
+        $webservices = new LegacyGpSoapService;
         $stock = $webservices->stockarticulobodega($consulta_bodega);
         $stock_general = array();
 
@@ -87,7 +87,7 @@ class FuncionesController extends Controller
             'IDCompania' => env('ID_COMPANIA'),
             'Ruc' => $cliente->CLI_RUC,
         );
-        $webservices = new WebserviceController;
+        $webservices = new LegacyGpSoapService;
         $cupoDisponible = $webservices->cobranzas('ConsultaCupoDisponibleCliente', $parameters);
 
         $suspendido = $cupoDisponible['ConsultaCupoDisponibleClienteResult']['CUPO_CLIENTE'][0]['SUSPENDIDO'] ?? 0;

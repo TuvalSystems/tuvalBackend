@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Admin\Sync;
 
 use App\Jobs\Admin\SyncClientJob;
-use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
+use App\Services\Integraciones\Sincronizacion\Contracts\SyncClientsServiceInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 

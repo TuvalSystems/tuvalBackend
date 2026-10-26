@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\Pedidos;
 
-use App\Services\Venta\OrderJobService;
+use App\Services\Ventas\Pedidos\OrderJobService;
 use App\Supports\DbUtils;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;

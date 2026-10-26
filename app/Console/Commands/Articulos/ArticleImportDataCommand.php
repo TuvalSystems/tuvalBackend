@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Articulos;
 
 use App\Jobs\Inventario\Articulos\SyncGpArticlesJob;
-use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
+use App\Services\Inventario\Articulos\Contracts\ArticleSyncServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

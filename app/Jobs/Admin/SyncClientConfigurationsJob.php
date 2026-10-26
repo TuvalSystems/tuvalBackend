@@ -4,7 +4,7 @@ namespace App\Jobs\Admin;
 
 use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\Sync\SyncLog;
-use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
+use App\Services\Integraciones\Sincronizacion\Contracts\SyncClientsServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

@@ -14,16 +14,16 @@ use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
 use App\Models\Ventas\Pedidos\GpPedido;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\Comercial\CommercialVisibilityService;
-use App\Services\Venta\Contracts\ClientQueryServiceInterface;
-use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
-use App\Services\Venta\Contracts\QuotationServiceInterface;
-use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
-use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
+use App\Services\Ventas\Comercial\CommercialVisibilityService;
+use App\Services\Ventas\Clientes\Contracts\ClientQueryServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationCreatorServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
+use App\Services\Ventas\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -367,7 +367,7 @@ class CotizacionesController extends Controller
                             'IDCompania' => env('ID_COMPANIA'),
                             'Fecha' => $expira,
                         );
-                        $webservices = new WebserviceController;
+                        $webservices = new LegacyGpSoapService;
                         $diaHabil = $webservices->cobranzas('ConsultaDiaFeriado', $parameters);
                         if ($diaHabil['ConsultaDiaFeriadoResult']['Retorno']['0']['Codigo'] == 0) {
                             $validez_real++;

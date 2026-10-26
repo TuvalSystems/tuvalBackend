@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin\Sistema;
 
 use App\Http\Controllers\Controller;
-use App\Services\Admin\Contracts\AdminLogServiceInterface;
-use App\Services\Admin\Contracts\LocationServiceInterface;
+use App\Services\Admin\Logs\Contracts\AdminLogServiceInterface;
+use App\Services\Admin\Ubicaciones\Contracts\LocationServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;

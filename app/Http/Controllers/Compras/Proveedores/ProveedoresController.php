@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Compras\Proveedores;
 
 use App\Http\Controllers\Controller;
-use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
+use App\Services\Compras\Proveedores\Contracts\ProviderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

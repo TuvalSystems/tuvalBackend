@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Inventario\Transporte;
 
 use App\Http\Controllers\Controller;
-use App\Services\Venta\Proveedores\Contracts\ExternalFreightServiceInterface;
+use App\Services\Compras\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

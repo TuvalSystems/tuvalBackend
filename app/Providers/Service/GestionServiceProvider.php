@@ -2,8 +2,8 @@
 
 namespace App\Providers\Service;
 
-use App\Services\GestionOperativa\ClientBranchService;
-use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
+use App\Services\Gestion\Sucursales\ClientBranchService;
+use App\Services\Gestion\Sucursales\Contracts\ClientBranchServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class GestionServiceProvider extends ServiceProvider

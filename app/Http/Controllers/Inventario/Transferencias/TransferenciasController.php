@@ -11,11 +11,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Models\Inventario\Transferencias\GpTrasladosVentas;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
 use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
-use App\Services\Inventario\Bodegas\Contracts\TransferServiceInterface;
+use App\Services\Inventario\Transferencias\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -213,7 +213,7 @@ class TransferenciasController extends Controller
 
     public function generarpicking($detalle): array
     {
-        $webservice = new WebserviceController();
+        $webservice = new LegacyGpSoapService();
 
         $para_peso = array();
 

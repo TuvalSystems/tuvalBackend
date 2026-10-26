@@ -1,0 +1,200 @@
+<?php
+
+namespace App\Services\Ventas\Clientes;
+
+use App\Models\Ventas\Clientes\GpCliente;
+use App\Models\Ventas\Clientes\GpClienteSucursal;
+use App\Models\Ventas\CondicionesPago\GpCondicionPago;
+use App\Models\Ventas\Clientes\GpGrupoCliente;
+use App\Models\Ventas\Clientes\GpProspecto;
+use App\Models\Admin\Usuarios\GpUsuario;
+use App\Models\Ventas\Clientes\TipoIdentificacion;
+use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Ventas\Clientes\Builders\Contracts\ClientBuilderInterface;
+use App\Services\Compartido\Contracts\FunctionsServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientGpSenderServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientQueryServiceInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+
+
+class ClientQueryService implements ClientQueryServiceInterface
+{
+
+    public function __construct(
+        protected readonly ApiGpService $apiGp,
+        protected readonly FunctionsServiceInterface $functionsService,
+        protected readonly ClientBuilderInterface $builder,
+        protected readonly ClientGpSenderServiceInterface $clientJob
+
+    ) {
+        // Inyecta dependencias si es necesario
+    }
+
+    public function getAllClients(string $term, ?string $type = null)
+    {
+        $searchTerm = '%' . str_replace(' ', '%', $term) . '%';
+
+        $clientes = GpCliente::query()
+            ->from('gp_clientes as gpc')
+            ->select([
+                'gpc.id',
+                'gpc.CLI_RUC',
+                'gpc.CLI_RAZON_SOCIAL',
+                'gpc.CLI_NOMBRE_CORTO',
+                'gpc.CLI_CONTACTO',
+                'gpc.CLI_CIUDAD',
+                'gpc.CLI_PROVINCIA',
+                'gpc.CLI_TELEFONO_1',
+                'gpc.CLI_CORREO_ELECT_SRI',
+            ])
+            ->where('CLI_RUC', '!=', '9999999999999')
+            ->when($type !== 'consulta', function ($q) {
+                $q->where('gpc.CLI_ESTADO', 'ACTIVO');
+            })
+            ->where(function (Builder $query) use ($searchTerm) {
+                $query->where('gpc.CLI_RUC', 'LIKE', $searchTerm)
+                    ->orWhere('gpc.CLI_RAZON_SOCIAL', 'LIKE', $searchTerm)
+                    ->orWhere('gpc.CLI_NOMBRE_CORTO', 'LIKE', $searchTerm)
+                    ->orWhere('gpc.CLI_CORREO_ELECT_SRI', 'LIKE', $searchTerm);
+            })
+            ->limit(200)
+            ->get();
+
+        /** verificacion de emails  */
+        return $clientes->transform(function ($client) {
+            $rawEmail = $client->CLI_CORREO_ELECT_SRI;
+            if (empty($rawEmail) || trim($rawEmail) == '') {
+                $client->emails_validated = true;
+                return $client;
+            }
+
+            $emails = preg_split('/[;]/', $rawEmail, -1, PREG_SPLIT_NO_EMPTY);
+            $allValid = true;
+
+
+            foreach ($emails as $email) {
+                $emailClear = trim($email);
+
+                if ($emailClear == '') continue;
+
+                if (!filter_var($emailClear, FILTER_VALIDATE_EMAIL)) {
+                    $allValid = false;
+                    break; // Si uno falla, ya no es válido para el Request, cortamos aquí.
+                }
+            }
+            $client->emails_validated = $allValid;
+            return $client;
+        });
+    }
+
+
+
+    public function getAvailabeCreditCustomer(string $ruc): array
+    {
+        $cliente = GpCliente::with([
+            'gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS',
+        ])
+            ->where('CLI_RUC', $ruc)->first();
+
+        $cupoDisponible = $this->functionsService->getClientCheckAvailableQuota($ruc);
+        $cliente->suspendido = data_get($cupoDisponible, 'suspendido', 0);
+        $cliente->cupo_disponible = number_format(data_get($cupoDisponible, 'cupoDisponibleGp', 0), 2, '.', ',');
+        $cliente->cupo_asignado = number_format(data_get($cupoDisponible, 'cupoAsignado', 0), 2, '.', ',');
+        $cliente->es_cheque = GpCondicionPago::where('COND_ID', $cliente->CLI_CONDICION_PAGO)->value('es_cheque');
+        $segmentos = $this->getSegmentClient($ruc);
+        return compact('cliente', 'segmentos');
+    }
+
+
+    public function getSegmentClient(string $ruc)
+    {
+        $resp = $this->apiGp->fetchClientSegment(['ruc' => $ruc]);
+        return data_get($resp, 'data', []);
+    }
+
+
+    public function getCustomerBranches(string $ruc, ?string $type = null): mixed
+    {
+        $sucursales =  GpClienteSucursal::where('CLI_SUC_RUC', $ruc)
+            ->when($type !== 'consulta', function ($query) {
+                $query->where('estado', 1);
+            })
+            ->orderBy('CLI_SUC_ID_DIRECCION', 'DESC')
+            ->select([
+                'id',
+                'CLI_SUC_CIUDAD',
+                'CLI_SUC_PROVINCIA',
+                'CLI_SUC_ID_DIRECCION',
+                'CLI_SUC_DIRECCION',
+                'CLI_SUC_TELEFONO',
+                'CLI_SUC_CORREO_ELECTRONICO_SRI',
+                'coordenadas',
+                'estado'
+            ])
+            ->get();
+        return $sucursales->transform(function ($client) {
+            $rawEmail = $client->CLI_SUC_CORREO_ELECTRONICO_SRI;
+            if (empty($rawEmail) || trim($rawEmail) == '') {
+                $client->emails_validated = true;
+                return $client;
+            }
+
+            $emails = preg_split('/[;]/', $rawEmail, -1, PREG_SPLIT_NO_EMPTY);
+            $allValid = true;
+
+
+            foreach ($emails as $email) {
+                $emailClear = trim($email);
+
+                if ($emailClear == '') continue;
+
+                if (!filter_var($emailClear, FILTER_VALIDATE_EMAIL)) {
+                    $allValid = false;
+                    break; // Si uno falla, ya no es válido para el Request, cortamos aquí.
+                }
+            }
+            $client->emails_validated = $allValid;
+            return $client;
+        });
+    }
+
+
+
+    /** proceso para crear la nueva direccion del cliente - sucursal */
+
+   public function getListTypeDni()
+    {
+        return TipoIdentificacion::where('estado', 1)->get();
+    }
+
+
+    public function getAllSegments()
+    {
+        $resp = $this->apiGp->fetchAllSegments();
+        return data_get($resp, 'data', []);
+    }
+
+    public function getSubSegmentBySegment(int $coAtrPadre)
+    {
+        if (empty($coAtrPadre)) {
+            abort(404, 'Segmento no encontrado');
+        }
+        $resp = $this->apiGp->fetchSubSegmentsBySegment(['coAtrPadre' => $coAtrPadre]);
+        return data_get($resp, 'data', []);
+    }
+
+    public function validateHasExistenceDocument(string $document): bool
+    {
+        return GpCliente::where('CLI_RUC', trim($document))->exists();
+    }
+    public function validateHasExistenceProspect(string $document): bool
+    {
+        return GpProspecto::where('CLI_RUC', trim($document))->exists();
+    }
+
+    public function getListGrupCustomers():Collection
+    {
+        return GpGrupoCliente::orderBy('GRUPO_CODIGO')->get(['id', 'GRUPO_CODIGO']);
+    }
+}

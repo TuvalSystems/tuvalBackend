@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Cobranzas;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
@@ -25,7 +25,7 @@ class EstadoCuentaController extends Controller
             'CLI_RUC' => 'required',
         ]);
 
-        $webservices = new WebserviceController();
+        $webservices = new LegacyGpSoapService();
         $documentosVencidos = $webservices->documentosvencidoscliente($data['CLI_RUC']);
         return response([
             'success' => true,

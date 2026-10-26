@@ -5,7 +5,7 @@ namespace App\Jobs\Inventario\Bodegas;
 use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\Sync\SyncLog;
 use App\Models\Inventario\GuiasRemision\DeliveryNotePurchaseOrder;
-use App\Services\Api\Bodegas\ApiDeliveryNotePurchaseOrderService;
+use App\Services\Integraciones\Api\Bodegas\ApiDeliveryNotePurchaseOrderService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

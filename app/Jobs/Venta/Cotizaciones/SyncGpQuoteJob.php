@@ -7,7 +7,7 @@ use App\Models\Admin\Sync\SyncLog;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
-use App\Services\Imports\Contracts\QuoteImportsInterface;
+use App\Services\Ventas\Cotizaciones\Importaciones\Contracts\QuoteImportsInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

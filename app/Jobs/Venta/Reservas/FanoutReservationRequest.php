@@ -7,7 +7,7 @@ use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use Illuminate\Bus\Queueable;
 use App\Mail\Reservas\DemandaMail;
 use App\Mail\Reservas\ReservaMail;
-use App\Services\Api\ApiGpService;
+use App\Services\Integraciones\Api\ApiGpService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Queue\SerializesModels;

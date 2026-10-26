@@ -21,7 +21,7 @@ use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaFactura;
 use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaMonto;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Repositories\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionRepositoryInterface;
-use App\Services\Api\Cobros\ApiBillingService;
+use App\Services\Integraciones\Api\Cobros\ApiBillingService;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use Carbon\Carbon;
 use DomainException;

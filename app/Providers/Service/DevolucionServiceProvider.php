@@ -27,7 +27,7 @@ class DevolucionServiceProvider extends ServiceProvider implements DeferrablePro
         ReInvoiceServiceInterface::class                    => ReInvoiceService::class,
         DocumentCancellationRetryServiceInterface::class    => DocumentCancellationRetryService::class,
 
-        DevolucionJobService::class
+        DevolucionJobService::class                         => DevolucionJobService::class,
     ];
 
 

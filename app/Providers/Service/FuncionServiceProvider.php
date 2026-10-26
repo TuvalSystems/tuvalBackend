@@ -4,10 +4,10 @@ namespace App\Providers\Service;
 
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Funciones\InvoiceService;
-use App\Services\Funciones\FunctionsService;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
+use App\Services\Facturacion\InvoiceService;
+use App\Services\Compartido\FunctionsService;
+use App\Services\Facturacion\Contracts\InvoiceServiceInterface;
+use App\Services\Compartido\Contracts\FunctionsServiceInterface;
 
 class FuncionServiceProvider extends ServiceProvider implements DeferrableProvider
 {

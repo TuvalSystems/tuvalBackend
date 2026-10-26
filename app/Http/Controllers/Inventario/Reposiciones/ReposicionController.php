@@ -8,12 +8,12 @@ use App\Traits\JsonResponseTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
 use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Inventario\Despachos\Contracts\LogisticsOperationsServiceInterface;
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\Log;
@@ -145,7 +145,7 @@ class ReposicionController extends Controller
         set_time_limit(-1);
         ini_set('memory_limit', '-1');
 
-        $webservices = new WebserviceController();
+        $webservices = new LegacyGpSoapService();
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
         $bodega = $bodega->PTO_VTA_BOD_BODEGA;
 

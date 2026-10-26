@@ -16,10 +16,10 @@ use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
 use App\Repositories\Devoluciones\DevolucionRepository;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
-use App\Services\Api\ApiGpService;
+use App\Services\Integraciones\Api\ApiGpService;
 use App\Services\Devoluciones\Contracts\ReInvoiceServiceInterface;
-use App\Services\Funciones\Contracts\FunctionsServiceInterface;
-use App\Services\Funciones\Contracts\InvoiceServiceInterface;
+use App\Services\Compartido\Contracts\FunctionsServiceInterface;
+use App\Services\Facturacion\Contracts\InvoiceServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin\Usuarios;
 
 use App\Http\Controllers\Controller;
-use App\Services\User\Contracts\UserServiceInterface;
+use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

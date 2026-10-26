@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\Pedidos;
 
-use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
+use App\Services\Inventario\Despachos\Contracts\DispatchServiceInterface;
 use Illuminate\Console\Command;
 
 class checkCompletedDispatches extends Command

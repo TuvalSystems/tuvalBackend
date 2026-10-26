@@ -4,7 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Models\Inventario\GuiasRemision\GuiaRemisionFirma;
 use App\Models\Ventas\Reservas\GpGuiaRemisionReserva;
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNoteQrServiceInterface;
+use App\Services\Inventario\GuiasRemision\Contracts\DeliveryNoteQrServiceInterface;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 trait HasDeliveryNoteMedia

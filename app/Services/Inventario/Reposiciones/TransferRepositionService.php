@@ -3,7 +3,7 @@
 namespace App\Services\Inventario\Reposiciones;
 
 
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemisionTransferencia;
@@ -11,8 +11,8 @@ use App\Models\Inventario\Articulos\GpArticulo;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
 use App\Models\Inventario\Reposiciones\GpTrasladosReposicionCabecera;
-use App\Services\Api\ApiGpService;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Integraciones\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
@@ -394,7 +394,7 @@ class TransferRepositionService implements TransferRepositionServiceInterface
                 'Cantidad' => (float) $it['recibido'], // numérico
             ];
         }
-        $ws = app(WebserviceController::class);
+        $ws = app(LegacyGpSoapService::class);
 
         foreach ($documentos as $doc => $pack) {
             $itemsWs = [];

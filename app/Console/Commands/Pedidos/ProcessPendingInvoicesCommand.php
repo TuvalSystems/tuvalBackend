@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\Pedidos;
 
-use App\Services\Venta\OrderJobService;
+use App\Services\Ventas\Pedidos\OrderJobService;
 use Illuminate\Console\Command;
 
 class ProcessPendingInvoicesCommand extends Command

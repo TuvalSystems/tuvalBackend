@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Integraciones\Sincronizacion;
 
 use App\Http\Controllers\Controller;
 
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Inventario\Articulos\GpArticulo;
 use App\Models\Inventario\Articulos\GpArticuloSugerido;
 use App\Models\Integraciones\Sincronizacion\GpCronLog;
@@ -30,7 +30,7 @@ use App\Models\Cobranzas\Cajas\GpCaja;
 use App\Models\Cobranzas\Bancos\GpCajaBancos;
 use App\Models\Inventario\Articulos\GpUnidadMedida;
 use App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja;
-use App\Services\Api\ApiGpService;
+use App\Services\Integraciones\Api\ApiGpService;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -45,7 +45,7 @@ class SincronizacionController extends Controller
 
     public function llenausuariosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $usuarios = $obj->usuarios();
         foreach ($usuarios as $key => $data) {
 
@@ -70,7 +70,7 @@ class SincronizacionController extends Controller
 
     public function llenabodegasgp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $bodegas = $obj->bodegas();
 
         foreach ($bodegas as $data) {
@@ -103,7 +103,7 @@ class SincronizacionController extends Controller
 
     public function llenacondicionpagogp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $condicionespago = $obj->condicionespago();
 
         $condicionpago = GpCondicionPago::get();
@@ -144,7 +144,7 @@ class SincronizacionController extends Controller
     {
         $metodo = 'MST_Articulo';
         $fecha = '';
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
         if ($cronLog) {
@@ -231,7 +231,7 @@ class SincronizacionController extends Controller
 
     public function llenapuntosdeventagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $puntosdeventa = $obj->puntodeventa();
 
         foreach ($puntosdeventa as $key => $data) {
@@ -263,7 +263,7 @@ class SincronizacionController extends Controller
 
     public function llenacajasgp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $cajas = $obj->caja();
 
         foreach ($cajas as $key => $data) {
@@ -282,7 +282,7 @@ class SincronizacionController extends Controller
 
     public function llenaunidadmedidasgp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $unidadmedidas = $obj->unidadmedida();
 
         foreach ($unidadmedidas as $key => $data) {
@@ -315,7 +315,7 @@ class SincronizacionController extends Controller
 
     public function llenaudatositemsl()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $datositemsl = $obj->datositemsl();
 
         foreach ($datositemsl as $key => $data) {
@@ -337,7 +337,7 @@ class SincronizacionController extends Controller
 
     public function llenadescuentoformapagogp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $descuentos = $obj->descuentoformapago();
 
         foreach ($descuentos as $key => $data) {
@@ -364,7 +364,7 @@ class SincronizacionController extends Controller
 
     public function llenarelacionpuntodeventabodegagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionpuntodeventas = $obj->relacionpuntodeventabodega();
 
         foreach ($relacionpuntodeventas as $key => $data) {
@@ -386,7 +386,7 @@ class SincronizacionController extends Controller
     public function llenarelacionpuntodeventabodegarelacionadagp()
     {
 
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionpuntodeventabodegas = $obj->relacionpuntodeventabodegarelacionada();
 
         GpRelacionPuntoVentaBodegaRelacionada::truncate();
@@ -407,7 +407,7 @@ class SincronizacionController extends Controller
 
     public function llenarelacionpuntodeventacajagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionpuntodeventacajas = $obj->relacionpuntodeventacaja();
 
         foreach ($relacionpuntodeventacajas as $key => $data) {
@@ -428,7 +428,7 @@ class SincronizacionController extends Controller
 
     public function llenarelacionpuntodeventaidventagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionpuntodeventaidventas = $obj->relacionpuntodeventaidventa();
 
         foreach ($relacionpuntodeventaidventas as $key => $data) {
@@ -449,7 +449,7 @@ class SincronizacionController extends Controller
 
     public function llenarelacionusuariopuntoventagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionusuariopuntodeventas = $obj->relacionusuariopuntodeventa();
         $usuario = GpUsuario::pluck('id', 'USERID')
             ->mapWithKeys(fn($item, $key) => [strtolower(trim($key)) => $item])
@@ -484,7 +484,7 @@ class SincronizacionController extends Controller
 
     public function llenarelacionusuariocajagp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $relacionusuariocajas = $obj->relacionusuariocaja();
         GpRelacionUsuarioCaja::truncate();
         $usuariosMap = GpUsuario::pluck('id', 'USERID')->toArray();
@@ -525,7 +525,7 @@ class SincronizacionController extends Controller
     {
         $metodo = 'MST_Vendedor';
         $fecha = '';
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
         if ($cronLog) {
@@ -581,7 +581,7 @@ class SincronizacionController extends Controller
     {
         $metodo = 'MST_Proveedor';
         $fecha = '';
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
 
         $cronLog = GpCronLog::where('metodo', $metodo)->orderBy('fecha', 'DESC')->first();
         if ($cronLog) {
@@ -647,7 +647,7 @@ class SincronizacionController extends Controller
 
     public function llenaclaseclientegp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $claseclientes = $obj->clasecliente();
 
         foreach ($claseclientes as $key => $data) {
@@ -669,7 +669,7 @@ class SincronizacionController extends Controller
 
     public function llenagrupoclientegp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $grupoclientes = $obj->grupocliente();
 
         foreach ($grupoclientes as $key => $data) {
@@ -691,7 +691,7 @@ class SincronizacionController extends Controller
 
     public function llenasubgrupoclientegp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $subgrupoclientes = $obj->subgrupocliente();
 
         if (!isset($subgrupoclientes['MST_SubGrupo_ClienteResult']['CS_SUBGRUPO_CLIENTE']))
@@ -727,7 +727,7 @@ class SincronizacionController extends Controller
 
     public function llenapaisgp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $paises = $obj->pais();
 
         foreach ($paises as $key => $data) {
@@ -746,7 +746,7 @@ class SincronizacionController extends Controller
 
     public function llenaterritoriogp()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $territorios = $obj->territorio();
 
         foreach ($territorios as $key => $data) {
@@ -783,7 +783,7 @@ class SincronizacionController extends Controller
 
     public function llenacajabancos()
     {
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $cajabancos = $obj->consultacajabancos();
 
         foreach ($cajabancos as $key => $data) {
@@ -825,7 +825,7 @@ class SincronizacionController extends Controller
     {
 
         $metodo = 'MST_Cliente';
-        $obj = new WebserviceController;
+        $obj = new LegacyGpSoapService;
         $parameters = [
             'id_Cliente ' => '',
             'FechaCreacion' => '',

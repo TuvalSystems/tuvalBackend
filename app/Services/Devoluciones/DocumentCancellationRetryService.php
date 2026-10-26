@@ -8,7 +8,7 @@ use App\Models\Admin\Sync\SyncLog;
 use App\Mail\Devoluciones\FacturasNoAnuladasMail;
 use App\Models\Devoluciones\GpFacturaAnulada;
 use App\Models\Ventas\Pedidos\GpPedido;
-use App\Services\Api\ApiSeedBillingService;
+use App\Services\Integraciones\Api\ApiSeedBillingService;
 use App\Services\Devoluciones\Contracts\DocumentCancellationRetryServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;

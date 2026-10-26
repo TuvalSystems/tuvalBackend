@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
 use App\Models\Inventario\Reposiciones\GpTrasladosReposicion;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodegaRelacionada;
-use App\Services\Api\ApiGpService;
-use App\Services\Api\Devoluciones\ApiGpReturnsIntegrationService;
+use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Integraciones\Api\Devoluciones\ApiGpReturnsIntegrationService;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 
 class StockWarehouseService implements StockWarehouseServiceInterface

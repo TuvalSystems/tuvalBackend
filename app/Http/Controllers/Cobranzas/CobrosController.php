@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Cobranzas;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Cobranzas\Aplicaciones\GpCobrosAplicacionFactura;
 use App\Models\Cobranzas\Aplicaciones\GpCobrosAplicacionMonto;
 use App\Models\Cobranzas\Aplicaciones\GpCobrosTarjetaFactura;
@@ -31,7 +31,7 @@ use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInte
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use App\Services\Cobranzas\Contracts\PaymentReceiptLookupServiceInterface;
+use App\Services\Cobranzas\Cobros\Contracts\PaymentReceiptLookupServiceInterface;
 
 class CobrosController extends Controller
 {
@@ -61,7 +61,7 @@ class CobrosController extends Controller
             'IDCompania' => env('ID_COMPANIA'),
             'Fecha' => date('Y-m-d'),
         );
-        $webservice = new WebserviceController;
+        $webservice = new LegacyGpSoapService;
         $estadoDeCuenta = $webservice->cobranzas('ConsultaCobrosAnulados', $parameters);
         if (isset($estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'])) {
             $cobrosAnulados = $estadoDeCuenta['ConsultaCobrosAnuladosResult']['CONSULTA_COBROS_ANULADOS'];

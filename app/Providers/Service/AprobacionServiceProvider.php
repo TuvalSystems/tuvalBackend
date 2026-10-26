@@ -2,20 +2,20 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Aprobaciones\ApprovalDevolutionService;
-use App\Services\Aprobaciones\ApprovalOrderService;
-use App\Services\Aprobaciones\ApprovalQuotationService;
-use App\Services\Aprobaciones\ApprovalReservationService;
+use App\Services\Devoluciones\Aprobaciones\ApprovalDevolutionService;
+use App\Services\Ventas\Aprobaciones\ApprovalOrderService;
+use App\Services\Ventas\Aprobaciones\ApprovalQuotationService;
+use App\Services\Ventas\Aprobaciones\ApprovalReservationService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Aprobaciones\ApprovalService;
-use App\Services\Aprobaciones\Contracts\ApprovalDevolutionServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
-use App\Services\Aprobaciones\Contracts\ApprovalServiceInterface;
-use App\Services\Aprobaciones\Utils\ApprovalFunctionsService;
-use App\Services\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
+use App\Services\Ventas\Aprobaciones\ApprovalService;
+use App\Services\Devoluciones\Aprobaciones\Contracts\ApprovalDevolutionServiceInterface;
+use App\Services\Ventas\Aprobaciones\Contracts\ApprovalOrderServiceInterface;
+use App\Services\Ventas\Aprobaciones\Contracts\ApprovalQuotationServiceInterface;
+use App\Services\Ventas\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
+use App\Services\Ventas\Aprobaciones\Contracts\ApprovalServiceInterface;
+use App\Services\Ventas\Aprobaciones\Utils\ApprovalFunctionsService;
+use App\Services\Ventas\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInterface;
 
 class AprobacionServiceProvider extends ServiceProvider implements DeferrableProvider
 {

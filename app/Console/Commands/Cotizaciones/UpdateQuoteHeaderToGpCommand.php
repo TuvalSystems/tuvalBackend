@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Cotizaciones;
 
 use App\Jobs\Venta\Cotizaciones\SyncGpQuoteJob;
-use App\Services\Imports\Contracts\QuoteImportsInterface;
+use App\Services\Ventas\Cotizaciones\Importaciones\Contracts\QuoteImportsInterface;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

@@ -2,8 +2,8 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
-use App\Services\Admin\Sync\SyncClientsService;
+use App\Services\Integraciones\Sincronizacion\Contracts\SyncClientsServiceInterface;
+use App\Services\Integraciones\Sincronizacion\SyncClientsService;
 use Illuminate\Support\ServiceProvider;
 
 class SyncServiceProvider extends ServiceProvider

@@ -3,7 +3,7 @@
 namespace App\Observers\Ventas;
 
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
-use App\Services\Venta\Contracts\QuotationServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationServiceInterface;
 use Illuminate\Support\Facades\DB;
 
 class GpCotizacionObserver

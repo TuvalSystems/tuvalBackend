@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Inventario\Articulos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Consultas\BusquedaArticuloRequest;
-use App\Services\Inventario\Articulo\Contracts\ArticleSegmentConfigServiceInterface;
-use App\Services\Inventario\Articulo\Contracts\ArticleServiceInterface;
-use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
+use App\Services\Inventario\Articulos\Contracts\ArticleSegmentConfigServiceInterface;
+use App\Services\Inventario\Articulos\Contracts\ArticleServiceInterface;
+use App\Services\Inventario\Articulos\Contracts\ArticleSyncServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

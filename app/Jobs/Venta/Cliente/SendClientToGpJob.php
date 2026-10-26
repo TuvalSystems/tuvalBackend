@@ -5,7 +5,7 @@ namespace App\Jobs\Venta\Cliente;
 use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\Sync\SyncLog;
 use App\Models\Ventas\Clientes\GpCliente;
-use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientGpSenderServiceInterface;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Throwable;

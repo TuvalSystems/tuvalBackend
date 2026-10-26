@@ -8,7 +8,7 @@ use App\Models\Ventas\Pedidos\GpPedido;
 use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
-use App\Services\Imports\Contracts\OrdersImportInterface;
+use App\Services\Ventas\Pedidos\Importaciones\Contracts\OrdersImportInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

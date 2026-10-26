@@ -6,7 +6,13 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register() {}
+    public function register()
+    {
+        // Resolve old container keys to the current binding and singleton.
+        foreach (require app_path('Supports/legacy_service_namespaces.php') as $old => $current) {
+            $this->app->alias($current, $old);
+        }
+    }
 
 
 

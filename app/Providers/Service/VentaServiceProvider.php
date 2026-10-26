@@ -2,51 +2,51 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Imports\Contracts\OrdersImportInterface;
-use App\Services\Imports\Contracts\QuoteImportsInterface;
-use App\Services\Imports\OrdersImport;
-use App\Services\Imports\QuoteImports;
-use App\Services\Venta\Cliente\ClientCreatorService;
-use App\Services\Venta\Cliente\ClientGpSenderService;
-use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
-use App\Services\Venta\Cliente\Contracts\ClientGpSenderServiceInterface;
-use App\Services\Venta\ClientQueryService;
-use App\Services\Venta\Contracts\ClientQueryServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
-use App\Services\Venta\OrderJobService;
-use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
-use App\Services\Venta\TipoDespachos\DispatchTypeService;
+use App\Services\Ventas\Pedidos\Importaciones\Contracts\OrdersImportInterface;
+use App\Services\Ventas\Cotizaciones\Importaciones\Contracts\QuoteImportsInterface;
+use App\Services\Ventas\Pedidos\Importaciones\OrdersImport;
+use App\Services\Ventas\Cotizaciones\Importaciones\QuoteImports;
+use App\Services\Ventas\Clientes\ClientCreatorService;
+use App\Services\Ventas\Clientes\ClientGpSenderService;
+use App\Services\Ventas\Clientes\Contracts\ClientCreatorServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientGpSenderServiceInterface;
+use App\Services\Ventas\Clientes\ClientQueryService;
+use App\Services\Ventas\Clientes\Contracts\ClientQueryServiceInterface;
+use App\Services\Ventas\Pedidos\Contracts\OrderServiceInterface;
+use App\Services\Ventas\Pedidos\OrderJobService;
+use App\Services\Inventario\Despachos\Contracts\DispatchTypeServiceInterface;
+use App\Services\Inventario\Despachos\DispatchTypeService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Venta\QuotationService;
-use App\Services\Venta\PurchaseOrderService;
-use App\Services\Venta\InventoryQueryService;
-use App\Services\Venta\InventoryReservationService;
-use App\Services\Venta\Utils\OrderAndQuotationService;
-use App\Services\Venta\Contracts\QuotationServiceInterface;
-use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
-use App\Services\Venta\Contracts\InventoryQueryServiceInterface;
-use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
-use App\Services\Venta\Contracts\OrderCreatorServiceInterface;
-use App\Services\Venta\Contracts\QuotationCreatorServiceInterface;
-use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
-use App\Services\Venta\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
-use App\Services\Venta\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
-use App\Services\Venta\Cotizaciones\ProspectQuoteService;
-use App\Services\Venta\Cotizaciones\QuotationHistoryCreatorService;
-use App\Services\Venta\OrderCreatorService;
-use App\Services\Venta\OrderService;
-use App\Services\Venta\Pedidos\Contracts\InvoiceHistoryServiceInterface;
-use App\Services\Venta\Pedidos\InvoiceHistoryService;
-use App\Services\Venta\Pedidos\Contracts\OrderGuideServiceInterface;
-use App\Services\Venta\Pedidos\OrderGuideService;
-use App\Services\Venta\Proveedores\ExternalFreightService;
-use App\Services\Venta\Proveedores\Contracts\ExternalFreightServiceInterface;
-use App\Services\Venta\Proveedores\Contracts\ProviderServiceInterface;
-use App\Services\Venta\Proveedores\ProviderService;
-use App\Services\Venta\QuotationCreatorService;
-use App\Services\Venta\QuoteDraftService;
-use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use App\Services\Ventas\Cotizaciones\QuotationService;
+use App\Services\Compras\OrdenesCompra\PurchaseOrderService;
+use App\Services\Inventario\Consultas\InventoryQueryService;
+use App\Services\Ventas\Reservas\InventoryReservationService;
+use App\Services\Ventas\Compartido\OrderAndQuotationService;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationServiceInterface;
+use App\Services\Compras\OrdenesCompra\Contracts\PurchaseOrderServiceInterface;
+use App\Services\Inventario\Consultas\Contracts\InventoryQueryServiceInterface;
+use App\Services\Ventas\Reservas\Contracts\InventoryReservationServiceInterface;
+use App\Services\Ventas\Pedidos\Contracts\OrderCreatorServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationCreatorServiceInterface;
+use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuoteDraftServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
+use App\Services\Ventas\Cotizaciones\ProspectQuoteService;
+use App\Services\Ventas\Cotizaciones\QuotationHistoryCreatorService;
+use App\Services\Ventas\Pedidos\OrderCreatorService;
+use App\Services\Ventas\Pedidos\OrderService;
+use App\Services\Ventas\Pedidos\Contracts\InvoiceHistoryServiceInterface;
+use App\Services\Ventas\Pedidos\InvoiceHistoryService;
+use App\Services\Ventas\Pedidos\Contracts\OrderGuideServiceInterface;
+use App\Services\Ventas\Pedidos\OrderGuideService;
+use App\Services\Compras\Proveedores\ExternalFreightService;
+use App\Services\Compras\Proveedores\Contracts\ExternalFreightServiceInterface;
+use App\Services\Compras\Proveedores\Contracts\ProviderServiceInterface;
+use App\Services\Compras\Proveedores\ProviderService;
+use App\Services\Ventas\Cotizaciones\QuotationCreatorService;
+use App\Services\Ventas\Cotizaciones\Borradores\QuoteDraftService;
+use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 
 class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -61,8 +61,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         ClientQueryServiceInterface::class              => ClientQueryService::class,
         QuotationCreatorServiceInterface::class         => QuotationCreatorService::class,
         OrderCreatorServiceInterface::class             => OrderCreatorService::class,
-        // Nota: Si descomentas OrderJobService en el futuro, agrégalo aquí:
-        OrderJobService::class,
+        OrderJobService::class                          => OrderJobService::class,
 
         //importacion y actualizaciones en batch
         OrdersImportInterface::class                    => OrdersImport::class,

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin\Perfiles;
 
 use App\Http\Controllers\Controller;
-use App\Services\Admin\Contracts\ProfileServiceInterface;
+use App\Services\Admin\Perfiles\Contracts\ProfileServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;

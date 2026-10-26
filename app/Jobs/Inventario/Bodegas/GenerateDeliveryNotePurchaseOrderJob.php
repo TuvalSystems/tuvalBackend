@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Inventario\Bodegas;
 
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNotePurchaseOrderServiceInterface;
+use App\Services\Inventario\GuiasRemision\Contracts\DeliveryNotePurchaseOrderServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

@@ -2,18 +2,18 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Admin\AdminLogService;
-use App\Services\Admin\Contracts\AdminLogServiceInterface;
-use App\Services\Admin\Contracts\LocationServiceInterface;
-use App\Services\Admin\Contracts\MenuServiceInterface;
-use App\Services\Admin\Contracts\ProfileServiceInterface;
-use App\Services\Admin\Contracts\SectionServiceInterface;
-use App\Services\Admin\LocationService;
-use App\Services\Admin\MenuService;
-use App\Services\Admin\ProfileService;
-use App\Services\Admin\SectionService;
-use App\Services\User\Contracts\UserServiceInterface;
-use App\Services\User\UserService;
+use App\Services\Admin\Logs\AdminLogService;
+use App\Services\Admin\Logs\Contracts\AdminLogServiceInterface;
+use App\Services\Admin\Ubicaciones\Contracts\LocationServiceInterface;
+use App\Services\Admin\Menu\Contracts\MenuServiceInterface;
+use App\Services\Admin\Perfiles\Contracts\ProfileServiceInterface;
+use App\Services\Admin\Secciones\Contracts\SectionServiceInterface;
+use App\Services\Admin\Ubicaciones\LocationService;
+use App\Services\Admin\Menu\MenuService;
+use App\Services\Admin\Perfiles\ProfileService;
+use App\Services\Admin\Secciones\SectionService;
+use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
+use App\Services\Admin\Usuarios\UserService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 

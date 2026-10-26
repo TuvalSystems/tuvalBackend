@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Ventas\Reservas;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Venta\Reservas\ValidateCancelReservationRequest;
-use App\Services\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
-use App\Services\Venta\Contracts\InventoryReservationServiceInterface;
-use App\Services\Venta\Utils\Contracts\OrderAndQuotationServiceInterface;
+use App\Services\Ventas\Aprobaciones\Contracts\ApprovalReservationServiceInterface;
+use App\Services\Ventas\Reservas\Contracts\InventoryReservationServiceInterface;
+use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

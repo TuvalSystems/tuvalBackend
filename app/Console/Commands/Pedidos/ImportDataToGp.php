@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Pedidos;
 
 use App\Jobs\Venta\Pedidos\SyncGpOrdersJob;
-use App\Services\Imports\Contracts\OrdersImportInterface;
+use App\Services\Ventas\Pedidos\Importaciones\Contracts\OrdersImportInterface;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

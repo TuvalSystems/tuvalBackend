@@ -4,7 +4,7 @@ namespace App\Console\Commands\Inventario;
 
 use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\Sync\SyncLog;
-use App\Services\Inventario\Bodegas\Contracts\DeliveryNotePurchaseOrderServiceInterface;
+use App\Services\Inventario\GuiasRemision\Contracts\DeliveryNotePurchaseOrderServiceInterface;
 use Illuminate\Console\Command;
 use Throwable;
 

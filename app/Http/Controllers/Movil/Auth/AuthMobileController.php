@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Movil\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\User\Contracts\UserServiceInterface;
+use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

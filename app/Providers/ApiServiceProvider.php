@@ -2,12 +2,12 @@
 
 namespace App\Providers;
 
-use App\Services\Api\ApiGpService;
-use App\Services\Api\ApiSalesService;
-use App\Services\Api\ApiSeedBillingService;
-use App\Services\Api\MswService;
+use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Integraciones\Api\ApiSalesService;
+use App\Services\Integraciones\Api\ApiSeedBillingService;
+use App\Services\Integraciones\Soap\MswService;
 use Illuminate\Support\ServiceProvider;
-use App\Services\Api\Bodegas\ApiDeliverNoteService;
+use App\Services\Integraciones\Api\Bodegas\ApiDeliverNoteService;
 use Illuminate\Contracts\Support\DeferrableProvider;
 
 class ApiServiceProvider extends ServiceProvider implements DeferrableProvider

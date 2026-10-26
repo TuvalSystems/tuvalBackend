@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Ventas\Cotizaciones\Borradores;
 
 use App\Http\Controllers\Controller;
-use App\Services\Venta\Contracts\QuoteDraftServiceInterface;
+use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuoteDraftServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

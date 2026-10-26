@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Ventas\Clientes;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\GestionOperativa\Contracts\ClientBranchServiceInterface;
-use App\Services\Venta\Cliente\Contracts\ClientCreatorServiceInterface;
-use App\Services\Venta\Contracts\ClientQueryServiceInterface;
+use App\Services\Gestion\Sucursales\Contracts\ClientBranchServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientCreatorServiceInterface;
+use App\Services\Ventas\Clientes\Contracts\ClientQueryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

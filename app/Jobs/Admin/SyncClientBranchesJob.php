@@ -6,7 +6,7 @@ use App\Enums\Admin\Sync\StatusSync;
 use App\Models\Admin\Sync\SyncLog;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
-use App\Services\Admin\Sync\Contracts\SyncClientsServiceInterface;
+use App\Services\Integraciones\Sincronizacion\Contracts\SyncClientsServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

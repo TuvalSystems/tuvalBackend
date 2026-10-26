@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Inventario\Despachos;
 
 use App\Enums\Ventas\DispatchTypeEnum;
 use App\Http\Controllers\Controller;
-use App\Services\Venta\TipoDespachos\Contracts\DispatchTypeServiceInterface;
+use App\Services\Inventario\Despachos\Contracts\DispatchTypeServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\Request;

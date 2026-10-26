@@ -11,7 +11,7 @@ use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaCaja;
 use App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\Builders\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationBuilderInterface;
+use App\Services\Cobranzas\CobrosFacturas\Builders\Contracts\CollectionRegistrationBuilderInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 
 use Illuminate\Support\Facades\DB;

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Compras\OrdenesCompra;
 
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Http\Controllers\Controller;
 
 use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
 use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Venta\Contracts\PurchaseOrderServiceInterface;
+use App\Services\Compras\OrdenesCompra\Contracts\PurchaseOrderServiceInterface;
 use App\Traits\JsonResponseTrait;
 
 class OrdenDeCompraController extends Controller
@@ -26,7 +26,7 @@ class OrdenDeCompraController extends Controller
 
     public function generarordendecompra($orden): void
     {
-        $webservices = new WebserviceController();
+        $webservices = new LegacyGpSoapService();
         $parameters = array(
             'documento_origen' => $orden[0]->DOC_GENERADO,
         );

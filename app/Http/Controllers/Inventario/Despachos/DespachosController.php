@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Inventario\Despachos;
 use App\Enums\Ventas\OrderStatus;
 use App\Events\Bodegas\Dashboard\DispatchPendings;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Integraciones\Soap\WebserviceController;
+use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Devoluciones\GpDevoluciones;
 use App\Models\Devoluciones\GpDevolucionesDetalle;
@@ -18,9 +18,9 @@ use App\Models\Ventas\Pedidos\GpPedidoDetalle;
 use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
 use App\Models\Ventas\Pedidos\GpPedidoImagen;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
-use App\Services\Inventario\Bodegas\Contracts\DispatchServiceInterface;
-use App\Services\Inventario\Bodegas\Contracts\LogisticsOperationsServiceInterface;
-use App\Services\Venta\Contracts\OrderServiceInterface;
+use App\Services\Inventario\Despachos\Contracts\DispatchServiceInterface;
+use App\Services\Inventario\Despachos\Contracts\LogisticsOperationsServiceInterface;
+use App\Services\Ventas\Pedidos\Contracts\OrderServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Contracts\Foundation\Application;
@@ -493,7 +493,7 @@ class DespachosController extends Controller
 
     public function reportepicking(GpPedido $pedido): Collection|array
     {
-        $webservice = new WebserviceController();
+        $webservice = new LegacyGpSoapService();
         $detalle = GpPedidoDetalle::where('pedido_id', $pedido->id)->get()->toArray();
         $bodega = $pedido->BOD_BODEGA;
 

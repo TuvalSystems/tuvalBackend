@@ -11,7 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
 use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
-use App\Services\Inventario\Bodegas\Contracts\PurchaseReceiptLItemServiceInterface;
+use App\Services\Compras\Recepciones\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 

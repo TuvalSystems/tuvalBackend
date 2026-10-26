@@ -2,24 +2,24 @@
 
 namespace App\Providers\Service;
 
-use App\Services\Cobranzas\CierreCajas\CashRegisterClosureService;
-use App\Services\Cobranzas\CierreCajas\Contracts\CashRegisterClosureServiceInterface;
+use App\Services\Cobranzas\Cajas\CashRegisterClosureService;
+use App\Services\Cobranzas\Cajas\Contracts\CashRegisterClosureServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\CollectionGpSenderService;
 use App\Services\Cobranzas\CobrosFacturas\CollectionRegistrationService;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionGpSenderServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\CollectionRegistrationServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInterface;
 use App\Services\Cobranzas\CobrosFacturas\InvoiceCollectionService;
-use App\Services\Cobranzas\CollectionService;
-use App\Services\Cobranzas\CollectionUnapplicationService;
-use App\Services\Cobranzas\Contracts\CollectionServiceInterface;
-use App\Services\Cobranzas\Contracts\CollectionUnapplicationServiceInterface;
-use App\Services\Cobranzas\Contracts\CustomerPaymentApplicationServiceInterface;
-use App\Services\Cobranzas\CustomerPaymentApplicationService;
+use App\Services\Cobranzas\Cajas\CollectionService;
+use App\Services\Cobranzas\Aplicaciones\CollectionUnapplicationService;
+use App\Services\Cobranzas\Cajas\Contracts\CollectionServiceInterface;
+use App\Services\Cobranzas\Aplicaciones\Contracts\CollectionUnapplicationServiceInterface;
+use App\Services\Cobranzas\Aplicaciones\Contracts\CustomerPaymentApplicationServiceInterface;
+use App\Services\Cobranzas\Aplicaciones\CustomerPaymentApplicationService;
 use App\Services\Cobranzas\Depositos\Contracts\HistoricalDepositProcessorServiceInterface;
 use App\Services\Cobranzas\Depositos\HistoricalDepositProcessorService;
-use App\Services\Cobranzas\PaymentReceiptLookupService;
-use App\Services\Cobranzas\Contracts\PaymentReceiptLookupServiceInterface;
+use App\Services\Cobranzas\Cobros\PaymentReceiptLookupService;
+use App\Services\Cobranzas\Cobros\Contracts\PaymentReceiptLookupServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class CollectionServiceProvider extends ServiceProvider

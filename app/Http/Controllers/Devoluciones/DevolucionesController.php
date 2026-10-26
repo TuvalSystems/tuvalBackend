@@ -19,7 +19,7 @@ use App\Services\Devoluciones\Contracts\DevolucionServiceInterface;
 use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
 use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\Comercial\CommercialVisibilityService;
+use App\Services\Ventas\Comercial\CommercialVisibilityService;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 

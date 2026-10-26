@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Movil\Inventario\GuiasRemision;
 
 use App\Http\Controllers\Controller;
-use App\Services\Inventario\Bodegas\Contracts\ReceivedDeliveryNoteServiceInterface;
+use App\Services\Inventario\GuiasRemision\Contracts\ReceivedDeliveryNoteServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;

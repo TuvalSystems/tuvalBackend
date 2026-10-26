@@ -7,7 +7,7 @@ use App\Models\Admin\Sync\SyncLog;
 use App\Models\Inventario\Articulos\GpArticulo;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Notifications\User\UserNotification;
-use App\Services\Inventario\Articulo\Contracts\ArticleSyncServiceInterface;
+use App\Services\Inventario\Articulos\Contracts\ArticleSyncServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
