@@ -1,30 +1,34 @@
 <?php
 
-use App\Http\Controllers\Admin\ProfileController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\AuthController;
-use App\Http\Controllers\Inventario\Bodega\DashboardController;
+use App\Http\Controllers\Admin\Perfiles\ProfileController;
+use App\Http\Controllers\Admin\Usuarios\UserController;
+use App\Http\Controllers\Admin\Auth\AuthController;
+use App\Http\Controllers\Inventario\Dashboard\DashboardController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SincronizacionController;
-use App\Http\Controllers\Ventas\PedidosController;
-use App\Http\Controllers\Ventas\CobranzasController;
-use App\Http\Controllers\Ventas\CotizacionesController;
-use App\Http\Controllers\Ventas\ConsultasController;
-use App\Http\Controllers\Ventas\OrdendecompraController;
-use App\Http\Controllers\Inventario\Bodega\DespachosController;
-use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
-use App\Http\Controllers\Inventario\Bodega\ReposicionController;
-use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
-use App\Http\Controllers\Gestion\GestionSucursalesController;
-use App\Http\Controllers\test\TestController;
-use App\Http\Controllers\Admin\UserNotificationController;
-use App\Http\Controllers\Inventario\Articulo\ArticuloController;
-use App\Http\Controllers\Ventas\AprobacionesController;
-use App\Http\Controllers\Ventas\ClienteController;
-use App\Http\Controllers\Ventas\ProveedoresController;
-use App\Http\Controllers\Ventas\FleteExternoController;
-use App\Http\Controllers\Ventas\ReservasController;
+use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
+use App\Http\Controllers\Ventas\Pedidos\PedidosController;
+use App\Http\Controllers\Cobranzas\CajasController;
+use App\Http\Controllers\Cobranzas\DepositosController;
+use App\Http\Controllers\Cobranzas\AplicacionesController;
+use App\Http\Controllers\Cobranzas\EstadoCuentaController;
+use App\Http\Controllers\Cobranzas\CobrosController;
+use App\Http\Controllers\Ventas\Cotizaciones\CotizacionesController;
+use App\Http\Controllers\Ventas\Consultas\ConsultasController;
+use App\Http\Controllers\Compras\OrdenesCompra\OrdenDeCompraController;
+use App\Http\Controllers\Inventario\Despachos\DespachosController;
+use App\Http\Controllers\Devoluciones\DevolucionesController;
+use App\Http\Controllers\Inventario\GuiasRemision\GuiasDeRemisionController;
+use App\Http\Controllers\Inventario\Reposiciones\ReposicionController;
+use App\Http\Controllers\Inventario\Transferencias\TransferenciasController;
+use App\Http\Controllers\Gestion\Sucursales\GestionSucursalesController;
+use App\Http\Controllers\Test\TestController;
+use App\Http\Controllers\Admin\Notificaciones\UserNotificationController;
+use App\Http\Controllers\Inventario\Articulos\ArticuloController;
+use App\Http\Controllers\Ventas\Aprobaciones\AprobacionesController;
+use App\Http\Controllers\Ventas\Clientes\ClienteController;
+use App\Http\Controllers\Compras\Proveedores\ProveedoresController;
+use App\Http\Controllers\Inventario\Transporte\FleteExternoController;
+use App\Http\Controllers\Ventas\Reservas\ReservasController;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -42,9 +46,9 @@ Route::get('/', function () {
     abort(404);
 });
 
-Route::get('/cobranzas/enviarcobros', [CobranzasController::class, 'enviarCobrosLote']);
+Route::get('/cobranzas/enviarcobros', [CobrosController::class, 'enviarCobrosLote']);
 Route::get('/cotizaciones/checkvalidezcotizaciones', [CotizacionesController::class, 'checkvalidezcotizaciones']);
-Route::get('/cobranzas/consultacobrosanulados', [CobranzasController::class, 'consultacobrosanulados']);
+Route::get('/cobranzas/consultacobrosanulados', [CobrosController::class, 'consultacobrosanulados']);
 Route::get('/facturarsiguientemescron', [PedidosController::class, 'facturarsiguientemescron']);
 Route::get('/facturarsiguientemes', [PedidosController::class, 'facturarsiguientemes']);
 Route::get('/sincronizacion/updateperfilesusuarios', [SincronizacionController::class, 'updateperfilesusuarios']);
@@ -62,8 +66,8 @@ Route::get('/pedidos/facturarfaltante', [PedidosController::class, 'facturarfalt
 Route::get('/despachos/checkdespachadoscompletos', [DespachosController::class, 'checkdespachadoscompletos']);
 Route::get('/transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
 Route::get('/bodegas/getreposicion', [ReposicionController::class, 'getreposicion']);
-Route::get('/lista-ordenes-compra-recepcion', [OrdendecompraController::class, 'getViewPurchaseOrder']);
-Route::get('/lista-ordenes-despachadas-pendientes', [OrdendecompraController::class, 'getOrdesDispatchPending']);
+Route::get('/lista-ordenes-compra-recepcion', [OrdenDeCompraController::class, 'getViewPurchaseOrder']);
+Route::get('/lista-ordenes-despachadas-pendientes', [OrdenDeCompraController::class, 'getOrdesDispatchPending']);
 Route::get('/pedidos/lista-pedidos-sin-coordenadas', [PedidosController::class, 'getListPedidosSinCoordenadas']);
 Route::get('/enviar-cotizaciones-recordatorio-sql', [CotizacionesController::class, 'sendAllQuotesRecorderSQLServer']);
 
@@ -107,14 +111,14 @@ Route::prefix('cotizaciones')->group(function () {
 
 Route::prefix('bodegas')->group(function () {
     Route::get('transferencias/checkpedidostraslados', [TransferenciasController::class, 'checkpedidostraslados']);
-    Route::get('guiasderemision/checkguiasremisiones', [GuiasderemisionController::class, 'checkguiaremision']);
-    Route::get('guiasderemision/verificar-ajuste-guia-despacho/{id}', [GuiasderemisionController::class, 'verificarYAsignarAjusteGuiaDespacho']);
-    Route::get('guiasderemision/crear-ajuste-guia-remision/{id}', [GuiasderemisionController::class, 'creacionAjusteGpGuiaRemision']);
-    Route::get('guiasderemision/reserva-stock-pedidos', [GuiasderemisionController::class, 'reservarStock']);
-    Route::get('guiasderemision/obtener-detalle-guia-despacho/{id}', [GuiasderemisionController::class, 'obtenerInfoGUiaRemisionAjustePedido']);
-    Route::get('guiasderemision/despahco-pedido-por-guia/{id}', [GuiasderemisionController::class, 'procesarPedidoDespachoPorGuia']);
-    Route::get('guiasderemision/lista-guia-despachos', [GuiasderemisionController::class, 'listaGuiaDespachoConAjuste']);
-    Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasderemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
+    Route::get('guiasderemision/checkguiasremisiones', [GuiasDeRemisionController::class, 'checkguiaremision']);
+    Route::get('guiasderemision/verificar-ajuste-guia-despacho/{id}', [GuiasDeRemisionController::class, 'verificarYAsignarAjusteGuiaDespacho']);
+    Route::get('guiasderemision/crear-ajuste-guia-remision/{id}', [GuiasDeRemisionController::class, 'creacionAjusteGpGuiaRemision']);
+    Route::get('guiasderemision/reserva-stock-pedidos', [GuiasDeRemisionController::class, 'reservarStock']);
+    Route::get('guiasderemision/obtener-detalle-guia-despacho/{id}', [GuiasDeRemisionController::class, 'obtenerInfoGUiaRemisionAjustePedido']);
+    Route::get('guiasderemision/despahco-pedido-por-guia/{id}', [GuiasDeRemisionController::class, 'procesarPedidoDespachoPorGuia']);
+    Route::get('guiasderemision/lista-guia-despachos', [GuiasDeRemisionController::class, 'listaGuiaDespachoConAjuste']);
+    Route::get('guiasderemision/lista-guia-reposicion-transferencia', [GuiasDeRemisionController::class, 'listaGuiaTransferenciaReposicionConAjuste']);
 
     Route::get('transferencia-ventas/dashboard', [TransferenciasController::class, 'dashboardTransferenciaVentas']);
     Route::get('transferencia-ventas/bodega/cabecera', [TransferenciasController::class, 'obtenerCabeceraDetalleTransferenciaPorBodega']);
@@ -126,7 +130,7 @@ Route::prefix('bodegas')->group(function () {
 
 
     //dupicacion guia despacho
-    Route::get('guiasderemision/despacho/replicar/{id}', [GuiasderemisionController::class, 'duplicarGuiaSoloPapeles']);
+    Route::get('guiasderemision/despacho/replicar/{id}', [GuiasDeRemisionController::class, 'duplicarGuiaSoloPapeles']);
 });
 
 
@@ -160,11 +164,11 @@ Route::group(['prefix' => 'reservas-web'], function () {
     Route::get('transferencias-web/cabecera-traslados-por-reserva-bodega', [ReservasController::class, 'obtenerDetalleCabeceraTransferenciasReservaPorBodega']);
     Route::get('transferencias-web/lista-traslados-por-reserva-bodega', [ReservasController::class, 'ListaTransferenciasReservaPorBodega']);
 
-    Route::get('enviar-guia-gp/{id}', [GuiasderemisionController::class, 'enviarGuiaRemisionReservaAGp']);
+    Route::get('enviar-guia-gp/{id}', [GuiasDeRemisionController::class, 'enviarGuiaRemisionReservaAGp']);
     Route::get('transferencias-web/lista-guias-remision-pendientes', [ReservasController::class, 'listaGuiaRemisionReservasPendientes']);
 
-    Route::get('generar-pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionReserva']);
-    Route::get('despachar-guia-reserva', [GuiasderemisionController::class, 'despacharGuiaRemisionReserva']);
+    Route::get('generar-pdf', [GuiasDeRemisionController::class, 'generarPdfGuiaRemisionReserva']);
+    Route::get('despachar-guia-reserva', [GuiasDeRemisionController::class, 'despacharGuiaRemisionReserva']);
 
     Route::get('transferencias-web/lista-transferencias-por-recibir', [ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
     Route::get('transferencias-web/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
@@ -221,42 +225,42 @@ Route::prefix('dashboard')->group(function () {
 
 
 Route::group(['prefix' => 'cobranzas'], function () {
-    Route::get('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
-    Route::get('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
-    Route::get('consulta-cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
-    Route::get('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
-    Route::get('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+    Route::get('lista-punto-venta', [CajasController::class, 'listaPvCajasUsuario']);
+    Route::get('lista-cajas', [CajasController::class, 'listarCajasPorUsuarioPuntoVenta']);
+    Route::get('consulta-cierre-caja', [CajasController::class, 'consultarCierreCajaUsuario']);
+    Route::get('pdf/cierre-caja-usuario', [CajasController::class, 'imprimirPdfConsultaCierreCaja']);
+    Route::get('pdf/cierre-caja', [CajasController::class, 'imprimirPdfCierreCaja']);
 
-    Route::get('validacion-pago-facturas', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
-    Route::get('lista-aplicaciones', [CobranzasController::class, 'listaCobrosAplicados']);
-    Route::get('detalle-aplicaciones', [CobranzasController::class, 'detalleCobrosAplicados']);
+    Route::get('validacion-pago-facturas', [AplicacionesController::class, 'obtenerInformacionPagosFacturas']);
+    Route::get('lista-aplicaciones', [AplicacionesController::class, 'listaCobrosAplicados']);
+    Route::get('detalle-aplicaciones', [AplicacionesController::class, 'detalleCobrosAplicados']);
 
 
 
 
     //cobros facturas
     Route::prefix('cobros-facturas')->group(function () {
-        Route::get('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
-        Route::get('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
-        Route::get('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
-        Route::get('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
-        Route::get('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
-        Route::get('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
-        Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
-        Route::get('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
-        Route::get('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
-        Route::get('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
-        Route::get('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
-        Route::get('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
-        Route::get('enviar-cobro', [CobranzasController::class, 'enviarCobroGp']);
-        Route::get('validar-cobros', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
+        Route::get('estado-caja', [CajasController::class, 'obtenerEstadoCajaUsuario']);
+        Route::get('aperturar-caja', [CajasController::class, 'aperturarCajaUsuario']);
+        Route::get('imprimir-estado-cuenta-pdf', [EstadoCuentaController::class, 'imprimirPdfEstadoCuentaCliente']);
+        Route::get('imprimir-estado-cuenta-excel', [EstadoCuentaController::class, 'imprimirExcelEstadoCuentaCliente']);
+        Route::get('facturas-cliente', [EstadoCuentaController::class, 'obtenerFacturasEstadoCuentaCliente']);
+        Route::get('aplicaciones-pendientes', [AplicacionesController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+        Route::get('obtener-bancos', [CobrosController::class, 'obtenerListaBancos']);
+        Route::get('verificar-comprobante', [CobrosController::class, 'consultarExistenciaRetencion']);
+        Route::get('verificar-comprobante-deposito', [CobrosController::class, 'consultarExistenciaDeposito']);
+        Route::get('verificar-cheque', [CobrosController::class, 'consultarExistenciaCheque']);
+        Route::get('imprimir-cobro', [CobrosController::class, 'imprirCobroPdf']);
+        Route::get('registrar-cobro', [CobrosController::class, 'registrarCobroV1']);
+        Route::get('enviar-cobro', [CobrosController::class, 'enviarCobroGp']);
+        Route::get('validar-cobros', [AplicacionesController::class, 'obtenerInformacionPagosFacturas']);
 
     });
 
 
     Route::prefix('cierre-cajas')->group(function () {
-        Route::get('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
-        Route::get('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
+        Route::get('cerrar', [CajasController::class, 'cerrarCajaV1']);
+        Route::get('resumen', [CajasController::class, 'resumenCerrarCaja']);
     });
 });
 
@@ -271,7 +275,7 @@ Route::prefix('proveedores')->group(function () {
 });
 
 
-Route::get('guia-remision-web/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
+Route::get('guia-remision-web/imprimirguia/{id}', [GuiasDeRemisionController::class, 'imprimirguia']);
 Route::get('pedidos-web/facturar-existente', [PedidosController::class, 'facturarexistente']);
 
 

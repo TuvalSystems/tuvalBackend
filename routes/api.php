@@ -1,37 +1,41 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\AppController;
-use App\Http\Controllers\Admin\ProfileController;
-use App\Http\Controllers\Admin\SectionsController;
-use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\Sistema\AdminController;
+use App\Http\Controllers\Admin\Aplicaciones\AppController;
+use App\Http\Controllers\Admin\Perfiles\ProfileController;
+use App\Http\Controllers\Admin\Secciones\SectionsController;
+use App\Http\Controllers\Admin\Usuarios\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\AuthController;
-use App\Http\Controllers\SincronizacionController;
-use App\Http\Controllers\Ventas\ConsultasController;
-use App\Http\Controllers\Ventas\CotizacionesController;
-use App\Http\Controllers\Ventas\PedidosController;
-use App\Http\Controllers\Ventas\AprobacionesController;
-use App\Http\Controllers\Ventas\CobranzasController;
-use App\Http\Controllers\Inventario\Bodega\DashboardController;
-use App\Http\Controllers\Inventario\Bodega\RecibosdecompraeleController;
+use App\Http\Controllers\Admin\Auth\AuthController;
+use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
+use App\Http\Controllers\Ventas\Consultas\ConsultasController;
+use App\Http\Controllers\Ventas\Cotizaciones\CotizacionesController;
+use App\Http\Controllers\Ventas\Pedidos\PedidosController;
+use App\Http\Controllers\Ventas\Aprobaciones\AprobacionesController;
+use App\Http\Controllers\Cobranzas\CajasController;
+use App\Http\Controllers\Cobranzas\DepositosController;
+use App\Http\Controllers\Cobranzas\AplicacionesController;
+use App\Http\Controllers\Cobranzas\EstadoCuentaController;
+use App\Http\Controllers\Cobranzas\CobrosController;
+use App\Http\Controllers\Inventario\Dashboard\DashboardController;
+use App\Http\Controllers\Compras\Recepciones\RecibosDeCompraController;
 use App\Http\Controllers\Inventario\Transporte\TransportesController;
-use App\Http\Controllers\Inventario\Bodega\DespachosController;
-use App\Http\Controllers\Inventario\Bodega\TransferenciasController;
-use App\Http\Controllers\Inventario\Bodega\GuiasderemisionController;
-use App\Http\Controllers\devoluciones\DevolucionesController;
-use App\Http\Controllers\Inventario\Bodega\ReposicionController;
-use App\Http\Controllers\Borradores\CotizacionBorradorController;
-use App\Http\Controllers\Gestion\GestionSucursalesController;
-use App\Http\Controllers\Admin\UserNotificationController;
-use App\Http\Controllers\Inventario\Articulo\ArticuloController;
-use App\Http\Controllers\Inventario\Bodega\GuiaRemisionConsultaArchivoController;
-use App\Http\Controllers\Ventas\ClienteController;
-use App\Http\Controllers\Ventas\ProveedoresController;
-use App\Http\Controllers\Ventas\FleteExternoController;
-use App\Http\Controllers\Ventas\ReservasController;
-use App\Http\Controllers\Ventas\TipoDespachosController;
+use App\Http\Controllers\Inventario\Despachos\DespachosController;
+use App\Http\Controllers\Inventario\Transferencias\TransferenciasController;
+use App\Http\Controllers\Inventario\GuiasRemision\GuiasDeRemisionController;
+use App\Http\Controllers\Devoluciones\DevolucionesController;
+use App\Http\Controllers\Inventario\Reposiciones\ReposicionController;
+use App\Http\Controllers\Ventas\Cotizaciones\Borradores\CotizacionBorradorController;
+use App\Http\Controllers\Gestion\Sucursales\GestionSucursalesController;
+use App\Http\Controllers\Admin\Notificaciones\UserNotificationController;
+use App\Http\Controllers\Inventario\Articulos\ArticuloController;
+use App\Http\Controllers\Inventario\GuiasRemision\GuiaRemisionConsultaArchivoController;
+use App\Http\Controllers\Ventas\Clientes\ClienteController;
+use App\Http\Controllers\Compras\Proveedores\ProveedoresController;
+use App\Http\Controllers\Inventario\Transporte\FleteExternoController;
+use App\Http\Controllers\Ventas\Reservas\ReservasController;
+use App\Http\Controllers\Inventario\Despachos\TipoDespachosController;
 
 /*
 |--------------------------------------------------------------------------
@@ -358,28 +362,28 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
                 });
 
             Route::post('dashboard', [DashboardController::class, 'dashboard']);
-            Route::post('recibosdecompra/bandeja', [RecibosdecompraeleController::class, 'bandeja']);
-            Route::post('recibosdecompra/detalle', [RecibosdecompraeleController::class, 'detalle']);
-            Route::post('recibosdecompra/recibir', [RecibosdecompraeleController::class, 'recibir']);
-            Route::post('recibosdecompra/imprimirrecibol', [RecibosdecompraeleController::class, 'imprimirrecibol']);
-            Route::post('recibosdecompra/eliminar', [RecibosdecompraeleController::class, 'eliminar']);
-            Route::get('recibosdecompra/imprimir/{id}', [RecibosdecompraeleController::class, 'imprimir']);
+            Route::post('recibosdecompra/bandeja', [RecibosDeCompraController::class, 'bandeja']);
+            Route::post('recibosdecompra/detalle', [RecibosDeCompraController::class, 'detalle']);
+            Route::post('recibosdecompra/recibir', [RecibosDeCompraController::class, 'recibir']);
+            Route::post('recibosdecompra/imprimirrecibol', [RecibosDeCompraController::class, 'imprimirrecibol']);
+            Route::post('recibosdecompra/eliminar', [RecibosDeCompraController::class, 'eliminar']);
+            Route::get('recibosdecompra/imprimir/{id}', [RecibosDeCompraController::class, 'imprimir']);
 
             Route::get('listado-punto-venta', [DespachosController::class, 'obtenetListadoPuntoVenta']);
-            Route::post('guiasderemision/detalle-guia-id-tipo', [GuiasderemisionController::class, 'consultarDetalleGuiaPorId']);
+            Route::post('guiasderemision/detalle-guia-id-tipo', [GuiasDeRemisionController::class, 'consultarDetalleGuiaPorId']);
             Route::get('puntos-venta/reservas/limites', [DespachosController::class, 'indexPuntosVentaReservaLimits']);
-            Route::post('guia-remision-reserva/detalle', [GuiasderemisionController::class, 'consultarDetalleGuiaReservaPorId']);
+            Route::post('guia-remision-reserva/detalle', [GuiasDeRemisionController::class, 'consultarDetalleGuiaReservaPorId']);
 
 
 
-            Route::post('guiasderemision/generarguiatraslado', [GuiasderemisionController::class, 'generarguiatraslado']);
-            Route::post('guiasderemision/consultarguiagenerada', [GuiasderemisionController::class, 'consultarguiagenerada']);
-            Route::get('guiasderemision/imprimirguia/{id}', [GuiasderemisionController::class, 'imprimirguia']);
-            Route::delete('guiasderemision/eliminarguia/{id}', [GuiasderemisionController::class, 'eliminarguia']);
-            // Route::get('guiasderemision/despacharguia/{id}', [GuiasderemisionController::class, 'despacharguia']);
-            Route::post('guiasderemision/recibirguia', [GuiasderemisionController::class, 'recibirguia']);
+            Route::post('guiasderemision/generarguiatraslado', [GuiasDeRemisionController::class, 'generarguiatraslado']);
+            Route::post('guiasderemision/consultarguiagenerada', [GuiasDeRemisionController::class, 'consultarguiagenerada']);
+            Route::get('guiasderemision/imprimirguia/{id}', [GuiasDeRemisionController::class, 'imprimirguia']);
+            Route::delete('guiasderemision/eliminarguia/{id}', [GuiasDeRemisionController::class, 'eliminarguia']);
+            // Route::get('guiasderemision/despacharguia/{id}', [GuiasDeRemisionController::class, 'despacharguia']);
+            Route::post('guiasderemision/recibirguia', [GuiasDeRemisionController::class, 'recibirguia']);
             Route::get('transferencias/recibosventa/{id}', [TransferenciasController::class, 'recibosventa']);
-            Route::post('guiasderemision/generarguiaventa', [GuiasderemisionController::class, 'generarguiaventa']);
+            Route::post('guiasderemision/generarguiaventa', [GuiasDeRemisionController::class, 'generarguiaventa']);
 
             Route::get('transportes/transportistas', [TransportesController::class, 'transportistas']);
             Route::post('transportes/savetransportista', [TransportesController::class, 'savetransportista']);
@@ -396,25 +400,25 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
             Route::get('reposicion/recibosreposicionindividual/{id}', [ReposicionController::class, 'recibosreposicionindividual']);
             Route::get('reposicion/detallereciboreposicion/{id}', [ReposicionController::class, 'detallereciboreposicion']);
 
-            Route::post('guiasderemision/imprimirordenalmacenamiento', [GuiasderemisionController::class, 'imprimirordenalmacenamiento']);
-            Route::post('guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasderemisionController::class, 'imprimirordenalmacenamientodevolucion']);
+            Route::post('guiasderemision/imprimirordenalmacenamiento', [GuiasDeRemisionController::class, 'imprimirordenalmacenamiento']);
+            Route::post('guiasderemision/imprimirordenalmacenamientodevolucion', [GuiasDeRemisionController::class, 'imprimirordenalmacenamientodevolucion']);
 
             Route::post('getreposicion', [ReposicionController::class, 'getreposicion']);
 
             //generacion de guia de remision de reservas
-            Route::post('reservas/guia-remision/crear-guia-reserva', [GuiasderemisionController::class, 'crearGuiaRemisionReserva']);
-            Route::post('reservas/guia-remision/generar-pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionReserva']);
-            Route::post('reservas/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionReserva']);
+            Route::post('reservas/guia-remision/crear-guia-reserva', [GuiasDeRemisionController::class, 'crearGuiaRemisionReserva']);
+            Route::post('reservas/guia-remision/generar-pdf', [GuiasDeRemisionController::class, 'generarPdfGuiaRemisionReserva']);
+            Route::post('reservas/guia-remision/despachar-guia', [GuiasDeRemisionController::class, 'despacharGuiaRemisionReserva']);
             Route::post('reservas/guia-remision/lista-transferencias-por-recibir', [ReservasController::class, 'listaTransferenciasReservasPorRecibir']);
             Route::post('reservas/guia-remision/detalle-transferencias-por-recibir', [ReservasController::class, 'detalleTransferenciaReservasPorRecibir']);
             Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/pdf', [ReservasController::class, 'imprimirOrdAlmacenamiento']);
-            Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [GuiasderemisionController::class, 'recibirItemsGuiaReserva']);
+            Route::post('reservas/guia-remision/detalle-transferencias-por-recibir/recibir', [GuiasDeRemisionController::class, 'recibirItemsGuiaReserva']);
 
 
 
             //generacion de guia de remision de despachos
-            Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasderemisionController::class, 'crearGuiaRemisionDespacho']);
-            Route::post('despachos/guia-remision/despachar-guia', [GuiasderemisionController::class, 'despacharGuiaRemisionDespacho']);
+            Route::post('despachos/guia-remision/crear-guia-despacho', [GuiasDeRemisionController::class, 'crearGuiaRemisionDespacho']);
+            Route::post('despachos/guia-remision/despachar-guia', [GuiasDeRemisionController::class, 'despacharGuiaRemisionDespacho']);
 
 
 
@@ -428,18 +432,18 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 
             //creacion de guia de remision de transferencia de venta
             Route::post('transferencia-venta/cancelar-picking', [TransferenciasController::class, 'cancelarPickingV2']);
-            Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasderemisionController::class, 'crearGuiaRemisionVenta']);
-            Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasderemisionController::class, 'consultarGuiaGeneradaV1']);
-            Route::post('transferencia-venta/guia-remision/generar/pdf', [GuiasderemisionController::class, 'generarPdfGuiaRemisionVenta']);
-            Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasderemisionController::class, 'despacharGuiaRemisionVenta']);
-            Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasderemisionController::class, 'recibirGuiaRemisionVenta']);
+            Route::post('transferencia-venta/guia-remision/crear-guia-transferencia-venta', [GuiasDeRemisionController::class, 'crearGuiaRemisionVenta']);
+            Route::post('transferencia-venta/guia-remision/verificar-guia-transferencia-venta-v1', [GuiasDeRemisionController::class, 'consultarGuiaGeneradaV1']);
+            Route::post('transferencia-venta/guia-remision/generar/pdf', [GuiasDeRemisionController::class, 'generarPdfGuiaRemisionVenta']);
+            Route::post('transferencia-venta/guia-remision/despachar-guia-transferencia-venta', [GuiasDeRemisionController::class, 'despacharGuiaRemisionVenta']);
+            Route::post('transferencia-venta/guia-remision/recibir-guia-transferencia-venta', [GuiasDeRemisionController::class, 'recibirGuiaRemisionVenta']);
 
 
 
             //creacion de guia de reposicion
-            Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasderemisionController::class, 'crearGuiaRemisionReposicion']);
-            Route::post('reposiciones/guia-remision/despachar-guia-reposicion', [GuiasderemisionController::class, 'despacharGuiaRemisionReposicion']);
-            Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasderemisionController::class, 'recibirGuiaRemisionReposicion']);
+            Route::post('reposiciones/guia-remision/crear-guia-reposicion', [GuiasDeRemisionController::class, 'crearGuiaRemisionReposicion']);
+            Route::post('reposiciones/guia-remision/despachar-guia-reposicion', [GuiasDeRemisionController::class, 'despacharGuiaRemisionReposicion']);
+            Route::post('reposiciones/guia-remision/recibir-guia-reposicion', [GuiasDeRemisionController::class, 'recibirGuiaRemisionReposicion']);
         });
 
         Route::group(['prefix' => 'inventario'], function () {
@@ -536,77 +540,77 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
         });
 
         Route::group(['prefix' => 'cobranzas'], function () {
-            Route::post('documentosvencidoscliente', [CobranzasController::class, 'documentosvencidoscliente']);
-            Route::post('registrarcobro', [CobranzasController::class, 'registrarcobro']);
-            Route::post('cobrosregistrados', [CobranzasController::class, 'cobrosregistrados']);
-            Route::post('depositosporaprobar', [CobranzasController::class, 'depositosporaprobar']);
-            Route::post('aprobardeposito', [CobranzasController::class, 'aprobardeposito']);
-            Route::post('rechazardeposito', [CobranzasController::class, 'rechazardeposito']);
-            Route::get('getcajausuario/{puntodeventa}/{USERID}', [CobranzasController::class, 'getcajausuario']);
+            Route::post('documentosvencidoscliente', [EstadoCuentaController::class, 'documentosvencidoscliente']);
+            Route::post('registrarcobro', [CobrosController::class, 'registrarcobro']);
+            Route::post('cobrosregistrados', [CobrosController::class, 'cobrosregistrados']);
+            Route::post('depositosporaprobar', [DepositosController::class, 'depositosporaprobar']);
+            Route::post('aprobardeposito', [DepositosController::class, 'aprobardeposito']);
+            Route::post('rechazardeposito', [DepositosController::class, 'rechazardeposito']);
+            Route::get('getcajausuario/{puntodeventa}/{USERID}', [CajasController::class, 'getcajausuario']);
 
-            Route::get('imprimircobro/{id}', [CobranzasController::class, 'imprimircobro']);
-            Route::get('imprimircierredecaja/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecaja']);
-            Route::get('imprimircierredecajausuario/{fecha}/{caja}', [CobranzasController::class, 'imprimircierredecajausuario']);
-            Route::get('resumencaja/{fecha}/{caja}/{USERID}', [CobranzasController::class, 'resumencaja']);
-            Route::post('consultaretencion', [CobranzasController::class, 'consultaretencion']);
-            Route::post('consultacheque', [CobranzasController::class, 'consultacheque']);
-            Route::post('consultadeposito', [CobranzasController::class, 'consultadeposito']);
+            Route::get('imprimircobro/{id}', [CobrosController::class, 'imprimircobro']);
+            Route::get('imprimircierredecaja/{fecha}/{caja}', [CajasController::class, 'imprimircierredecaja']);
+            Route::get('imprimircierredecajausuario/{fecha}/{caja}', [CajasController::class, 'imprimircierredecajausuario']);
+            Route::get('resumencaja/{fecha}/{caja}/{USERID}', [CajasController::class, 'resumencaja']);
+            Route::post('consultaretencion', [CobrosController::class, 'consultaretencion']);
+            Route::post('consultacheque', [CobrosController::class, 'consultacheque']);
+            Route::post('consultadeposito', [CobrosController::class, 'consultadeposito']);
 
 
-            Route::get('estadodecuentaclientetuval/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuval']);
-            Route::get('estadodecuentaclientetuvalexcel/{ruc}', [CobranzasController::class, 'estadodecuentaclientetuvalexcel']);
-            Route::get('estadocaja/{fechaActual}/{USERID}', [CobranzasController::class, 'estadocaja']);
-            Route::get('estadocaja/{USERID}', [CobranzasController::class, 'estadocaja']);
-            Route::get('abrircaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'abrircaja']);
-            Route::get('cerrarcaja/{puntodeventa}/{USERID}', [CobranzasController::class, 'cerrarcaja']);
-            Route::post('consultacierrecajausuario', [CobranzasController::class, 'consultacierrecajausuario']);
-            Route::post('consultacobroscliente', [CobranzasController::class, 'consultacobroscliente']);
+            Route::get('estadodecuentaclientetuval/{ruc}', [CobrosController::class, 'estadodecuentaclientetuval']);
+            Route::get('estadodecuentaclientetuvalexcel/{ruc}', [CobrosController::class, 'estadodecuentaclientetuvalexcel']);
+            Route::get('estadocaja/{fechaActual}/{USERID}', [CajasController::class, 'estadocaja']);
+            Route::get('estadocaja/{USERID}', [CajasController::class, 'estadocaja']);
+            Route::get('abrircaja/{puntodeventa}/{USERID}', [CajasController::class, 'abrircaja']);
+            Route::get('cerrarcaja/{puntodeventa}/{USERID}', [CajasController::class, 'cerrarcaja']);
+            Route::post('consultacierrecajausuario', [CajasController::class, 'consultacierrecajausuario']);
+            Route::post('consultacobroscliente', [CobrosController::class, 'consultacobroscliente']);
 
 
 
             //nuevos procesos
 
-            Route::post('lista-punto-venta', [CobranzasController::class, 'listaPvCajasUsuario']);
-            Route::post('lista-cajas', [CobranzasController::class, 'listarCajasPorUsuarioPuntoVenta']);
-            Route::post('consultas/cierre-caja', [CobranzasController::class, 'consultarCierreCajaUsuario']);
-            Route::post('pdf/cierre-caja-usuario', [CobranzasController::class, 'imprimirPdfConsultaCierreCaja']);
-            Route::post('pdf/cierre-caja', [CobranzasController::class, 'imprimirPdfCierreCaja']);
+            Route::post('lista-punto-venta', [CajasController::class, 'listaPvCajasUsuario']);
+            Route::post('lista-cajas', [CajasController::class, 'listarCajasPorUsuarioPuntoVenta']);
+            Route::post('consultas/cierre-caja', [CajasController::class, 'consultarCierreCajaUsuario']);
+            Route::post('pdf/cierre-caja-usuario', [CajasController::class, 'imprimirPdfConsultaCierreCaja']);
+            Route::post('pdf/cierre-caja', [CajasController::class, 'imprimirPdfCierreCaja']);
 
 
             //documentos aplicacion
-            Route::post('actualizar-aplicaciones-pendientes', [CobranzasController::class, 'actualizarListaDocumentosAplicacion']);
+            Route::post('actualizar-aplicaciones-pendientes', [AplicacionesController::class, 'actualizarListaDocumentosAplicacion']);
 
            
 
             //desaplicaciones
             Route::prefix('desaplicaciones')->group(function () {
-                Route::post('lista', [CobranzasController::class, 'listaCobrosAplicados']);
-                Route::post('detalle', [CobranzasController::class, 'detalleCobrosAplicados']);
-                Route::post('procesar', [CobranzasController::class, 'procesarDesaplicaciones']);
+                Route::post('lista', [AplicacionesController::class, 'listaCobrosAplicados']);
+                Route::post('detalle', [AplicacionesController::class, 'detalleCobrosAplicados']);
+                Route::post('procesar', [AplicacionesController::class, 'procesarDesaplicaciones']);
             });
 
 
             Route::prefix('depositos-historicos')->group(function () {
-                Route::post('lista', [CobranzasController::class, 'listaHistoricaDepositos']);
+                Route::post('lista', [DepositosController::class, 'listaHistoricaDepositos']);
             });
 
             //apis de cobros de facturas
             Route::prefix('cobros-facturas')->group(function () {
-                Route::post('estado-caja', [CobranzasController::class, 'obtenerEstadoCajaUsuario']);
-                Route::post('aperturar-caja', [CobranzasController::class, 'aperturarCajaUsuario']);
+                Route::post('estado-caja', [CajasController::class, 'obtenerEstadoCajaUsuario']);
+                Route::post('aperturar-caja', [CajasController::class, 'aperturarCajaUsuario']);
 
-                Route::post('imprimir-estado-cuenta-pdf', [CobranzasController::class, 'imprimirPdfEstadoCuentaCliente']);
-                Route::post('imprimir-estado-cuenta-excel', [CobranzasController::class, 'imprimirExcelEstadoCuentaCliente']);
-                Route::post('facturas-cliente', [CobranzasController::class, 'obtenerFacturasEstadoCuentaCliente']);
-                Route::post('aplicaciones-pendientes', [CobranzasController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
-                Route::get('obtener-bancos', [CobranzasController::class, 'obtenerListaBancos']);
-                Route::post('verificar-comprobante', [CobranzasController::class, 'consultarExistenciaRetencion']);
-                Route::post('verificar-comprobante-deposito', [CobranzasController::class, 'consultarExistenciaDeposito']);
-                Route::post('verificar-cheque', [CobranzasController::class, 'consultarExistenciaCheque']);
-                Route::post('validar-cobros', [CobranzasController::class, 'obtenerInformacionPagosFacturas']);
-                Route::post('lista-cobros-registrados', [CobranzasController::class, 'listaCobrosPorCliente']);
-                Route::post('registrar-cobro', [CobranzasController::class, 'registrarCobroV1']);
-                Route::post('imprimir-cobro', [CobranzasController::class, 'imprirCobroPdf']);
+                Route::post('imprimir-estado-cuenta-pdf', [EstadoCuentaController::class, 'imprimirPdfEstadoCuentaCliente']);
+                Route::post('imprimir-estado-cuenta-excel', [EstadoCuentaController::class, 'imprimirExcelEstadoCuentaCliente']);
+                Route::post('facturas-cliente', [EstadoCuentaController::class, 'obtenerFacturasEstadoCuentaCliente']);
+                Route::post('aplicaciones-pendientes', [AplicacionesController::class, 'obtenerListaDeDocumentosPendientesAplicacion']);
+                Route::get('obtener-bancos', [CobrosController::class, 'obtenerListaBancos']);
+                Route::post('verificar-comprobante', [CobrosController::class, 'consultarExistenciaRetencion']);
+                Route::post('verificar-comprobante-deposito', [CobrosController::class, 'consultarExistenciaDeposito']);
+                Route::post('verificar-cheque', [CobrosController::class, 'consultarExistenciaCheque']);
+                Route::post('validar-cobros', [AplicacionesController::class, 'obtenerInformacionPagosFacturas']);
+                Route::post('lista-cobros-registrados', [CobrosController::class, 'listaCobrosPorCliente']);
+                Route::post('registrar-cobro', [CobrosController::class, 'registrarCobroV1']);
+                Route::post('imprimir-cobro', [CobrosController::class, 'imprirCobroPdf']);
             });
 
             Route::prefix('ordenes-despacho')->group(function () {
@@ -615,8 +619,8 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
             });
 
             Route::prefix('cierre-cajas')->group(function () {
-                Route::post('cerrar', [CobranzasController::class, 'cerrarCajaV1']);
-                Route::post('resumen', [CobranzasController::class, 'resumenCerrarCaja']);
+                Route::post('cerrar', [CajasController::class, 'cerrarCajaV1']);
+                Route::post('resumen', [CajasController::class, 'resumenCerrarCaja']);
             });
         });
 
@@ -652,12 +656,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::prefix('cobranzas')->group(function () {
-        Route::get('consultar-cobro-por-comprobante', [CobranzasController::class, 'consultarCobroPorComprobante']);
+        Route::get('consultar-cobro-por-comprobante', [CobrosController::class, 'consultarCobroPorComprobante']);
     });
     Route::post('reservados', [ConsultasController::class, 'consultarItemsReservados']);
     Route::get('pedidos-guias/{periodo?}/{pvCodigo?}/{despacho?}', [PedidosController::class, 'obtenerPedidosGuiasPorTipoDespacho']);
-    Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionSp']);
-    Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasderemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
+    Route::get('lista-guias-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasDeRemisionController::class, 'listadoGuiasRemisionSp']);
+    Route::get('lista-guias-cabecera-sp/{periodo?}/{pvCodigo?}/{despacho?}', [GuiasDeRemisionController::class, 'listadoGuiasRemisionCabeceraSp']);
 });
 
 // para la sincronizacion global de articulo 1 por registro

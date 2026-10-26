@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\Admin\AppController;
-use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\Aplicaciones\AppController;
+use App\Http\Controllers\Admin\Usuarios\UserController;
 use App\Http\Controllers\Movil\Auth\AuthMobileController;
 use App\Http\Controllers\Movil\Menu\MobileMenuController;
-use App\Http\Controllers\Movil\SteamTrapController;
-use App\Http\Controllers\Movil\Inventario\GuiaRemisionController;
-use App\Http\Controllers\Movil\Inventario\GuiaRemisionArchivoController;
-use App\Http\Controllers\Ventas\ClienteController;
+use App\Http\Controllers\Movil\Gestion\SteamTrapController;
+use App\Http\Controllers\Movil\Inventario\GuiasRemision\GuiaRemisionController;
+use App\Http\Controllers\Movil\Inventario\GuiasRemision\GuiaRemisionArchivoController;
+use App\Http\Controllers\Ventas\Clientes\ClienteController;
 use Illuminate\Support\Facades\Route;
 
 /*

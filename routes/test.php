@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Admin\SectionsController;
-use App\Http\Controllers\test\TestController;
+use App\Http\Controllers\Admin\Secciones\SectionsController;
+use App\Http\Controllers\Test\TestController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('crear-orden-compra-items/{id}', [TestController::class, 'crearOrdenCompraItemsL']);

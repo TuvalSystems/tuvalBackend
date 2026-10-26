@@ -3,7 +3,7 @@
 namespace App\Services\Inventario\Reposiciones;
 
 
-use App\Http\Controllers\WebserviceController;
+use App\Http\Controllers\Integraciones\Soap\WebserviceController;
 use App\Models\despachos\GpGuiaRemision;
 use App\Models\despachos\GpGuiaRemisionDetalle;
 use App\Models\despachos\GpGuiaRemisionTransferencia;
