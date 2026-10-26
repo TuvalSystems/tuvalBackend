@@ -175,6 +175,7 @@ class ApiGpEndpoints
     // ---
 
     public const ORDEN_COMPRA_CREAR_GUIA_REMISION = 'api/ventas/orden-compra/crear-orden-compra-guia';
+    public const GUIA_REMISION_ORDEN_COMPRA_GUARDAR = 'api/inventario/despachos/guia-remision-orden-compra';
     
 
 }

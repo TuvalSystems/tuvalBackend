@@ -5,6 +5,7 @@ namespace App\Services\Inventario\Bodegas;
 use App\Enums\Admin\Sync\StatusSync;
 use App\Exceptions\UncertainPurchaseOrderException;
 use App\Jobs\Inventario\Bodegas\GenerateDeliveryNotePurchaseOrderJob;
+use App\Jobs\Inventario\Bodegas\SyncDeliveryNotePurchaseOrderJob;
 use App\Models\Admin\SyncLog;
 use App\Models\despachos\DeliveryNotePurchaseOrder;
 use App\Models\despachos\GpGuiaRemision;
@@ -249,6 +250,7 @@ class DeliveryNotePurchaseOrderService implements DeliveryNotePurchaseOrderServi
                 'ultimo_error' => null,
             ]);
             $this->logResult($record, 'Orden de compra generada y asociada a la guía.', StatusSync::SUCCESS);
+            SyncDeliveryNotePurchaseOrderJob::dispatch($record->id);
         });
     }
 
