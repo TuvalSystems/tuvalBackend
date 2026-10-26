@@ -21,6 +21,8 @@ use App\Services\Ventas\Cotizaciones\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Ventas\Cotizaciones\Contracts\QuotationHistoryCreatorServiceInterface;
 use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +45,6 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function createOrUpdate(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
         return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
-            $quoteId                = data_get($data, 'cotizacion_id', null);
             $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
             $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
             $client                 = GpCliente::find(data_get($data, 'cliente_id'));
@@ -67,14 +68,8 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
             }
 
-            if (!empty($quoteId)) {
-                GpCotizacionDetalle::where('cotizacion_id', $quoteId)
-                    ->delete();
-            }
             $cotizacion = $this->prepareQuotationHeader($data, $client, $pointSales, $typeDispatch, $seller, $user);
-            if (!empty($data['items'])) {
-                $this->saveQuotationDetails($cotizacion->id, $client->CLI_NIVEL_PRECIO, $data['items'] ?? []);
-            }
+            $this->saveQuotationDetails($cotizacion->id, $client->CLI_NIVEL_PRECIO, $data['items'] ?? [], $cotizacion->wasRecentlyCreated);
             $registerCopyId = data_get($data, 'registro_copia', null);
             if (!empty($registerCopyId)) {
                 $this->updateRegisterCopyQuotation($registerCopyId, $cotizacion->id);
@@ -97,7 +92,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     public function prepareQuotationHeader(array $data, GpCliente $client, GpPuntoVenta $pointSales, TipoDespacho $typeDispatch, GpVendedor $seller, GpUsuario $user): GpCotizacion
     {
         $id                         = data_get($data, 'cotizacion_id', null);
-        $quotation                  = $id ? GpCotizacion::findOrNew($id) : new GpCotizacion();
+        $quotation                  = $id ? GpCotizacion::whereKey($id)->lockForUpdate()->firstOrFail() : new GpCotizacion();
         $requiredApprovalCommercial = $this->determineApprovalStatus($quotation, $data);
         $motivoLimpio               = $this->sanitizeString($requiredApprovalCommercial['motivo'] ?? '');
 
@@ -180,37 +175,70 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
     }
 
     /** proceso de creacion de detalle de cotizacion */
-    protected function saveQuotationDetails(int $quoteId, string $lvlPrice, array $items)
+    protected function saveQuotationDetails(int $quoteId, string $lvlPrice, array $items, bool $isNewQuotation = false)
     {
+        $existing = GpCotizacionDetalle::where('cotizacion_id', $quoteId)->get()->keyBy('id');
+        $keptIds = [];
         foreach ($items as $it) {
-            $detail = $this->builder->formPayloadDetailQuotation($quoteId, $it, $lvlPrice);
+            // En una copia los IDs pertenecen al documento de origen.
+            $detailId = $isNewQuotation ? null : data_get($it, 'detalle_id');
+            $payload = $this->builder->formPayloadDetailQuotation($quoteId, $it, $lvlPrice);
+            $detail = $detailId ? $existing->get($detailId) : $payload;
+            if (!$detail || ($detailId && in_array((int) $detailId, $keptIds, true))) {
+                throw ValidationException::withMessages(['items' => 'El detalle no pertenece a esta cotización o está duplicado.']);
+            }
+            if ($detailId) {
+                $detail->fill($payload->getAttributes());
+            }
             $detail->save();
-            $providers = data_get($it, 'proveedores', []);
-            if (!empty($providers)) {
-                $this->saveQuotationDetailProviders($quoteId, $detail->id, $providers);
-            }
-            $stocks = data_get($it, 'stock', []);
-            if (!empty($stocks)) {
-                $this->saveQuotationDetailStocks($quoteId, $detail->id, $stocks);
-            }
+            $keptIds[] = (int) $detail->id;
+            $this->syncQuotationDetailRows(
+                $detail->proveedores(), data_get($it, 'proveedores', []), 'ID_PROVEEDOR',
+                fn(array $row) => $this->builder->formPayloadProvidersDetailQuotation($quoteId, $detail->id, $row),
+                $detail->wasRecentlyCreated
+            );
+            $this->syncQuotationDetailRows(
+                $detail->stock(), data_get($it, 'stock', []), 'STO_ART_BODEGA',
+                fn(array $row) => $this->builder->formPayloadStocksDetailQuotation($quoteId, $detail->id, $row),
+                $detail->wasRecentlyCreated
+            );
         }
+        GpCotizacionDetalle::where('cotizacion_id', $quoteId)->whereNotIn('id', $keptIds)->delete();
     }
 
+    protected function syncQuotationDetailRows(HasMany $relation, array $rows, string $identityField, callable $build, bool $isNewDetail): void
+    {
+        $existing = $relation->get()->keyBy('id');
+        $keptIds = [];
+        foreach ($rows as $row) {
+            $id = $isNewDetail ? null : data_get($row, 'id');
+            $payload = $build($row);
+            $model = $id ? $existing->get($id) : null;
+            if ($id && !$model) {
+                throw ValidationException::withMessages(['items' => 'El stock o proveedor no pertenece a este detalle.']);
+            }
+            if (!$id && !$isNewDetail) {
+                // Algunos formularios devuelven la bodega/proveedor sin su ID de fila.
+                $matches = $existing->where($identityField, data_get($row, $identityField));
+                if ($matches->count() > 1) {
+                    throw ValidationException::withMessages(['items' => 'Debe enviar el ID del stock o proveedor para identificar la fila.']);
+                }
+                $model = $matches->first();
+            }
+            if ($model && in_array((int) $model->id, $keptIds, true)) {
+                throw ValidationException::withMessages(['items' => 'El stock o proveedor está duplicado.']);
+            }
+            if ($model) {
+                $model->fill($payload->getAttributes());
+            } else {
+                $model = $payload;
+            }
+            $model->save();
+            $keptIds[] = (int) $model->id;
+        }
+        $relation->whereNotIn('id', $keptIds)->delete();
+    }
 
-    protected function saveQuotationDetailProviders(int $quoteId, int $detailId, array $providers)
-    {
-        foreach ($providers as $provider) {
-            $providerModel = $this->builder->formPayloadProvidersDetailQuotation($quoteId, $detailId, $provider);
-            $providerModel->save();
-        }
-    }
-    protected function saveQuotationDetailStocks(int $quoteId, int $detailId, array $stocks)
-    {
-        foreach ($stocks as $st) {
-            $stockModel = $this->builder->formPayloadStocksDetailQuotation($quoteId, $detailId, $st);
-            $stockModel->save();
-        }
-    }
 
     protected function updateRegisterCopyQuotation(int $registerCopyId, int $cotizacionId)
     {
