@@ -102,10 +102,12 @@ class DeliveryNoteDispatchParamsBuilder implements DeliveryNoteDispatchParamsBui
             'observacion'                       => $guia->GUI_REM_OBSERVACION,
             'fechaEmisionSustento'              => Carbon::parse(DeliveryNoteConstants::FECHA_NULA_DATETIME)->format('Y-m-d H:i:s'),
             'ordenCompra'                       => $ordenCompra ?? '',
-            'tipoDespachoId'                    => $guia->tipo_despacho_id,
-            'proveedorDespachoId'               => $guia->fle_proveedor_id,
+            
             // El contrato de la API de GP mantiene este nombre externo.
-            'choferTransportistaId'             => $guia->fle_externo_id,
+            'tipoDespachoId'                    => $guia->tipo_despacho_id,
+            'fleProveedorId'                    => $guia->fle_proveedor_id,
+            'fleExternoId'                      => $guia->fle_externo_id,
+            'valorOrdenCompra'                  => $guia->valor_orden_compra,
 
         ];
     }

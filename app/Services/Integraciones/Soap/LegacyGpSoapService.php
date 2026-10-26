@@ -80,17 +80,17 @@ class LegacyGpSoapService
      * Devuelve la lista de precios de los artículos de GP
      */
 
-    public function listaprecios($parameters = null)
-    {
-        if (!$parameters) {
-            $parameters = array('ART_CODIGO' => '');
-        }
-        $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
-            ->MST_Lista_Precio([
-                'Lista_Precio_Articulo' => $parameters,
-            ]);
-        return $response->json()['MST_Lista_PrecioResult']['CS_LISTA_PRECIO'];
-    }
+    // public function listaprecios($parameters = null)
+    // {
+    //     if (!$parameters) {
+    //         $parameters = array('ART_CODIGO' => '');
+    //     }
+    //     $response = Soap::baseWsdl(env('WEBSERVICES_URL'))
+    //         ->MST_Lista_Precio([
+    //             'Lista_Precio_Articulo' => $parameters,
+    //         ]);
+    //     return $response->json()['MST_Lista_PrecioResult']['CS_LISTA_PRECIO'];
+    // }
 
     public function maestros($metodo, $parameters)
     {
