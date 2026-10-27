@@ -29,6 +29,11 @@ use App\Services\Cobranzas\Cajas\Contracts\CollectionServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class CajasController extends Controller
 {
@@ -40,7 +45,7 @@ class CajasController extends Controller
         protected readonly CashRegisterClosureServiceInterface $cashClosureService
     ) {}
 
-    public function getcajausuario($puntodeventa, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function getcajausuario($puntodeventa, $userId): HttpResponse|Application|ResponseFactory
     {
         $user = Auth::user();
 
@@ -224,7 +229,7 @@ class CajasController extends Controller
         return $data;
     }
 
-    public function imprimircierredecaja($fecha, $caja): \Illuminate\Http\Response
+    public function imprimircierredecaja($fecha, $caja): HttpResponse
     {
         $data = GpCierreCaja::where('CAJA_CODIGO', $caja)
             ->where('fecha', $fecha)
@@ -235,7 +240,7 @@ class CajasController extends Controller
         return $pdf->stream('cierre-de-caja-' . $data['usuario']['USERID'] . '.pdf');
     }
 
-    public function imprimircierredecajausuario($fecha, $caja): \Illuminate\Http\Response
+    public function imprimircierredecajausuario($fecha, $caja): HttpResponse
     {
 
         $resumen = GpCierreCaja::where('CAJA_CODIGO', $caja)
@@ -255,7 +260,7 @@ class CajasController extends Controller
         return $pdf->stream('consulta-de-caja-usuario-' . $caja . '.pdf');
     }
 
-    public function resumencaja($fecha, $caja, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function resumencaja($fecha, $caja, $userId): HttpResponse|Application|ResponseFactory
     {
 
         $resumen = GpCierreCaja::where('CAJA_CODIGO', $caja)
@@ -274,7 +279,7 @@ class CajasController extends Controller
         ]);
     }
 
-    public function estadocaja($fechaActual = null, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function estadocaja($fechaActual = null, $userId): HttpResponse|Application|ResponseFactory
     {
         $user = Auth::user();
 
@@ -370,7 +375,7 @@ class CajasController extends Controller
         }
     }
 
-    public function cerrarcaja($puntodeventa, $userId): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function cerrarcaja($puntodeventa, $userId): HttpResponse|Application|ResponseFactory
     {
         $user = Auth::user();
 
@@ -424,7 +429,7 @@ class CajasController extends Controller
         ]);
     }
 
-    public function consultacierrecajausuario(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultacierrecajausuario(Request $request): HttpResponse|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -447,7 +452,7 @@ class CajasController extends Controller
         ]);
     }
 
-    public function cierrecajausuario($fecha, $caja_usuario): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
+    public function cierrecajausuario($fecha, $caja_usuario): array|Collection|SupportCollection
     {
         $cobranzas = array();
 

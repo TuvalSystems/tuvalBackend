@@ -17,13 +17,16 @@ use App\Services\Inventario\Dashboard\Contracts\DashboardServiceInterface;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class DashboardController extends Controller
 {
     use JsonResponseTrait;
 
     public function __construct(protected readonly DashboardServiceInterface $dashboard) {}
-    public function dashboard(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function dashboard(Request $request): Response|Application|ResponseFactory
     {
 
         $request->validate([

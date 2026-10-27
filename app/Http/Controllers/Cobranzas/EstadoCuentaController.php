@@ -10,6 +10,9 @@ use App\Services\Cobranzas\CobrosFacturas\Contracts\InvoiceCollectionServiceInte
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class EstadoCuentaController extends Controller
 {
@@ -19,7 +22,7 @@ class EstadoCuentaController extends Controller
         protected readonly InvoiceCollectionServiceInterface $invoiceCollect
     ) {}
 
-    public function documentosvencidoscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function documentosvencidoscliente(Request $request): HttpResponse|Application|ResponseFactory
     {
         $data = $request->validate([
             'CLI_RUC' => 'required',

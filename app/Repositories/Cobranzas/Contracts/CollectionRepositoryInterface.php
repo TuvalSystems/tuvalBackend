@@ -1,10 +1,11 @@
 <?php
 
 namespace App\Repositories\Cobranzas\Contracts;
+use Illuminate\Support\Collection;
 
 interface CollectionRepositoryInterface
 {
-    public function getPaymentsByDepositReference(string $reference): \Illuminate\Support\Collection;
+    public function getPaymentsByDepositReference(string $reference): Collection;
 
 
     public function getAppliedBalancesByBox(int $boxId, string $date);

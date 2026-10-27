@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventario\Transporte\GpTransportista;
 use App\Models\Inventario\Transporte\GpVehiculo;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class TransportesController extends Controller
 {
-    public function transportistas(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function transportistas(): Response|Application|ResponseFactory
     {
         $transportistas = GpTransportista::get();
         $vehiculos = GpVehiculo::get();
@@ -21,7 +24,7 @@ class TransportesController extends Controller
         ]);
     }
 
-    public function savetransportista(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function savetransportista(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -49,7 +52,7 @@ class TransportesController extends Controller
         }
     }
 
-    public function savevehiculo(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function savevehiculo(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -76,7 +79,7 @@ class TransportesController extends Controller
         }
     }
 
-    public function deletetransportista($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function deletetransportista($id): Response|Application|ResponseFactory
     {
         if(GpTransportista::where('id',$id)->delete()){
             return response([
@@ -90,7 +93,7 @@ class TransportesController extends Controller
         }
     }
 
-    public function deletevehiculo($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function deletevehiculo($id): Response|Application|ResponseFactory
     {
         if(GpVehiculo::where('id',$id)->delete()){
             return response([

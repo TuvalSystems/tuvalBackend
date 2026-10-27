@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Ventas\Pedidos\GpPedido;
 
 class OrderJobService
 {
@@ -158,7 +159,7 @@ class OrderJobService
                     DB::transaction(function () use ($order, $today, &$metrics) {
                         // 3) Re-carga con lock para evitar doble facturación concurrente
                         /** @var \App\Models\Ventas\Pedidos\GpPedido $fresh */
-                        $fresh = \App\Models\Ventas\Pedidos\GpPedido::query()
+                        $fresh = GpPedido::query()
                             ->whereKey($order->id)
                             ->lock('FOR UPDATE') // MySQL 8+: 'FOR UPDATE' o 'FOR UPDATE SKIP LOCKED'
                             ->first();

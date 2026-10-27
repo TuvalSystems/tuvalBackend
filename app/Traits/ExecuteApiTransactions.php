@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Illuminate\Auth\AuthenticationException;
 trait ExecuteApiTransactions
 {
 
@@ -41,7 +42,7 @@ trait ExecuteApiTransactions
         $mensaje = $e->getMessage();
         $codigo = 500;
 
-        if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+        if ($e instanceof AuthenticationException) {
             $mensaje = 'Las credenciales no son válidas.';
             $codigo = 401;
         } elseif ($e instanceof HttpException) {

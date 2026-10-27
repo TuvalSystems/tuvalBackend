@@ -9,6 +9,7 @@ use Spatie\MediaLibrary\HasMedia;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Inventario\GuiasRemision\DeliveryNotePurchaseOrder;
 
 /**
  * App\Models\Ventas\Reservas\GpGuiaRemisionReserva
@@ -145,7 +146,7 @@ class GpGuiaRemisionReserva extends Model implements HasMedia
 
     public function purchaseOrder()
     {
-        return $this->hasOne(\App\Models\Inventario\GuiasRemision\DeliveryNotePurchaseOrder::class, 'guia_reserva_id');
+        return $this->hasOne(DeliveryNotePurchaseOrder::class, 'guia_reserva_id');
     }
 
     protected function serializeDate(DateTimeInterface $date)

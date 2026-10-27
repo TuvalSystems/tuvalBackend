@@ -17,6 +17,9 @@ use App\Services\Inventario\Despachos\Contracts\LogisticsOperationsServiceInterf
 use App\Services\Inventario\Reposiciones\Contracts\TransferRepositionServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class ReposicionController extends Controller
 {
@@ -51,7 +54,7 @@ class ReposicionController extends Controller
     }
 
 
-    public function transferenciasreposicion($id, $documento = null): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function transferenciasreposicion($id, $documento = null): Response|Application|ResponseFactory
     {
 
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
@@ -138,7 +141,7 @@ class ReposicionController extends Controller
         ]);
     }
 
-    public function recibosreposicion($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibosreposicion($id): Response|Application|ResponseFactory
     {
 
         ini_set('max_execution_time', -1);
@@ -196,7 +199,7 @@ class ReposicionController extends Controller
         ]);
     }
 
-    public function recibosreposicionindividual($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibosreposicionindividual($id): Response|Application|ResponseFactory
     {
 
         ini_set('max_execution_time', -1);

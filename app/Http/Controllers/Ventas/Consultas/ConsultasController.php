@@ -21,6 +21,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Foundation\Application;
 
 class ConsultasController extends Controller
 {
@@ -121,7 +122,7 @@ class ConsultasController extends Controller
 
 
 
-    public function consultastockarticulopuntodeventa($articulo, $puntodeventa): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function consultastockarticulopuntodeventa($articulo, $puntodeventa): Response|Application|ResponseFactory
     {
 
         $funciones = new FuncionesController();
@@ -164,7 +165,7 @@ class ConsultasController extends Controller
 
  
 
-    public function puntodeventacaja(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function puntodeventacaja(): Response|Application|ResponseFactory
     {
         $puntosdeventa = GpPuntoVenta::get();
 
@@ -205,7 +206,7 @@ class ConsultasController extends Controller
             return $this->successResponse('Reservas obtenidas', $response, 200);
         }, 'laravel', 'consultarItemsReservados');
     }
-    public function transferenciaspendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function transferenciaspendientes(): Response|Application|ResponseFactory
     {
 
         $pedidos = GpTrasladosVentas::join('gp_pedidos', 'gp_pedidos.id', 'gp_traslados_ventas.pedido_id')
@@ -275,7 +276,7 @@ class ConsultasController extends Controller
     }
 
 
-    public function transferencias_pendientes_ingreso(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function transferencias_pendientes_ingreso(): Response|Application|ResponseFactory
     {
         $pendientes = GpGuiaRemisionDetalle::join('gp_guia_remisions', 'gp_guia_remisions.id', 'gp_guia_remision_detalles.guia_remision_id')
             //->whereNull('completado')
@@ -335,7 +336,7 @@ class ConsultasController extends Controller
             'guias' => $response,
         ]);
     }
-    public function items_transferencia_venta($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function items_transferencia_venta($item = null): Response|Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -382,7 +383,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function items_transferencia_reposicion($item = null): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function items_transferencia_reposicion($item = null): Response|Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -424,7 +425,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function reposiciones_pendientes(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function reposiciones_pendientes(): Response|Application|ResponseFactory
     {
         //        $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', 006)->first();
         //        $bodega = $bodega->PTO_VTA_BOD_BODEGA;
@@ -473,7 +474,7 @@ class ConsultasController extends Controller
         );
     }
 
-    public function pendientes_despachar(): Response|\Illuminate\Contracts\Foundation\Application|ResponseFactory
+    public function pendientes_despachar(): Response|Application|ResponseFactory
     {
         $pedidos = GpPedidoDetalle::join('gp_pedidos', 'gp_pedidos.id', 'gp_pedido_detalles.pedido_id')
             ->join('gp_orden_despachos', 'gp_orden_despachos.pedido_id', 'gp_pedidos.id')

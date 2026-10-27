@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use App\Supports\SafeUploadName;
 
 class OrderCreatorService implements OrderCreatorServiceInterface
 {
@@ -381,11 +382,11 @@ class OrderCreatorService implements OrderCreatorServiceInterface
         Log::info("STORE IMAGES: Iniciando proceso. Cantidad de archivos: " . count($files));
         foreach ($files as $file) {
             // Validamos que sea un archivo real antes de procesar
-            if (!$file instanceof \Illuminate\Http\UploadedFile) {
+            if (!$file instanceof UploadedFile) {
                 continue;
             }
 
-            $uniqueName = \App\Supports\SafeUploadName::image($file);
+            $uniqueName = SafeUploadName::image($file);
 
             $path = $file->storeAs(
                 "pedidos/operaciones_img/{$pedido->id}",
@@ -441,7 +442,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $uniqueName     = \App\Supports\SafeUploadName::pdf($file);
+            $uniqueName     = SafeUploadName::pdf($file);
 
             $order
                 ->addMedia($file)

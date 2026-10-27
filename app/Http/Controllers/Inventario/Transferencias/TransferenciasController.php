@@ -19,6 +19,9 @@ use App\Services\Inventario\Transferencias\Contracts\TransferServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class TransferenciasController extends Controller
 {
@@ -103,7 +106,7 @@ class TransferenciasController extends Controller
 
 
 
-    public function recibosventa($id): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recibosventa($id): HttpResponse|Application|ResponseFactory
     {
 
         $bodega = GpRelacionPuntoVentaBodega::where('PTO_VTA_BOD_PUNTO_VENTA', $id)->first();
@@ -165,7 +168,7 @@ class TransferenciasController extends Controller
     }
 
 
-    public function imprimirpicking(Request $request): \Illuminate\Http\Response
+    public function imprimirpicking(Request $request): HttpResponse
     {
 
         $nuevo_detalle = $request->all();
@@ -198,7 +201,7 @@ class TransferenciasController extends Controller
         return $pdf->stream('picking.pdf');
     }
 
-    public function picking(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function picking(Request $request): HttpResponse|Application|ResponseFactory
     {
 
         $nuevo_detalle = $request->all();

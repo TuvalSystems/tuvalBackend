@@ -32,6 +32,9 @@ use App\Models\Inventario\Articulos\GpUnidadMedida;
 use App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja;
 use App\Services\Integraciones\Api\ApiGpService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 
 class SincronizacionController extends Controller
@@ -43,7 +46,7 @@ class SincronizacionController extends Controller
      * Sincroniza usuarios desde Dynamics GP
      */
 
-    public function llenausuariosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenausuariosgp(): Response|Application|ResponseFactory
     {
         $obj = new LegacyGpSoapService;
         $usuarios = $obj->usuarios();
@@ -140,7 +143,7 @@ class SincronizacionController extends Controller
     /*
      * Sincroniza Condicion de Pago desde Dynamics GP
      */
-    public function llenaarticulosgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenaarticulosgp(): Response|Application|ResponseFactory
     {
         $metodo = 'MST_Articulo';
         $fecha = '';
@@ -300,7 +303,7 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function llenapuntodeventaycajasgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenapuntodeventaycajasgp(): Response|Application|ResponseFactory
     {
         $this->llenapuntosdeventagp();
         $this->llenacajasgp();
@@ -335,7 +338,7 @@ class SincronizacionController extends Controller
         return;
     }
 
-    public function llenadescuentoformapagogp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenadescuentoformapagogp(): Response|Application|ResponseFactory
     {
         $obj = new LegacyGpSoapService;
         $descuentos = $obj->descuentoformapago();
@@ -506,7 +509,7 @@ class SincronizacionController extends Controller
 
 
 
-    public function llenarelacionesgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenarelacionesgp(): Response|Application|ResponseFactory
     {
         $this->llenarelacionpuntodeventabodegagp();
         $this->llenarelacionpuntodeventabodegarelacionadagp();
@@ -577,7 +580,7 @@ class SincronizacionController extends Controller
         ]);
     }
 
-    public function llenaproveedorgp(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function llenaproveedorgp(): Response|Application|ResponseFactory
     {
         $metodo = 'MST_Proveedor';
         $fecha = '';
@@ -821,7 +824,7 @@ class SincronizacionController extends Controller
         $this->llenapaisesyterritoriosgp();
     }
 
-    public function testcliente(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function testcliente(): Response|Application|ResponseFactory
     {
 
         $metodo = 'MST_Cliente';

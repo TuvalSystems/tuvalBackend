@@ -32,6 +32,11 @@ use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use App\Services\Cobranzas\Cobros\Contracts\PaymentReceiptLookupServiceInterface;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class CobrosController extends Controller
 {
@@ -234,7 +239,7 @@ class CobrosController extends Controller
         return $cobro;
     }
 
-    public function consultacobroscliente(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function consultacobroscliente(Request $request): HttpResponse|Application|ResponseFactory
     {
         $data = $request->all();
         $user = $request->user();
@@ -247,7 +252,7 @@ class CobrosController extends Controller
         ]);
     }
 
-    public function cobroscliente($data, $user): array|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
+    public function cobroscliente($data, $user): array|Collection|SupportCollection
     {
         $query = GpCobro::where('cliente_id', $data['cliente']['id'])
             ->whereDate('fecha', '>=', $data['fecha_inicio'])

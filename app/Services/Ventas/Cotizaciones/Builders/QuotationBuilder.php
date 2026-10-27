@@ -22,6 +22,7 @@ use App\Services\Ventas\Cotizaciones\Builders\Contracts\QuotationBuilderInterfac
 use App\Traits\CleansPayloadData;
 use App\Services\Ventas\Aprobaciones\Utils\FreightApproval;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 class QuotationBuilder implements QuotationBuilderInterface
 {
@@ -121,7 +122,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'origen'                            => $origen,
             'modificador_global'                => (float) data_get($data, 'modificador_global', 0),
         ]);
-        $cot->fill(\Illuminate\Support\Arr::only($data, [
+        $cot->fill(Arr::only($data, [
             'tipo_despacho_id', 'fle_proveedor_id', 'responsable_flete',
             'peso', 'fle_peso', 'fle_valor',
         ]));
@@ -375,6 +376,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'VEND_ID'                           => $cliente->gpvendedor->VEND_ID,
             'VEND_NOMBRES'                      => $cliente->gpvendedor->VEND_NOMBRES,
             'VEND_APELLIDOS'                    => $cliente->gpvendedor->VEND_APELLIDOS,
+            'tipo_despacho'                     => 1,
             'despacho'                          => 'Retiro en bodega',
             'orden_de_compra'                   => null,
             'porcentage_descuento'              => $cliente->CLI_DSTO_COMERCIAL,

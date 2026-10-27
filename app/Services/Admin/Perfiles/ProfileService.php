@@ -5,6 +5,7 @@ namespace App\Services\Admin\Perfiles;
 use App\Models\Admin\Perfiles\Perfiles;
 use App\Services\Admin\Perfiles\Contracts\ProfileServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 
 class ProfileService implements ProfileServiceInterface
 {
@@ -103,7 +104,7 @@ class ProfileService implements ProfileServiceInterface
             $homeSectionId = (int) $homeSectionId;
 
             if (!$sectionIds->contains($homeSectionId)) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'home_section_id' => [
                         'La sección home debe estar dentro de las secciones asignadas al perfil.',
                     ],

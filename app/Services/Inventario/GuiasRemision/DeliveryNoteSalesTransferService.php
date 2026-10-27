@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Collection as SupportCollection;
 
 class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServiceInterface
 {
@@ -609,7 +610,7 @@ class DeliveryNoteSalesTransferService implements DeliveryNoteSalesTransferServi
     }
 
 
-    protected function groupItemsByOrder( \Illuminate\Support\Collection $items, Collection $movimientos, Collection  $traslados): array
+    protected function groupItemsByOrder( SupportCollection $items, Collection $movimientos, Collection  $traslados): array
     {
         $groups = [];
         foreach ($items as $itm) {

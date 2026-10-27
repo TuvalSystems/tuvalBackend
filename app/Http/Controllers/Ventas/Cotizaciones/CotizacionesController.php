@@ -28,6 +28,9 @@ use App\Traits\ExecuteApiTransactions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class CotizacionesController extends Controller
 {
@@ -69,7 +72,7 @@ class CotizacionesController extends Controller
     }
 
 
-    public function selectarticuloprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function selectarticuloprospecto(Request $request): Response|Application|ResponseFactory
     {
 
         $data = $request->validate([
@@ -91,7 +94,7 @@ class CotizacionesController extends Controller
 
 
 
-    public function guardarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarcotizacionprospecto(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
         $user = $request->user();
@@ -194,7 +197,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function vercotizaciones(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function vercotizaciones(Request $request): Response|Application|ResponseFactory
     {
         $user = $request->user() ?? GpUsuario::find(137);
         $data = $request->validate([
@@ -304,7 +307,7 @@ class CotizacionesController extends Controller
     }
 
 
-    public function recuperarcotizacionprospecto(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function recuperarcotizacionprospecto(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
         $cliente = GpProspecto::where('id', $data['prospecto_id'])->first();
@@ -414,7 +417,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function imprimircotizacionprospecto(int $id): \Illuminate\Http\Response|string
+    public function imprimircotizacionprospecto(int $id): Response|string
     {
         $cotizacionModel = GpCotizacion::where('id', $id)->first();
         $cotizacion = $cotizacionModel->toarray();
@@ -458,7 +461,7 @@ class CotizacionesController extends Controller
         return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
     }
 
-    public function guardarordendecompra(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarordendecompra(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -473,7 +476,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
-    public function guardarmensaje(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarmensaje(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 

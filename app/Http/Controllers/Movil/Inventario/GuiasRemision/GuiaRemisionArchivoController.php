@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Carbon;
 
 class GuiaRemisionArchivoController extends Controller
 {
@@ -78,7 +79,7 @@ class GuiaRemisionArchivoController extends Controller
                     'latitud' => (float) $validated['latitud'],
                     'longitud' => (float) $validated['longitud'],
                     'precision_ubicacion' => (float) $validated['precision_ubicacion'],
-                    'fecha_firma' => \Illuminate\Support\Carbon::parse($validated['fecha_firma'])->utc()->toIso8601String(),
+                    'fecha_firma' => Carbon::parse($validated['fecha_firma'])->utc()->toIso8601String(),
                 ]);
             return $this->successResponse('Firma guardada.', $data, 201);
         }, self::LOG_CHANNEL, 'GuiaRemisionArchivoController@firma');

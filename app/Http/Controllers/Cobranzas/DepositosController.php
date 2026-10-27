@@ -15,6 +15,9 @@ use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class DepositosController extends Controller
 {
@@ -25,7 +28,7 @@ class DepositosController extends Controller
         protected readonly CollectionGpSenderServiceInterface $sendCollectionService
     ) {}
 
-    public function depositosporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function depositosporaprobar(): HttpResponse|Application|ResponseFactory
     {
 
         $depositos = GpCobrosDeposito::where('monto', '>', 0)
@@ -43,7 +46,7 @@ class DepositosController extends Controller
         ]);
     }
 
-    public function aprobardeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function aprobardeposito(Request $request): HttpResponse|Application|ResponseFactory
     {
         $request->validate([
             'id' => 'required',
@@ -90,7 +93,7 @@ class DepositosController extends Controller
         ]);
     }
 
-    public function rechazardeposito(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazardeposito(Request $request): HttpResponse|Application|ResponseFactory
     {
         $data       = $request->all();
         $user       = $request->user();

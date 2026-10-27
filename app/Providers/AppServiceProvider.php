@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Validator;
+use App\Validation\SecurityValidator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,13 +22,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         // Keep existing media, notification and audit polymorphic identifiers.
-        \Illuminate\Database\Eloquent\Relations\Relation::morphMap(
+        Relation::morphMap(
             require app_path('Supports/legacy_model_namespaces.php')
         );
 
-        \Illuminate\Support\Facades\Validator::resolver(
+        Validator::resolver(
             fn ($translator, $data, $rules, $messages, $attributes) =>
-                new \App\Validation\SecurityValidator($translator, $data, $rules, $messages, $attributes)
+                new SecurityValidator($translator, $data, $rules, $messages, $attributes)
         );
     }
 }

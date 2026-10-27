@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use App\Supports\SafeUploadName;
 
 class QuotationCreatorService implements QuotationCreatorServiceInterface
 {
@@ -322,7 +323,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
 
-            $uniqueName = \App\Supports\SafeUploadName::image($file);
+            $uniqueName = SafeUploadName::image($file);
 
             $path = $file->storeAs(
                 "cotizaciones/operaciones_img/{$cotizacion->id}",
@@ -423,7 +424,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 continue;
             }
             $originalName   = $file->getClientOriginalName();
-            $uniqueName     = \App\Supports\SafeUploadName::pdf($file);
+            $uniqueName     = SafeUploadName::pdf($file);
 
             $quote
                 ->addMedia($file)

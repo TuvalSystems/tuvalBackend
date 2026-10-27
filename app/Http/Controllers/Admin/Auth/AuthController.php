@@ -9,6 +9,9 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 
 class AuthController extends Controller
@@ -42,7 +45,7 @@ class AuthController extends Controller
      * Función de salida del sistema
      */
 
-    public function logout(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function logout(Request $request): Response|Application|ResponseFactory
     {
         $user = $request->user('sanctum');
 

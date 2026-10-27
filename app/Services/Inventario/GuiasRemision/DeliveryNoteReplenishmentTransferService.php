@@ -21,6 +21,7 @@ use App\Services\Inventario\GuiasRemision\Contracts\DeliveryNoteReplenishmentTra
 use App\Services\Inventario\Despachos\Contracts\LogisticsOperationsServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishmentTransferServiceInterface
 {
@@ -92,7 +93,7 @@ class DeliveryNoteReplenishmentTransferService implements DeliveryNoteReplenishm
                 $this->updateTransferReposition($items);
                 return $guia;
             } catch (\Throwable $e) {
-               if ($e instanceof \Illuminate\Database\QueryException && $e->errorInfo[1] == 1062) {
+               if ($e instanceof QueryException && $e->errorInfo[1] == 1062) {
                     throw new  \RuntimeException( 'El número de guía (' . data_get($infoGuia, 'numeroGuia') . ') acaba de ser tomado por otro proceso. Por favor, intente generar la guía nuevamente.');
                 }
                 throw $e;

@@ -13,6 +13,9 @@ use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGenerado;
 use App\Models\Compras\OrdenesCompra\GpOrdenDeCompraGeneradoDetalle;
 use App\Services\Compras\Recepciones\Contracts\PurchaseReceiptLItemServiceInterface;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 
 class RecibosDeCompraController extends Controller
@@ -20,7 +23,7 @@ class RecibosDeCompraController extends Controller
     use JsonResponseTrait;
 
     public function __construct(protected readonly PurchaseReceiptLItemServiceInterface $purchaseReceiptLItemService) {}
-    public function bandeja(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function bandeja(Request $request): Response|Application|ResponseFactory
     {
 
         $request->validate([
@@ -75,7 +78,7 @@ class RecibosDeCompraController extends Controller
         ]);
     }
 
-    public function detalle(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function detalle(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -114,14 +117,14 @@ class RecibosDeCompraController extends Controller
     }
 
 
-    public function imprimirrecibol(Request $request): \Illuminate\Http\Response
+    public function imprimirrecibol(Request $request): Response
     {
         $data = $request->all();
         $pdf = PDF::loadView('ordenReciboLPDF', $data);
         return $pdf->stream('orden_recibo_' . $data['ORDEN_COMPRA_DOCUMENTO'] . '.pdf');
     }
 
-    public function eliminar(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function eliminar(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 

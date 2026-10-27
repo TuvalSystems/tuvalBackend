@@ -18,6 +18,9 @@ use App\Services\Ventas\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class AprobacionesController extends Controller
 {
@@ -228,7 +231,7 @@ class AprobacionesController extends Controller
             return $this->buildSuccessResponse("Cotización {$quote->cotizacion} aprobada", 200);
         }, 'laravel', ' aprobacionComercialCotizacion');
     }
-    public function rechazarcotizacion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazarcotizacion(Request $request): Response|Application|ResponseFactory
     {
 
         $data = $request->all();
@@ -256,7 +259,7 @@ class AprobacionesController extends Controller
 
 
 
-    public function aprobardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function aprobardevolucion(Request $request): Response|Application|ResponseFactory
     {
 
         $data = $request->all();
@@ -286,7 +289,7 @@ class AprobacionesController extends Controller
         }
     }
 
-    public function rechazardevolucion(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function rechazardevolucion(Request $request): Response|Application|ResponseFactory
     {
 
         $data = $request->all();
@@ -314,7 +317,7 @@ class AprobacionesController extends Controller
 
 
 
-    public function verdevolucionesporaprobar(): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function verdevolucionesporaprobar(): Response|Application|ResponseFactory
     {
         $devoluciones = GpDevoluciones::join('gp_clientes', 'gp_clientes.id', 'gp_devoluciones.cliente_id')
             ->join('gp_pedidos', 'gp_pedidos.id', 'gp_devoluciones.pedido_id')

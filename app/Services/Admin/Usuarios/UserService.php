@@ -18,6 +18,7 @@ use App\Services\Admin\Menu\Contracts\MenuServiceInterface;
 use App\Services\Movil\Menu\Contracts\MobileMenuServiceInterface;
 use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Auth\AuthenticationException;
 
 class UserService implements UserServiceInterface
 {
@@ -121,10 +122,10 @@ class UserService implements UserServiceInterface
     protected function isValidUserWeb(?GpUsuario $user, string $password): void
     {
         if (!$user) {
-            throw new \Illuminate\Auth\AuthenticationException();
+            throw new AuthenticationException();
         }
         if (!Hash::check($password, $user->password)) {
-            throw new \Illuminate\Auth\AuthenticationException();
+            throw new AuthenticationException();
         }
 
         if (!$user->status) {
@@ -227,11 +228,11 @@ class UserService implements UserServiceInterface
     public function isValidUserMobile(?GpUsuario $user, string $password)
     {
         if (!$user) {
-            throw new \Illuminate\Auth\AuthenticationException();
+            throw new AuthenticationException();
         }
 
         if (!Hash::check($password, $user->password)) {
-            throw new \Illuminate\Auth\AuthenticationException();
+            throw new AuthenticationException();
         }
 
         if (!$user->status) {

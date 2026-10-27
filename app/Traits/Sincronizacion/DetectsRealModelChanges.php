@@ -3,6 +3,7 @@
 namespace App\Traits\Sincronizacion;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 trait DetectsRealModelChanges
 {
@@ -22,7 +23,7 @@ trait DetectsRealModelChanges
     private function normalizeValue(mixed $value): string
     {
         if ($value === null) return '';
-        if ($value instanceof \Carbon\Carbon) return $value->format('Y-m-d');
+        if ($value instanceof Carbon) return $value->format('Y-m-d');
         if (is_numeric($value)) return rtrim(rtrim(number_format((float)$value, 4, '.', ''), '0'), '.');
         return trim((string) $value);
     }

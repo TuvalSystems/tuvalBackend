@@ -29,6 +29,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Http\Response;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class PedidosController extends Controller
 {
@@ -147,7 +150,7 @@ class PedidosController extends Controller
 
 
 
-    public function verpedidos(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function verpedidos(Request $request): Response|Application|ResponseFactory
     {
 
 
@@ -323,7 +326,7 @@ class PedidosController extends Controller
 
 
 
-    public function imprimirpedido(int $id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
+    public function imprimirpedido(int $id): Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
         try {
             $pedido = $this->orderService->getOrderInfo($id);
@@ -337,7 +340,7 @@ class PedidosController extends Controller
             abort(500, 'Error al generar el PDF del pedido');
         }
     }
-    public function imprimirpedidoimagenes(int $id): \Illuminate\Http\Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
+    public function imprimirpedidoimagenes(int $id): Response|string //\Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory|string|\Illuminate\Contracts\Foundation\Application
     {
         try {
             $pedido = $this->orderService->getOrderInfo($id);
@@ -426,7 +429,7 @@ class PedidosController extends Controller
 
 
 
-    public function guardarordendecompra(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarordendecompra(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
@@ -441,7 +444,7 @@ class PedidosController extends Controller
         ]);
     }
 
-    public function guardarmensaje(Request $request): \Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function guardarmensaje(Request $request): Response|Application|ResponseFactory
     {
         $data = $request->all();
 
