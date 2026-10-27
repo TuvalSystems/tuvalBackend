@@ -90,7 +90,7 @@ class ActualizacionUsoItemLCommand extends Command
                     $last = isset($lastMap[$art->ART_CODIGO]) ? Carbon::parse($lastMap[$art->ART_CODIGO], $tz) : null;
 
                     if ($last) {
-                        $elapsed = $last->copy()->startOfDay()->diffInDays($today);
+                        $elapsed = (int) $last->copy()->startOfDay()->diffInDays($today, true);
                         $disp = $elapsed >= $cooldown;
                         if (isset($inCartSet[$art->ART_CODIGO])) $disp = false;
                         $rows[] = [

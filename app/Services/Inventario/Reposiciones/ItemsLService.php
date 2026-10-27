@@ -93,7 +93,7 @@ class ItemsLService
         $lastDay = $lastTz->copy()->startOfDay();
         $today = Carbon::now($tz)->startOfDay();
 
-        $elapsed = $lastDay->diffInDays($today);
+        $elapsed = (int) $lastDay->diffInDays($today, true);
         $remaining = max(0, $cooldownDays - $elapsed);
         return [
             'disponible' => $elapsed >= $cooldownDays,

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->decimal('seleccionado', 11, 2)->nullable();
             $table->decimal('cantidad_autorizada_reserva', 18, 2)->nullable()->default(0);
             $table->decimal('cantidad_facturada', 18, 2)->nullable()->default(0);
-            $table->unsignedDecimal('cantidad_reservada', 18, 2)
+            $table->decimal('cantidad_reservada', 18, 2)->unsigned()
                 ->default(0)
                 ->comment('Cantidad reservada para cálculos de pendientes y disponibles');
 

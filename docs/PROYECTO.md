@@ -2,15 +2,15 @@
 
 ## 1. Propósito del sistema
 
-Tuval Backend es una API desarrollada en Laravel 8 para soportar procesos comerciales, logísticos, de cobranzas y de operación móvil alrededor de datos sincronizados con GP/servicios externos. El proyecto expone endpoints para aplicaciones web y móviles, genera documentos PDF, procesa trabajos en cola y ejecuta tareas programadas de sincronización, facturación, reservas, devoluciones y mantenimiento.
+Tuval Backend es una API desarrollada en Laravel 12 para soportar procesos comerciales, logísticos, de cobranzas y de operación móvil alrededor de datos sincronizados con GP/servicios externos. El proyecto expone endpoints para aplicaciones web y móviles, genera documentos PDF, procesa trabajos en cola y ejecuta tareas programadas de sincronización, facturación, reservas, devoluciones y mantenimiento.
 
 ## 2. Stack tecnológico
 
 | Capa | Tecnología / paquete | Uso principal |
 | --- | --- | --- |
-| Lenguaje | PHP `^8.1` | Backend y jobs Artisan. |
-| Framework | Laravel `^8.75` | API, routing, DI, Eloquent, colas y scheduler. |
-| Autenticación | Laravel Sanctum `^2.11` | Tokens personales con abilities `web` y `mobile`. |
+| Lenguaje | PHP `^8.2.35` | Backend y jobs Artisan. |
+| Framework | Laravel `^12.0` | API, routing, DI, Eloquent, colas y scheduler. |
+| Autenticación | Laravel Sanctum `^4.0` | Tokens personales con abilities `web` y `mobile`. |
 | Base de datos | MySQL por defecto; soporte `sqlite`, `pgsql`, `sqlsrv` | Persistencia principal y migraciones. |
 | Redis | `predis/predis` | Driver recomendado para colas/cache cuando se configure. |
 | PDF | `barryvdh/laravel-dompdf` | Generación de cotizaciones, pedidos, guías, cobranzas, etc. |
@@ -104,7 +104,7 @@ Los errores usan:
 
 ### 5.1 Requisitos
 
-- PHP 8.1 o compatible con las extensiones necesarias para Laravel, PDO y las conexiones configuradas.
+- PHP 8.2.35 o superior, con las extensiones necesarias para Laravel, PDO y las conexiones configuradas.
 - Composer.
 - Node.js y npm para assets.
 - MySQL/MariaDB o la base que corresponda por `DB_CONNECTION`.

@@ -16,7 +16,7 @@ class AddColumnsCantidadesToGpCotizacionDetalleStocksTable extends Migration
         Schema::table('gp_cotizacion_detalle_stocks', function (Blueprint $table) {
             $table->decimal('cantidad_autorizada_reserva', 18, 2)->nullable()->default(0)->after('seleccionado');
             $table->decimal('cantidad_facturada', 18, 2)->nullable()->default(0)->after('cantidad_autorizada_reserva');
-            $table->unsignedDecimal('cantidad_reservada', 18, 2)
+            $table->decimal('cantidad_reservada', 18, 2)->unsigned()
                 ->default(0)
                 ->comment('Cantidad reservada para cálculos de pendientes y disponibles');
 
