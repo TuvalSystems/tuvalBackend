@@ -73,6 +73,7 @@ class OrderBuilder implements OrderBuilderInterface
             'origen'                        => data_get($infoCreator, 'origen'),
             'fe_facturacion_reserva'        => data_get($infoCreator, 'fecha_reserva'),
             'modificador_global'            => data_get($data, 'modificador_global', 0),
+            'proyecto'                      => data_get($data, 'proyecto'),
 
             //nuevos campos
             'pv_id'                         => $puntoVenta->id,
@@ -260,6 +261,19 @@ class OrderBuilder implements OrderBuilderInterface
     {
         $od = new GpPedido();
         $od->fill([
+            'pv_id'                             => $ptoVta->id,
+            'vendedor_id'                       => data_get($data, 'vendedor_id'),
+            'tipo_despacho_id'                  => data_get($data, 'tipo_despacho_id'),
+            'responsable_flete'                 => data_get($data, 'responsable_flete'),
+            'fle_proveedor_id'                  => data_get($data, 'fle_proveedor_id'),
+            'peso'                              => data_get($data, 'peso') ?? 0,
+            'fle_peso'                          => data_get($data, 'fle_peso') ?? 0,
+            'fle_valor'                         => data_get($data, 'fle_valor') ?? 0,
+            'fle_usuario_id'                    => data_get($data, 'fle_usuario_id'),
+            'fle_fecha'                         => data_get($data, 'fle_fecha'),
+            'fle_fecha_aut'                     => data_get($data, 'fle_fecha_aut'),
+            'fle_usuario_aut_id'                => data_get($data, 'fle_usuario_aut_id'),
+            'proyecto'                          => data_get($data, 'proyecto'),
             'cotizacion_id'                     => data_get($data, 'cotizacion_id'),
             'user_id'                           => $user->id,
             'USERID'                            => $user->USERID,

@@ -74,6 +74,9 @@ class QuotationBuilder implements QuotationBuilderInterface
         $cot->fill([
             'estado'                            => $requiereApproval['estado'],
             'user_id'                           => $user->id,
+            'pv_id'                             => $pv?->id,
+            'vendedor_id'                       => data_get($data, 'vendedor_id'),
+            'proyecto'                          => data_get($data, 'proyecto'),
             'sucursal_id'                       => $data['sucursal_id'],
             'sucursal_facturacion_id'           => $data['sucursal_facturacion_id'],
             'cliente_id'                        => $data['cliente_id'],
@@ -140,6 +143,11 @@ class QuotationBuilder implements QuotationBuilderInterface
         $det = new GpCotizacionDetalle();
         $det->fill([
             'cotizacion_id'                     => $cotizacionId,
+            'art_id'                            => data_get($item, 'art_id'),
+            'fle_valor'                         => data_get($item, 'fle_valor') ?? 0,
+            'precio_sin_flete'                  => data_get($item, 'precio_sin_flete') ?? 0,
+            'lista_precio'                      => data_get($item, 'lista_precio'),
+            'es_servicio_logistico'             => data_get($item, 'es_servicio_logistico') ?? false,
             'ART_CODIGO'                        => data_get($item, 'ART_CODIGO'),
             'ART_DESCRIPCION'                   => trim(str_replace('  ', ' ', data_get($item, 'ART_DESCRIPCION'))),
             'ART_DESCRIPCION_ORIGINAL'          => data_get($item, 'ART_DESCRIPCION_ORIGINAL'),
