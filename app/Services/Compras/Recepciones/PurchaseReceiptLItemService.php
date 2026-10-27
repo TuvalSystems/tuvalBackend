@@ -65,7 +65,7 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             Log::channel('apiservice')->error("funcion receivedL, validacion fallida:", [
                 'res' => $dataValidate
             ]);
-            throw new \RuntimeException("Error al validar el recibo de compra");
+            throw new \RuntimeException(data_get($dataValidate, 'mensaje'));
         }
 
         if ($successValidate && $codigo === '0' && !$hasPending) {
@@ -92,6 +92,9 @@ class PurchaseReceiptLItemService implements PurchaseReceiptLItemServiceInterfac
             Log::channel('apiservice')->error("Guardado de recibo de compra : ", [
                 'res' => $respStoreL
             ]);
+            if(!$successStore){
+                throw new \RuntimeException("Opps!, Ocurrio un problema al guardar el recibo de compra");
+            }
             if ($successStore) {
                 $this->apiGpReceiptService->generateReceivedItemL($valHdr);
             }
