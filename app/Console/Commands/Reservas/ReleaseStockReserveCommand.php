@@ -33,33 +33,32 @@ class ReleaseStockReserveCommand extends Command
             'cotizacion',
             'cotizacion.detallecotizacionstock' => function ($q) {
                 $q->where('seleccionado', '>', 0);
-                $q->whereDoesntHave('trasladoreserva', function ($query) {
-                    $query->where('picking', 1);
-                });
             }
         ])->where('tipo_reserva_id', 1)
             ->whereIn('estado', ['aprobado', 'traslado', 'cancelado'])
             ->whereDate('fe_autorizacion_reserva', '<=', $ayer)
             ->whereHas('cotizacion.detallecotizacionstock', function ($q) {
                 $q->where('seleccionado', '>', 0);
-                $q->whereDoesntHave('trasladoreserva', function ($query) {
-                    $query->where('picking', 1);
-                });
             });
         $total = 0;
         $reservas->chunkById(100, function ($lote) use (&$total) {
             foreach ($lote as $res) {
 
                 try {
-                    DB::transaction(function () use ($res, &$total) {
+                    $released = DB::transaction(function () use ($res) {
                         $quote = $res->cotizacion;
-                        $this->storeQuotationReservedStockLogs($quote->detallecotizacionstock);
-                        $this->releaseStock($quote);
+                        if (!$this->releaseStock($quote)) {
+                            return false;
+                        }
                         $res->update(['estado' => 'cancelado']);
-                        $total++;
+                        return true;
                     });
+                    if (!$released) {
+                        continue;
+                    }
+                    $total++;
                     $title = "Reserva liberada";
-                    $msg = "Se liberó el stock reservado para la cotización {$res->cotizacion->cotizacion}.";
+                    $msg = "Se liberó el stock reservado sin guía pendiente para la cotización {$res->cotizacion->cotizacion}.";
                     $res->usuarioingreso->notify(new UserNotification($title, $msg));
                     Log::channel('reservas_log')->info("reservas:release-stock => {$res->cotizacion->cotizacion} EXITOSO");
                 } catch (\Exception $e) {
@@ -75,30 +74,53 @@ class ReleaseStockReserveCommand extends Command
     }
 
 
-    public function releaseStock(GpCotizacion $cot)
+    public function releaseStock(GpCotizacion $cot): bool
     {
-        GpCotizacionDetalleStock::where('cotizacion_id', $cot->id)
-            ->whereDoesntHave('trasladoreserva', function ($q) {
-                $q->where('picking', 1);
-            })
-            ->get()
-            ->each(function ($stock) {
-                $stock->trasladoreserva()
-                    ->where('picking', '!=', 1)
-                    ->update(['cantidad' => 0]);
-                if ($stock->seleccionado > 0) {
-                    $stock->update([
-                        'cantidad_cancelada'    =>  max($stock->cantidad_autorizada_reserva, $stock->cantidad_cancelada + $stock->seleccionado, 0),
-                        'seleccionado'          => 0,
-                        'cantidad_cotizada'     => 0,
-                        'cantidad_reservada'    => 0,
-                        'cantidad_traslado'     => 0,
-                    ]);
+        $released = false;
+        $stocks = GpCotizacionDetalleStock::where('cotizacion_id', $cot->id)
+            ->where('seleccionado', '>', 0)
+            ->lockForUpdate()->get();
+
+        foreach ($stocks as $stock) {
+            $pending = 0.0;
+            $transfers = $stock->trasladoreserva()->lockForUpdate()->get();
+            $guideTotals = [];
+            foreach ($transfers as $transfer) {
+                $details = $transfer->detalleguia()
+                    ->whereHas('guia', fn ($q) => $q->where('estado', '!=', 'eliminada'))
+                    ->lockForUpdate()->get();
+                $guideTotals[$transfer->id] = (float) $details->sum('cantidad');
+                foreach ($details as $detail) {
+                    // Lo recibido ya salió del seleccionado de la bodega origen.
+                    $pending += max(0, (float) $detail->cantidad - (float) $detail->recibido);
                 }
-            });
+            }
+
+            $quantity = round(max(0, (float) $stock->seleccionado - $pending), 4);
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            // Conserva lo documentado, incluso recibido, para no reabrir saldo del traslado.
+            foreach ($transfers as $transfer) {
+                $transfer->update(['cantidad' => min((float) $transfer->cantidad, $guideTotals[$transfer->id])]);
+            }
+
+            $this->storeQuotationReservedStockLogs([$stock], $quantity);
+            $stock->update([
+                'cantidad_cancelada'    => (float) $stock->cantidad_cancelada + $quantity,
+                'seleccionado'          => max(0, (float) $stock->seleccionado - $quantity),
+                'cantidad_cotizada'     => max(0, (float) $stock->cantidad_cotizada - $quantity),
+                'cantidad_reservada'    => max(0, (float) $stock->cantidad_reservada - $quantity),
+                'cantidad_traslado'     => max(0, (float) $stock->cantidad_traslado - $quantity),
+            ]);
+            $released = true;
+        }
+
+        return $released;
     }
 
-    public function storeQuotationReservedStockLogs($stocks)
+    public function storeQuotationReservedStockLogs($stocks, ?float $quantity = null)
     {
         $data = [];
         foreach ($stocks as $st) {
@@ -106,7 +128,7 @@ class ReleaseStockReserveCommand extends Command
                 'stock_id'   => $st->id,
                 'user_id'    => 6,
                 'tipo'       => 'liberado_sistema',
-                'cantidad'   => (float) $st->seleccionado,
+                'cantidad'   => $quantity ?? (float) $st->seleccionado,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
