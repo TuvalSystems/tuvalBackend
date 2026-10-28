@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Devoluciones;
 
 use App\Enums\Ventas\OrderStatus;
+use App\Enums\devoluciones\DevolutionStatus;
 use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Http\Request;
 use App\Models\Inventario\Despachos\GpOrdenDespacho;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use App\Models\Devoluciones\GpDevoluciones;
@@ -115,27 +115,14 @@ class DevolucionesController extends Controller
         ]);
     }
 
-    public function detallepedidodevolucion(Request $request)
+    public function detallepedidodevolucion(Request $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $info = $this->devolucionService->getDetailOrderReturnById($data);
-            return response([
-                'success' => true,
-                'detalle' => $info['detalle'],
-                'motivos' => $info['motivos'],
-                'clientes' => $info['clientes'],
-                'devolucion_anterior' => $info['devolucion_anterior'],
-                'items_devueltos' => $info['items_devueltos'],
-            ]);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $e) {
-            return $this->errorResponse($e->getMessage(), [], 500);
-        }
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $id     = $request->input('id');
+            $info   = $this->devolucionService->getOrderReturnData($id);
+            return $this->successResponse('Información obtenida correctamente.!', $info);
+        }, 'devolucion', 'detallepedidodevolucion');
+
     }
 
 
@@ -143,15 +130,15 @@ class DevolucionesController extends Controller
 
     public function enviarDevolucion(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $gpUser = $request->user();
-        try {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->all();
+            $gpUser = $request->user();
             $newDev     = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
-            $statusDev  = $newDev->estado === 'solicitado';
+            $statusDev  = $newDev->estado === DevolutionStatus::SOLICITADO;
             $tipoDev    = $newDev->tipo_devolucion === 'total';
             $devCode    = is_object($newDev) ? $newDev->devolucion : '';
-            if (isset($newDev->motivo_no_anulada) && $newDev->estado = 'no_procesado') {
-                $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->warning_message));
+            if (isset($newDev->motivo_no_anulada) && $newDev->estado === DevolutionStatus::NO_PROCESADO) {
+                $gpUser->notify(new UserNotification('Devolucion No Procesada', $newDev->motivo_no_anulada));
                 return $this->buildSuccessResponse(
                     "ATENCIÓN: " . $newDev->motivo_no_anulada,
                     200
@@ -174,18 +161,7 @@ class DevolucionesController extends Controller
                 }
             }
             return $this->buildSuccessResponse("La devolución  {$devCode} ha sido solicitada. ", 200);
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse(
-                $e->getMessage(),
-                $e->getStatusCode()
-            );
-        } catch (\Throwable $th) {
-            $logId = isset($newDev) ? $newDev->id : 'No creado';
-            $msgError = isset($newDev) ? $newDev->motivo_no_anulada : $th->getMessage();
-            Log::channel('devolucion')->info("Error al Procesar la devolución: {$th->getMessage()} - Devolución ID: {$logId}");
-            $gpUser->notify(new UserNotification('Error al Procesar la devolucion', $msgError));
-            return $this->buildErrorResponse($th->getMessage(), 500);
-        }
+        }, 'devolucion', 'enviarDevolucion');
     }
 
     public function detalledevolucion(Request $request)

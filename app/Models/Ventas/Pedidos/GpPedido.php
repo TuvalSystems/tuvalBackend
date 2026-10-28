@@ -340,13 +340,10 @@ class GpPedido extends Model implements HasMedia
         return $this->belongsTo(GpCotizacion::class, 'cotizacion_id');
     }
 
-
-
     public function imagenes()
     {
         return $this->hasMany(GpPedidoImagen::class, 'pedido_id');
     }
-
 
     public function gptrasladoventa()
     {

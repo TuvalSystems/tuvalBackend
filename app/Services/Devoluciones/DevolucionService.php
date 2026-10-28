@@ -41,6 +41,7 @@ use App\Services\Devoluciones\Contracts\EntryServiceInterface;
 use App\Services\Inventario\Despachos\Contracts\DispatchServiceInterface;
 use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class DevolucionService implements DevolucionServiceInterface
 {
@@ -376,7 +377,7 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function getReturnsDetailDevolucion(array $devolucion)
     {
-        $pedido = $this->devolucionRepository->getOrderbyId($devolucion['pedido_id']);
+        $pedido = GpPedido::findOrFail(data_get($devolucion, 'pedido_id'));
         if ($devolucion['estado'] == 'aprobado' && $devolucion['aprobado'] == 'yes') {
             $detalle = $this->devolucionRepository->getDetailDevolucion($devolucion['id'], 1);
         } else {
@@ -419,71 +420,59 @@ class DevolucionService implements DevolucionServiceInterface
      * Metodo para obtener el detalle del pedido devuelto y que se solicitara devolucion.
      * Se migro la funcion de SP de MSW MST_Cliente_Grupo_Economico a Java
      */
-    public function getDetailOrderReturnById(array $order)
+    public function getOrderReturnData(int $orderId)
     {
-        $orderId = Arr::get($order, 'id');
-        $clientId = Arr::get($order, 'cliente_id');
+        $order  = GpPedido::with(['detallepedido', 'gpcliente'])->findOrFail($orderId);
+        $detalles   = $order->detallepedido;
+        $cliente    = $order->gpcliente;
 
         if ($this->devolucionRepository->getReturnsAnulated($orderId)) {
-            abort(409, 'Esta factura se encuentra anulada en el SRI');
+            throw new \RuntimeException('Esta factura se encuentra anulada en el SRI');
         }
 
         if ($this->devolucionRepository->getReturnsInProcess($orderId)) {
-            abort(409, 'Esta factura ya tiene una devolución en proceso');
+            throw new \RuntimeException('Esta factura ya tiene una devolución en proceso');
         }
 
-        $pedido = $this->devolucionRepository->getOrderbyId($orderId);
-
-        if ($pedido->despacho_en_proceso && !$pedido->despachado) {
-            abort(409, 'El pedido está siendo despachado');
+        if ($order->despacho_en_proceso && !$order->despachado) {
+            throw new \RuntimeException('El pedido está siendo despachado');
         }
 
-        $pendingGuide = GpGuiaRemision::query()
+        $firstGuide = GpGuiaRemision::query()
             ->select('id', 'pedido', 'tipo', 'estado', 'GUI_REM_GUIA_REMISION')
-            ->where('pedido', $pedido->pedido)
+            ->where('pedido', $order->pedido)
             ->where('tipo', 'despacho')
             ->where('estado', 'pendiente')
             ->first();
-        $numGuide = data_get($pendingGuide, 'GUI_REM_GUIA_REMISION', 'N/A');
-        abort_if(
-            $pendingGuide !== null,
-            409,
-            "El pedido {$pedido->pedido} tiene una guía de despacho pendiente: {$numGuide}. Procese la guía antes de generar la devolución."
-        );
-        $detalles   = $this->orderRepository->getAllDetailsOrderById($orderId);
-        $motivos    = $this->devolucionRepository->getMotivosDevolucion();
-        $cliente    = $this->devolucionRepository->getClientsByClientId($clientId);
 
-
-        $grupoEconomico = $this->apiGpReturnsIntegrationService->consultGroupEconomicByClient([
-            'ruc' => data_get($cliente, 'CLI_RUC', null),
-        ]);
-
-        if (!$grupoEconomico['success']) {
-            abort(400, $grupoEconomico['message'] ?? 'Error al obtener el grupo económico del cliente');
+        if ($firstGuide) {
+            throw new \RuntimeException("El pedido {$order->pedido} tiene una guía de despacho pendiente: {$firstGuide->GUI_REM_GUIA_REMISION}. Procese la guía antes de generar la devolución.");
         }
 
-        $clientesArr = collect($grupoEconomico['CGE_RUC'] ?? [])->map(function ($ruc) {
-            $cliente = $this->devolucionRepository->getClientsByClientRuc($ruc);
-            if ($cliente) {
-                $cliente->sucursales = $this->devolucionRepository->getClientsSucursByClientRuc($cliente->CLI_RUC);
-            }
-            return $cliente;
-        })->filter()->values()->all();
-
-        $detailFormat = $this->getDetailFormatPedido($detalles, $pedido);
-        $devolucionAnterior = $this->devolucionRepository->getReturnsHistoryByOrderId($orderId);
+        $groupRucs = $this->getGroupEconomicByRuc($cliente->CLI_RUC);
+        $clientsGroups = GpCliente::with('sucursales')->whereIn('CLI_RUC', $groupRucs)->get();
 
         return [
-            'detalle'               => $detailFormat,
-            'motivos'               => $motivos,
-            'clientes'              => $clientesArr,
-            'devolucion_anterior'   => $devolucionAnterior,
+            'detalle'               => $this->getDetailFormatPedido($detalles, $order),
+            'motivos'               => $this->devolucionRepository->getMotivosDevolucion(),
+            'clientes'              => $clientsGroups,
+            'devolucion_anterior'   => $this->devolucionRepository->getReturnsHistoryByOrderId($orderId),
             'items_devueltos'       => $this->validarItemsNoPuedenVolverAFacturar($detalles)
         ];
     }
 
-    protected function getDetailFormatPedido(Collection $detalles, GpPedido $pedido)
+    protected function getGroupEconomicByRuc(string $ruc)
+    {
+        $resp = $this->apiGpReturnsIntegrationService->consultGroupEconomicByClient([
+            'ruc' => $ruc,
+        ]);
+        return data_get($resp, 'data');
+    }
+
+    /**
+     * @param SupportCollection<int, GpPedidoDetalle> $detalles
+     */
+    protected function getDetailFormatPedido(SupportCollection $detalles, GpPedido $pedido)
     {
         $result = [];
         $yaFueRefacturado = GpDevoluciones::where('pedido_id', $pedido->id)
@@ -580,13 +569,19 @@ class DevolucionService implements DevolucionServiceInterface
         return collect($result)->sortBy('ART_CODIGO')->values()->all();
     }
 
-    protected function validarItemsNoPuedenVolverAFacturar(Collection $detalles): bool
+    /**
+     * @param SupportCollection<int, GpPedidoDetalle> $detalles
+     */
+    protected function validarItemsNoPuedenVolverAFacturar(SupportCollection $detalles): bool
     {
         return $this->validarItemNoTengaDespachoParcial($detalles)
             || $this->validarDetalleParcialmenteDespachado($detalles);
     }
 
-    protected function validarItemNoTengaDespachoParcial(Collection $detalles)
+    /**
+     * @param SupportCollection<int, GpPedidoDetalle> $detalles
+     */
+    protected function validarItemNoTengaDespachoParcial(SupportCollection $detalles)
     {
         return collect($detalles)->contains(function ($item) {
             $cantidad   = (float) data_get($item, 'ART_CANTIDAD', 0);
@@ -595,7 +590,10 @@ class DevolucionService implements DevolucionServiceInterface
         });
     }
 
-    protected function validarDetalleParcialmenteDespachado(Collection $detalles)
+    /**
+     * @param SupportCollection<int, GpPedidoDetalle> $detalles
+     */
+    protected function validarDetalleParcialmenteDespachado(SupportCollection $detalles)
     {
         $tieneItemsDespachados = $detalles->contains(function ($item) {
             $cantidad   = (float) data_get($item, 'ART_CANTIDAD', 0);
@@ -853,7 +851,7 @@ class DevolucionService implements DevolucionServiceInterface
     public function getReturnDetailToReceiveById(int $id)
     {
         $devolucion                 = GpDevoluciones::find($id);
-        $pedido                     = $this->devolucionRepository->getOrderbyId($devolucion->pedido_id);
+        $pedido                     = GpPedido::findOrFail(data_get($devolucion, 'pedido_id'));;
         $segmento                   = $this->getSegmentoCliente($pedido->CLI_RUC);
         $detalle                    = $this->devolucionRepository->getDetailDevolucion($devolucion->id, 1);
         $devolucion->orderDespacho  = $this->devolucionRepository->getDispatchOrder($devolucion->pedido_id);

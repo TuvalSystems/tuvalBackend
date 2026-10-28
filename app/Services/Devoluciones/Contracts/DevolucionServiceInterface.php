@@ -14,7 +14,7 @@ interface DevolucionServiceInterface
     public function getReturnsDetailDevolucion(array $devolucion);
 
 
-    public function getDetailOrderReturnById(array $order);
+    public function getOrderReturnData(int  $orderId);
 
     public function printReturn(int $devolucion_id);
     public function printReturnOld(int $devolucion_id);
@@ -32,5 +32,4 @@ interface DevolucionServiceInterface
     public function generarAjusteDevolucionesVentaFallidas(int $id);
 
     public function responseCreditNoteDevolution(int $devolucionId);
-
 }

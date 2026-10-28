@@ -16,7 +16,6 @@ interface DevolucionRepositoryInterface
     public function hasOtherActiveReturns(array|GpPedido $pedido, array|GpDevoluciones $devolucion): bool;
     public function validateItemLDetailInvoice(array|GpDevoluciones $devolucion): bool;
 
-    public function getOrderbyId(int|string|null $pedidoId): GpPedido;
     public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array;
 
     public function hasPartiallyDispatchedItems(array|GpDevoluciones $devolucion): bool;
@@ -30,10 +29,6 @@ interface DevolucionRepositoryInterface
     public function getMotivosDevolucion(): EloquentCollection;
 
     public function getClientsByClientId(int|string|null $clienteId): GpCliente;
-
-    public function getClientsByClientRuc(string $ruc): ?GpCliente;
-
-    public function getClientsSucursByClientRuc(string $ruc): EloquentCollection;
 
     public function getSumGuidesRemisionByOrderDetailId(int|string $detalleId): int|float;
 

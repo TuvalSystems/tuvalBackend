@@ -192,6 +192,10 @@ Route::prefix('devoluciones')->group(function () {
     Route::get('detalle-devolucion-por-recibir', [DevolucionesController::class, 'detalleDevolucionPorRecibir']);
     Route::get('generar-nota-credito-errores/{id}', [DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
     Route::get('generar-ajuste-devolucion/{id}', [DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);
+    Route::get('detalle-solicitud-devolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
+
+
+
 });
 
 

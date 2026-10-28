@@ -48,11 +48,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     }
 
 
-    public function getOrderbyId(int|string|null $pedidoId): GpPedido
-    {
 
-        return GpPedido::findOrFail($pedidoId);
-    }
 
     public function getDetailDevolucion(int|string $devolucionId, int|bool|null $despachadoParcial = null): array
     {
@@ -97,26 +93,14 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
     public function getMotivosDevolucion(): EloquentCollection
     {
-        return GpMotivosDevolucion::get();
+        return GpMotivosDevolucion::get(['id','motivo']);
     }
 
     public function getClientsByClientId(int|string|null $clienteId): GpCliente
     {
         return GpCliente::where('id', $clienteId)->firstOrFail();
     }
-    public function getClientsByClientRuc(string $ruc): ?GpCliente
-    {
-        return GpCliente::where('CLI_RUC', $ruc)->first();
-    }
 
-    public function getClientsSucursByClientRuc(string $ruc): EloquentCollection
-    {
-        return GpClienteSucursal::join('gp_vendedors', 'gp_vendedors.VEND_ID', 'gp_cliente_sucursals.CLI_SUC_VENDEDOR')
-            ->where('CLI_SUC_RUC', $ruc)
-            ->select('gp_cliente_sucursals.*', 'gp_vendedors.VEND_NOMBRES', 'gp_vendedors.VEND_APELLIDOS')
-            ->orderby('CLI_SUC_ID_DIRECCION', 'DESC')
-            ->get();
-    }
 
     public function getSumGuidesRemisionByOrderDetailId(int|string $detalleId): int|float
     {
@@ -131,7 +115,11 @@ class DevolucionRepository implements DevolucionRepositoryInterface
     public function sumReturnedQtyByDetailId(int|string $detalleId, int|bool|null $despachoParcial): int|float
     {
         $query = GpDevolucionesDetalle::join('gp_devoluciones', 'gp_devoluciones.id', 'gp_devoluciones_detalles.devolucion_id')
-            ->where('gp_devoluciones_detalles.detalle_id', $detalleId);
+            ->where('gp_devoluciones_detalles.detalle_id', $detalleId)
+            ->whereNotIn('gp_devoluciones.estado', [
+                DevolutionStatus::RECHAZADO,
+                DevolutionStatus::NO_PROCESADO,
+            ]);
 
         if (!is_null($despachoParcial)) {
             $query->where('gp_devoluciones_detalles.despachado_parcial', $despachoParcial);
@@ -161,7 +149,7 @@ class DevolucionRepository implements DevolucionRepositoryInterface
 
 
 
-    
+
 
     public function getReturnByIdToArray(int|string $devolucionId): array
     {
