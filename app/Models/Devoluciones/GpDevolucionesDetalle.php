@@ -92,6 +92,7 @@ class GpDevolucionesDetalle extends Model
     protected $table = 'gp_devoluciones_detalles';
     protected $appends = ['pending_received_devolution'];
     protected $fillable = [
+        'es_servicio_logistico',
         'devolucion_id',
         'detalle_id',
         'ART_CODIGO',
@@ -142,7 +143,8 @@ class GpDevolucionesDetalle extends Model
 
     public function scopeArticulosFisicos($query)
     {
-        return $query->where('ART_TIPO_COMPRA', '!=', self::TIPO_SERVICIO);
+        return $query->where('ART_TIPO_COMPRA', '!=', self::TIPO_SERVICIO)
+            ->where('es_servicio_logistico', false);
     }
 
     public function scopeValidosParaNotaCredito($query)

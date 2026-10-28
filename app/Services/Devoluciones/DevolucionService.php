@@ -61,7 +61,8 @@ class DevolucionService implements DevolucionServiceInterface
         protected readonly DispatchServiceInterface $dispatchService,
         protected readonly ReturnCancellationServiceInterface $anulationService,
         protected readonly StockWarehouseServiceInterface $stockWarehouseService,
-        protected readonly EntryServiceInterface $entryService
+        protected readonly EntryServiceInterface $entryService,
+        protected readonly ReturnFreightService $returnFreight
     ) {}
 
 
@@ -90,10 +91,6 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function handleDevolutionTransaction(array $data,  GpUsuario $user)
     {
-        $devolucion     = Arr::get($data, 'devolucion');
-        $pedidoDev      = Arr::get($data, 'pedido');
-        $detallePedido  = Arr::get($data, 'detallepedido');
-
         $orderId        = Arr::get($data, 'pedido.id');
         $order          = GpPedido::find($orderId);
         if (!$order) {
@@ -115,30 +112,30 @@ class DevolucionService implements DevolucionServiceInterface
             409,
             "El pedido {$order->pedido} tiene una guía de despacho pendiente: {$numGuide}. Procese la guía antes de generar la devolución."
         );
-        $detailInfo = [
-            'devolucion'    => $devolucion,
-            'pedido'        => $pedidoDev,
-            'detalle'       => [],
-        ];
-
-        foreach ($detallePedido as $det) {
-            $isRefacturacion    =  data_get($devolucion, 'volver_a_facturar', false);
-            $isSelected         =  data_get($det, 'seleccionado', 0);
-            if ($isRefacturacion || $isSelected) {
-                $detailInfo['detalle'][] = $det;
+        $newDev = DB::transaction(function () use (&$data, $user, $order) {
+            GpPedido::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $order->refresh();
+            if ($this->devolucionRepository->getReturnsAnulated($order->id)
+                || $this->devolucionRepository->getReturnsInProcess($order->id)) {
+                abort(409, 'El pedido tiene una devolución en proceso o su factura está anulada.');
             }
-        }
-
-        $itemsDespachados = array_filter($detallePedido, function ($detalle) {
-            $isDispatch = data_get($detalle, 'despacho', false);
-            $qty        = data_get($detalle, 'despachado', 0);
-            return $isDispatch && $qty > 0;
-        });
-
-        $detailInfo['pedido']['despachado'] = count($itemsDespachados) > 0;
-
-
-        $newDev = DB::transaction(function () use ($detailInfo, $user) {
+            if ($order->despacho_en_proceso && !$order->despachado) {
+                abort(409, 'El pedido está siendo despachado.');
+            }
+            if (GpGuiaRemision::where('pedido', $order->pedido)->where('tipo', 'despacho')->where('estado', 'pendiente')->exists()) {
+                abort(409, 'El pedido tiene una guía de despacho pendiente.');
+            }
+            $data = $this->returnFreight->normalize($data, $order,
+                $this->getDetailFormatPedido($order->detallepedido, $order));
+            $detailInfo = ['devolucion' => $data['devolucion'], 'pedido' => $data['pedido'], 'detalle' => []];
+            foreach ($data['detallepedido'] as $det) {
+                if (data_get($data, 'devolucion.volver_a_facturar', false) || data_get($det, 'seleccionado', 0)) {
+                    $detailInfo['detalle'][] = $det;
+                }
+            }
+            $detailInfo['pedido']['despachado'] = collect($data['detallepedido'])->contains(
+                fn ($detalle) => data_get($detalle, 'despacho', false) && data_get($detalle, 'despachado', 0) > 0
+            );
             if (count($detailInfo['detalle']) > 0) {
                 return $this->executeReturn($detailInfo, $user);
             }
@@ -244,6 +241,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     public function hasDispatchedOrderDetails(array $pedido, array $detallepedido, array $devolucion): bool
     {
+        if (collect($detallepedido)->contains(fn ($item) => data_get($item, '_despacho_verificado', false))) {
+            return $this->returnFreight->isDispatched($detallepedido);
+        }
         // Verifica si la devolucion es de volver a facturar
         if ($devolucion['volver_a_facturar'] === true) {
             $pedidoIds = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
@@ -324,6 +324,9 @@ class DevolucionService implements DevolucionServiceInterface
 
     protected function isDevolucionItemDispatchedInGuia(array $pedido, array  $item): bool
     {
+        if (data_get($item, '_despacho_verificado', false)) {
+            return !data_get($item, 'es_servicio_logistico', false) && data_get($item, 'despacho', false);
+        }
         //verifica si el pedido tiene factura origen
         $pedidoConsulta = GpPedido::find($pedido['id']);
         $tienefacturaOrigen = !empty($pedidoConsulta->factura_origen);
@@ -452,12 +455,19 @@ class DevolucionService implements DevolucionServiceInterface
         $groupRucs = $this->getGroupEconomicByRuc($cliente->CLI_RUC);
         $clientsGroups = GpCliente::with('sucursales')->whereIn('CLI_RUC', $groupRucs)->get();
 
+        $detail = $this->getDetailFormatPedido($detalles, $order);
+        $freightContext = $this->returnFreight->context($order, $detail);
+
         return [
-            'detalle'               => $this->getDetailFormatPedido($detalles, $order),
+            'detalle'               => $detail,
+            'reglas_devolucion'      => $freightContext,
             'motivos'               => $this->devolucionRepository->getMotivosDevolucion(),
             'clientes'              => $clientsGroups,
             'devolucion_anterior'   => $this->devolucionRepository->getReturnsHistoryByOrderId($orderId),
-            'items_devueltos'       => $this->validarItemsNoPuedenVolverAFacturar($detalles)
+            'items_devueltos'       => $freightContext['mostrar_responsable_pago_transporte']
+                ? (collect($detail)->contains(fn ($item) => !$item->es_servicio_logistico && $item->despacho)
+                    && collect($detail)->contains(fn ($item) => !$item->es_servicio_logistico && !$item->despacho))
+                : $this->validarItemsNoPuedenVolverAFacturar($detalles)
         ];
     }
 
@@ -485,12 +495,44 @@ class DevolucionService implements DevolucionServiceInterface
         $esRefacturacion            = !empty($pedido->factura_origen);
         $pedidoOrigen               = $esRefacturacion ? GpPedido::where('factura', $pedido->factura_origen)->orderBy('id', 'desc')->first() : null;
         $condicionalDespachoOrigen  = $pedidoOrigen && $pedidoOrigen->despachado == 1;
+        $freightType = $this->returnFreight->type($pedido);
 
         foreach ($detalles as $dt) {
             $common                 = clone $dt;
             $common->reservado      = $dt->reservado ?? 0;
             $common->devuelto       = $dt->devuelto ?? 0;
             $common->seleccionado   = 0;
+
+            if ($freightType !== null && $dt->es_servicio_logistico) {
+                // Logistics is credited financially and never received as physical material.
+                $common->despachado = 0;
+                $common->despacho = false;
+                $common->devuelto = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, null);
+                $common->disponible = max((float) $dt->ART_CANTIDAD - $common->devuelto, 0);
+                if ($common->disponible > 0) { $result[] = $common; }
+                continue;
+            }
+
+            if ($freightType !== null && strtoupper((string) $dt->ART_TIPO_COMPRA) === 'L') {
+                // A supplier's direct delivery must be backed by a dispatch guide for this item.
+                $dispatchedQty = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($dt->id);
+                if ($dispatchedQty == 0 && $pedidoOrigen) {
+                    $originDetail = GpPedidoDetalle::where('pedido_id', $pedidoOrigen->id)->where('ART_CODIGO', $dt->ART_CODIGO)->first();
+                    if ($originDetail) {
+                        $dispatchedQty = $this->devolucionRepository->getSumGuidesRemisionByOrderDetailId($originDetail->id);
+                    }
+                }
+                $common->despachado = min((float) $dt->ART_CANTIDAD, (float) $dispatchedQty);
+                foreach ([true, false] as $dispatched) {
+                    $item = clone $common;
+                    $item->despacho = $dispatched;
+                    $item->devuelto = $this->devolucionRepository->sumReturnedQtyByDetailId($dt->id, (int) $dispatched);
+                    $quantity = $dispatched ? $common->despachado : max((float) $dt->ART_CANTIDAD - $common->despachado, 0);
+                    $item->disponible = max($quantity - $item->devuelto, 0);
+                    if ($item->disponible > 0) { $result[] = $item; }
+                }
+                continue;
+            }
 
             if ($esRefacturacion) {
                 // para pedidoes de refacturacion despachados totalmente

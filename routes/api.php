@@ -516,6 +516,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 
 
         Route::group(['prefix' => 'devoluciones'], function () {
+            Route::get('responsables-pago-transporte', [DevolucionesController::class, 'responsablesPagoTransporte']);
             Route::get('pedidoscliente/{cliente_id}/{puntodeventa_id}', [DevolucionesController::class, 'pedidoscliente']);
             Route::post('detalle-solicitud-devolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
 

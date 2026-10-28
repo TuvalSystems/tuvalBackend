@@ -18,6 +18,7 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
     public function formPayloadDevolutionHeader(array $data, array $calculatedData): GpDevoluciones{
         $dev = new GpDevoluciones();
         $dev->fill([
+            'responsable_pago_transporte_id' => Arr::get($data, 'devolucion.responsable_pago_transporte_id'),
             'estado'                        => $calculatedData['status'],
             'despachado'                    => $calculatedData['isDispatched'],
             'requiere_aprobacion'           => $calculatedData['requiredApproval'],
@@ -50,6 +51,8 @@ class DevolucionParamsBuilder implements DevolucionParamsBuilderInterface
     public function formPayloadDevolutionDetail(int $devolucionId, array $details, bool $dispatched): GpDevolucionesDetalle{
         $dvd = new GpDevolucionesDetalle();
         $dvd->fill([
+            'es_servicio_logistico' => (bool) Arr::get($details, 'es_servicio_logistico', false),
+            'devuelto' => Arr::get($details, 'seleccion_automatica', false) ? Arr::get($details, 'seleccionado', 0) : 0,
             'devolucion_id'             => $devolucionId,
             'detalle_id'                => Arr::get($details, 'id'),
             'ART_CODIGO'                => Arr::get($details, 'ART_CODIGO'),

@@ -78,6 +78,10 @@ class ApprovalDevolutionService implements ApprovalDevolutionServiceInterface
 
     public function hasDispatchedOrderDetails(array $pedido, array  $detallepedido, bool $volverAFacturar): bool
     {
+        if (collect($detallepedido)->contains(fn ($item) => data_get($item, '_despacho_verificado', false))) {
+            return collect($detallepedido)->contains(fn ($item) => !data_get($item, 'es_servicio_logistico', false)
+                && data_get($item, 'despacho', false) && (float) data_get($item, 'despachado', 0) > 0);
+        }
         if ($volverAFacturar === true) {
             $lastOrder = GpPedido::where('cotizacion_id', $pedido['cotizacion_id'])
                 ->whereNotIn('estado', [OrderStatus::ANULADA, OrderStatus::ELIMINADO, OrderStatus::RECHAZADO])

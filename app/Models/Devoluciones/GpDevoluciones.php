@@ -113,6 +113,7 @@ class GpDevoluciones extends Model
         'estado' => DevolutionStatus::class
     ];
     protected $fillable = [
+        'responsable_pago_transporte_id',
         'devolucion',
         'estado',
         'pedido_id',
@@ -158,6 +159,11 @@ class GpDevoluciones extends Model
         return $date->format('Y-m-d H:i:s');
     }
 
+
+    public function responsablePagoTransporte()
+    {
+        return $this->belongsTo(GpDevolucionResponsablePagoTransporte::class, 'responsable_pago_transporte_id');
+    }
 
     public function scopeConCriterios(Builder $query, array $criterio)
     {

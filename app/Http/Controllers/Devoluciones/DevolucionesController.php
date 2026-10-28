@@ -20,6 +20,7 @@ use App\Http\Requests\Devoluciones\ValidateReceivedDevolutionsRequest;
 use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Ventas\Comercial\CommercialVisibilityService;
+use App\Services\Devoluciones\ReturnFreightService;
 use App\Traits\ExecuteApiTransactions;
 use Carbon\Carbon;
 
@@ -73,6 +74,7 @@ class DevolucionesController extends Controller
                 'cliente',
                 'cliente_volver_a_facturar',
                 'sucursal_volver_a_facturar',
+                'responsablePagoTransporte',
             ])
             ->where('gp_devoluciones.cliente_id', $cliente_id)
             ->whereHas('pedido', function ($query) use ($puntodeventa_id) {
@@ -115,11 +117,20 @@ class DevolucionesController extends Controller
         ]);
     }
 
+    public function responsablesPagoTransporte(ReturnFreightService $freight): JsonResponse
+    {
+        return $this->handleApiAction(fn () => $this->successResponse(
+            'Responsables de pago de transporte obtenidos correctamente.', $freight->responsibles()
+        ), 'devolucion', 'responsablesPagoTransporte');
+    }
+
     public function detallepedidodevolucion(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $id     = $request->input('id');
-            $info   = $this->devolucionService->getOrderReturnData($id);
+            $validated = $request->validate([
+                'id' => ['required', 'integer', 'exists:gp_pedidos,id'],
+            ]);
+            $info = $this->devolucionService->getOrderReturnData($validated['id']);
             return $this->successResponse('Información obtenida correctamente.!', $info);
         }, 'devolucion', 'detallepedidodevolucion');
 
@@ -131,7 +142,20 @@ class DevolucionesController extends Controller
     public function enviarDevolucion(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
+            $request->validate([
+                'pedido' => ['required', 'array'],
+                'pedido.id' => ['required', 'integer', 'exists:gp_pedidos,id'],
+                'devolucion' => ['required', 'array'],
+                'devolucion.tipo_devolucion' => ['required', 'in:parcial,total'],
+                'devolucion.volver_a_facturar' => ['required', 'boolean'],
+                'devolucion.responsable_pago_transporte_id' => ['nullable', 'integer'],
+                'detallepedido' => ['required', 'array', 'min:1'],
+                'detallepedido.*' => ['required', 'array'],
+                'detallepedido.*.id' => ['required', 'integer'],
+                'detallepedido.*.despacho' => ['required', 'boolean'],
+            ]);
             $data = $request->all();
+            $data['devolucion']['volver_a_facturar'] = $request->boolean('devolucion.volver_a_facturar');
             $gpUser = $request->user();
             $newDev     = $this->devolucionService->handleDevolutionTransaction($data, $gpUser);
             $statusDev  = $newDev->estado === DevolutionStatus::SOLICITADO;
