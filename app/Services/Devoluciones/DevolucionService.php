@@ -26,6 +26,7 @@ use App\Models\Inventario\GuiasRemision\GpGuiaRemisionDetalle;
 use App\Models\Devoluciones\GpDevolucionDocument;
 use App\Models\Devoluciones\GpDevolucionesDetalle;
 use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Inventario\Despachos\TipoDespacho;
 use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Models\Ventas\Vendedores\GpVendedor;
@@ -460,6 +461,7 @@ class DevolucionService implements DevolucionServiceInterface
 
         return [
             'detalle'               => $detail,
+            'tipo_despacho'         => TipoDespacho::find($order->tipo_despacho_id)?->descripcion,
             'reglas_devolucion'      => $freightContext,
             'motivos'               => $this->devolucionRepository->getMotivosDevolucion(),
             'clientes'              => $clientsGroups,
