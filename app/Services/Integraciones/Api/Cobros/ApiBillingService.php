@@ -62,7 +62,7 @@ class   ApiBillingService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_RECIBOS_CHEQUES, 'POST', $params, 'json');
     }
 
-     public function getListCustomerCheckPendingPayment(array $params)
+    public function getListCustomerCheckPendingPayment(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_CHEQUES_PENDIENTE_COBRO, 'POST', $params, 'json');
     }
@@ -87,6 +87,11 @@ class   ApiBillingService extends ApiGpService
     public function getPendingAccountingDocument(array $params)
     {
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_DOCUMENTOS_PENDIENTE_CONTABILIZAR, 'POST', $params, 'json');
+    }
+
+    public function getValidationReleaseDispatchOrder(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_LIBERACION_ORDEN_DESPACHO, 'POST', $params, 'json');
     }
 
 
@@ -127,7 +132,8 @@ class   ApiBillingService extends ApiGpService
         );
     }
 
-    public function registerCheckCollectionInGp(array $params){
+    public function registerCheckCollectionInGp(array $params)
+    {
         return $this->httpClient->makeRequest(
             ApiGpEndpoints::COBROS_FACTURAS_REGISTRAR_CHEQUE,
             'POST',
