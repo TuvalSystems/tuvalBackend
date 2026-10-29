@@ -89,6 +89,10 @@ class   ApiBillingService extends ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_DOCUMENTOS_PENDIENTE_CONTABILIZAR, 'POST', $params, 'json');
     }
 
+    public function getValidationReleaseDispatchOrder(array $params){
+        return $this->httpClient->makeRequest(ApiGpEndpoints::COBROS_CONSULTA_LIBERACION_ORDEN_DESPACHO,'POST', $params,'json');
+    }
+
 
 
     /**

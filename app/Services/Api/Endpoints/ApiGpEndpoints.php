@@ -57,11 +57,11 @@ class ApiGpEndpoints
     public const COBROS_CONSULTA_DOCUMENTOS_PENDIENTE_CONTABILIZAR = 'api/cobros/consultar-documentos-pendientes-contabilizar';
 
     // apis para el registro de metodos de pago
-    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO     ="api/cobranzas/cobros-facturas/registrar-efectivo";
+    public const COBROS_FACTURAS_REGISTRAR_EFECTIVO     = "api/cobranzas/cobros-facturas/registrar-efectivo";
     public const COBROS_FACTURAS_REGISTRAR_APLICACION   = 'api/cobranzas/cobros-facturas/registrar-aplicacion';
     public const COBROS_FACTURAS_REGISTRAR_RETENCION    = 'api/cobranzas/cobros-facturas/registrar-retencion';
     public const COBROS_FACTURAS_REGISTRAR_CHEQUE       = 'api/cobranzas/cobros-facturas/registrar-cheque';
-
+    public const COBROS_CONSULTA_LIBERACION_ORDEN_DESPACHO = 'api/cobros/validar-liberacion-despacho';
 
 
     // ---
