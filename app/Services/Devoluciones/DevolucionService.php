@@ -741,7 +741,7 @@ class DevolucionService implements DevolucionServiceInterface
         $data['PTO_VTA_DESCRIPCION']    = $puntoVenta->PTO_VTA_DESCRIPCION;
         $data['direccion']              = $puntoVenta->PTO_VTA_DIRECCION_1 . ' ' . $puntoVenta->PTO_VTA_DIRECCION_2;
         $data['telefono']               = $puntoVenta->PTO_VTA_FONO_1;
-        $data['vendedor']               = GpVendedor::where('id', $pedido['vendedor_ir'])->first()->toarray();
+        $data['vendedor']               = GpVendedor::where('id', $pedido['vendedor_id'])->first()->toarray();
 
         return $data;
     }
