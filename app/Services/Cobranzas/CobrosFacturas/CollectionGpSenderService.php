@@ -1207,7 +1207,12 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $appliedAmount      = Money::normalize($webPayments->sum('monto'));
             $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
             $pendingAmount      = round($orderTotal - ($appliedAmount + $sumApplyPayments), 2);
-            $porcentilTolerance = (bool) ($pendingAmount <= $retentionTolerance);
+            $releaseValidation = $this->api->getValidationReleaseDispatchOrder([
+                'factura'       => $order->factura,
+                'condicionPago' => $order->COND_ID,
+            ]);
+            $shouldRelease = data_get($releaseValidation, 'success') === true
+                && in_array(data_get($releaseValidation, 'data.codigo'), [1, '1'], true);
 
             $historyPayload = $this->buildDispatchReleaseHistoryPayload(
                 $collectionId,
@@ -1222,22 +1227,23 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 $sumApplyPayments,
                 $retentionTolerance,
                 $pendingAmount,
-                $porcentilTolerance
+                $shouldRelease
             );
+            $historyPayload['validacion_liberacion_api'] = $releaseValidation;
 
             DB::transaction(function () use (
                 $dispatchOrder,
                 $historyPayload,
-                $porcentilTolerance
+                $shouldRelease
             ) {
-                if ($porcentilTolerance) {
+                if ($shouldRelease) {
                     $this->releaseDispatchOrder($dispatchOrder);
                 }
 
                 $this->logDispatchReleaseValidation(
                     $dispatchOrder,
                     $historyPayload,
-                    $porcentilTolerance
+                    $shouldRelease
                 );
             });
         }
@@ -1443,7 +1449,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
         $dispatchOrder->save();
     }
 
-    private function buildDispatchReleaseHistoryPayload(
+       private function buildDispatchReleaseHistoryPayload(
         int $collectionId,
         GpPedido $order,
         GpOrdenDespacho $dispatchOrder,
@@ -1473,7 +1479,8 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
                 'porcentaje_colchon_retencion' => CollectionConstants::RETENTION_TOLERANCE,
                 'valor_colchon_retencion'      => Money::normalize($retentionTolerance),
                 'saldo_pendiente'              => Money::normalize($pendingAmount),
-                'cumple_tolerancia'            => $released,
+                'cumple_tolerancia'            => $pendingAmount <= $retentionTolerance,
+                'criterio_liberacion'          => 'api',
                 'liberada'                     => $released,
                 'fecha_evaluacion'              => now()->format('Y-m-d H:i:s'),
             ],
@@ -1533,7 +1540,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             'method'      => 'checkValidateDispatchInvoice',
             'message'     => $released
                 ? 'Orden de despacho liberada automáticamente.'
-                : 'La orden de despacho no cumple la tolerancia para liberación automática.',
+                : 'La API no autorizó la liberación automática de la orden de despacho.',
             'external_id' => $dispatchOrder->orden,
             'local_id'    => $dispatchOrder->id,
             'payload'     => $payload,
