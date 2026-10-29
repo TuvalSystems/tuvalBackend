@@ -7,6 +7,8 @@ use App\Enums\Ventas\OrderStatus;
 use App\Models\Devoluciones\GpDevoluciones;
 use App\Models\Devoluciones\GpDevolucionesDetalle;
 use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Inventario\Despachos\TipoDespacho;
+use App\Models\Inventario\GuiasRemision\GpGuiaRemision;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\Pedidos\GpPedido;
 use App\Models\Ventas\Pedidos\GpPedidoDetalle;
@@ -62,6 +64,12 @@ class ReInvoiceService implements ReInvoiceServiceInterface
     public function createOrderHeader(GpDevoluciones $devolucion, GpPedido $orderOrigin, bool $isDispatch, GpCliente $cliente)
     {
         $newOrd                             = $orderOrigin->replicate();
+        // Preserve the original freight agreement when issuing the replacement invoice.
+        $newOrd->fill($orderOrigin->only([
+            'tipo_despacho_id', 'responsable_flete', 'fle_proveedor_id',
+            'peso', 'fle_peso', 'fle_valor', 'fle_usuario_id', 'fle_fecha',
+            'fle_usuario_aut_id', 'fle_fecha_aut',
+        ]));
         $newOrd->pedido                     = null; //esto lo crea el observer que generamos (se crea automaticamente)
         $newOrd->factura                    = null;
         $newOrd->factura_origen             = $orderOrigin->factura;
@@ -101,19 +109,36 @@ class ReInvoiceService implements ReInvoiceServiceInterface
     public function processDetailOrder(Collection $detailOrigin, GpPedido $newOrderHeader, GpPedido $orderOrigin, GpDevoluciones $devolucion, bool $isDispatch)
     {
         $impuestoArt = GpArticulo::whereIn('ART_CODIGO', $detailOrigin->pluck('ART_CODIGO'))->get()->keyBy('ART_CODIGO');
+        $hasPackageService = $detailOrigin->contains(fn ($detail) => $detail->es_servicio_logistico)
+            && (new ReturnFreightPolicy())->dispatchType(TipoDespacho::find($orderOrigin->tipo_despacho_id)?->descripcion) === 'paqueteria';
+        $copyPackageService = $hasPackageService
+            && $devolucion->tipo_devolucion === 'total'
+            && (bool) $devolucion->volver_a_facturar
+            && ((!GpGuiaRemision::where('pedido', $orderOrigin->pedido)->exists())
+                || ($isDispatch && (bool) $orderOrigin->despachado));
 
         foreach ($detailOrigin as $dtOr) {
-            $cantidad = $this->calculateQuantity($dtOr, $devolucion, $isDispatch);
+            // Total replacement preserves service before dispatch or after full dispatch, including guides with OCs.
+            $cantidad = $hasPackageService && $dtOr->es_servicio_logistico
+                ? ($copyPackageService ? (float) $dtOr->ART_CANTIDAD : 0)
+                : $this->calculateQuantity($dtOr, $devolucion, $isDispatch);
             if ($cantidad <= 0) {
                 continue;
             }
             $newDetail                  = $dtOr->replicate();
+            $newDetail->fill($dtOr->only([
+                'art_id', 'fle_valor', 'precio_sin_flete', 'lista_precio', 'es_servicio_logistico',
+            ]));
             $newDetail->pedido_id       = $newOrderHeader->id;
             $newDetail->devuelto        = 0;
             $newDetail->ART_CANTIDAD    = $cantidad;
             $newDetail->ART_IMP_VTA     = $impuestoArt[$dtOr->ART_CODIGO]->ART_IMP_VTA;
             $newDetail->save();
 
+            if ($newDetail->es_servicio_logistico) {
+                // This line must be invoiced again, but has no physical stock to transfer.
+                continue;
+            }
             $this->replicateProviders($orderOrigin, $newOrderHeader, $dtOr, $newDetail);
             $this->replicateStock($orderOrigin, $newOrderHeader, $dtOr, $newDetail, $devolucion, $cantidad);
         }
@@ -140,7 +165,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
 
     public function replicateProviders(GpPedido $orderOrigin, GpPedido $newOrder, GpPedidoDetalle $detailOrigin, GpPedidoDetalle $newDetail)
     {
-        $providers = GpPedidoDetalleProveedores::where('pedido_id', $detailOrigin->id)
+        $providers = GpPedidoDetalleProveedores::where('pedido_id', $orderOrigin->id)
             ->where('detalle_id', $detailOrigin->id)->get();
         if ($providers->isEmpty()) {
             return;
@@ -148,7 +173,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         foreach ($providers as $prov) {
             $newProv                    = $prov->replicate();
             $newProv->pedido_id         = $newOrder->id;
-            $newProv->pedido_detalle_id = $newDetail->id;
+            $newProv->detalle_id        = $newDetail->id;
             $newProv->save();
             $this->transferInventoryGpComparment($newOrder, $newDetail, $orderOrigin, $newProv->CANTIDAD);
         }
