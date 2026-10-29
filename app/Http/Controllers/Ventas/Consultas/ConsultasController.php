@@ -119,36 +119,6 @@ class ConsultasController extends Controller
 
 
 
-
-
-
-    public function consultastockarticulopuntodeventa($articulo, $puntodeventa): Response|Application|ResponseFactory
-    {
-
-        $funciones = new FuncionesController();
-        $data_bodega = array('PTO_VTA_ID' => $puntodeventa);
-        $arr_bodegas = $funciones->gebodegas($data_bodega);
-
-        $consulta_bodega = array();
-
-        foreach ($arr_bodegas as $bodega) {
-            $consulta_bodega[] = array(
-                'STOCK_ARTICULO' => $articulo . '@' . $bodega,
-            );
-        }
-
-        $stock_general = $funciones->stockarticulobodega($consulta_bodega, $arr_bodegas);
-        return response(
-            $stock_general
-        );
-    }
-
-
-
-
-
-
-
     public function cupodisponible(string $ruc)
     {
         try {
@@ -163,7 +133,7 @@ class ConsultasController extends Controller
         }
     }
 
- 
+
 
     public function puntodeventacaja(): Response|Application|ResponseFactory
     {
