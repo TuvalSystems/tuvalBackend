@@ -1206,7 +1206,8 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $orderTotal         = round((float) $order->total, 2);
             $appliedAmount      = Money::normalize($webPayments->sum('monto'));
             $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
-            $pendingAmount      = round($orderTotal - ($appliedAmount + $sumApplyPayments), 2);
+            // $pendingAmount      = round($orderTotal - ($appliedAmount + $sumApplyPayments), 2);
+            $pendingAmount      = round($orderTotal - $appliedAmount, 2);
             $porcentilTolerance = (bool) ($pendingAmount <= $retentionTolerance);
 
             $historyPayload = $this->buildDispatchReleaseHistoryPayload(
