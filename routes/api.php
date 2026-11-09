@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
 use App\Http\Controllers\Ventas\Consultas\ConsultasController;
 use App\Http\Controllers\Ventas\Cotizaciones\CotizacionesController;
+use App\Http\Controllers\Ventas\Cotizaciones\QuotationItemsDraftController;
 use App\Http\Controllers\Ventas\Pedidos\PedidosController;
 use App\Http\Controllers\Ventas\Aprobaciones\AprobacionesController;
 use App\Http\Controllers\Cobranzas\CajasController;
@@ -222,6 +223,8 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 
 
         Route::group(['prefix' => 'cotizaciones'], function () {
+
+            Route::post('borrador-items', [QuotationItemsDraftController::class, 'store']);
 
 
             Route::get('lista-motivos-no-venta', [CotizacionesController::class, 'ListaMotivosNoVenta']);
