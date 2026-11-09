@@ -1,0 +1,44 @@
+{
+  "info": {
+    "name": "Tuval - Cotización borrador por artículos confirmados",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Configurar variables en un entorno local y verificar destino QA. Conservar request_id para reintentos; cambiarlo para una nueva operación. No contiene credenciales ni selección de artículos reales. Requiere migración de idempotencia previamente autorizada."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+  },
+  "item": [{
+    "name": "Crear/reintentar borrador confirmado",
+    "request": {
+      "method": "POST",
+      "header": [
+        {"key": "Accept", "value": "application/json"},
+        {"key": "Content-Type", "value": "application/json"}
+      ],
+      "url": "{{base_url}}/api/cotizaciones/borrador-items",
+      "body": {
+        "mode": "raw",
+        "raw": "{\n  \"request_id\": \"{{request_id}}\",\n  \"cliente_ruc\": \"{{cliente_ruc}}\",\n  \"pv_id\": {{pv_id}},\n  \"items\": [\n    {\"codigo\": \"{{codigo_gp}}\", \"cantidad\": {{cantidad}}}\n  ]\n}",
+        "options": {"raw": {"language": "json"}}
+      },
+      "description": "Solo códigos GP exactos confirmados. Sin precios ni usuario en cuerpo. Para cantidad asumida, omitir cantidad. Respuestas: 201 creación, 200 reintento, 409 clave con otro contenido, 422 validación. El usuario viene del token; pv_id es el ID real asignado al usuario."
+    }
+  }, {
+    "name": "Piloto QA restringido - propietario 30 y defaults configurados",
+    "request": {
+      "method": "POST",
+      "header": [
+        {"key": "Accept", "value": "application/json"},
+        {"key": "Content-Type", "value": "application/json"}
+      ],
+      "url": "{{base_url}}/api/cotizaciones/borrador-items",
+      "body": {
+        "mode": "raw",
+        "raw": "{\n  \"request_id\": \"{{request_id}}\",\n  \"modo_prueba\": true,\n  \"user_id\": 30,\n  \"items\": [{\"codigo\": \"{{codigo_gp}}\"}]\n}",
+        "options": {"raw": {"language": "json"}}
+      },
+      "description": "Solo en destino QA verificado y piloto habilitado en servidor. Token existente con web y quotation-items:pilot; actor en allowlist; actor y propietario activos y asignados al PV. California y RUC omitidos se resuelven mediante configuración de piloto. No elegir códigos ambiguos. Para indicar otro cliente, añadir cliente_ruc explícito. Conservar request_id en reintentos."
+    }
+  }]
+}

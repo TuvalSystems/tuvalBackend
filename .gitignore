@@ -11,6 +11,8 @@
 .env produccion
 .env.backup
 .phpunit.result.cache
+.phpunit.cache/
+/bootstrap/cache/*.php
 docker-compose.override.yml
 Homestead.json
 Homestead.yaml

@@ -7,6 +7,7 @@ Backend Laravel para procesos comerciales, logísticos, cobranzas, reservas, dev
 La documentación técnica completa del proyecto está disponible en:
 
 - [docs/PROYECTO.md](docs/PROYECTO.md)
+- [Cotización borrador desde artículos confirmados](docs/cotizacion-borrador-items.md)
 
 Incluye:
 

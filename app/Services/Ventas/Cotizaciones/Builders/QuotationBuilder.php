@@ -410,6 +410,7 @@ class QuotationBuilder implements QuotationBuilderInterface
         $qd = new GpCotizacionDetalle();
         $qd->fill([
             'cotizacion_id'                     => $quoteId,
+            'art_id'                            => $art->id,
             'ART_CODIGO'                        => data_get($art, 'ART_CODIGO'),
             'ART_DESCRIPCION'                   => data_get($art, 'ART_DESCRIPCION'),
             'ART_DESCRIPCION_ORIGINAL'          => data_get($art, 'ART_DESCRIPCION'),

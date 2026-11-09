@@ -45,6 +45,8 @@ use App\Services\Compras\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Services\Compras\Proveedores\Contracts\ProviderServiceInterface;
 use App\Services\Compras\Proveedores\ProviderService;
 use App\Services\Ventas\Cotizaciones\QuotationCreatorService;
+use App\Services\Ventas\Cotizaciones\QuotationItemsDraftService;
+use App\Services\Ventas\Cotizaciones\Contracts\QuotationItemsDraftServiceInterface;
 use App\Services\Ventas\Cotizaciones\Borradores\QuoteDraftService;
 use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 
@@ -60,6 +62,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
         InventoryReservationServiceInterface::class     => InventoryReservationService::class,
         ClientQueryServiceInterface::class              => ClientQueryService::class,
         QuotationCreatorServiceInterface::class         => QuotationCreatorService::class,
+        QuotationItemsDraftServiceInterface::class      => QuotationItemsDraftService::class,
         OrderCreatorServiceInterface::class             => OrderCreatorService::class,
         OrderJobService::class                          => OrderJobService::class,
 
