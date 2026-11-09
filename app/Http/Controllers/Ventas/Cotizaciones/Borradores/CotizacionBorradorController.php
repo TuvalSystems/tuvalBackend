@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Ventas\Cotizaciones\Borradores;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Cotizaciones\StoreQuotationItemsDraftRequest;
+use App\Models\Admin\Usuarios\GpUsuario;
 use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuoteDraftServiceInterface;
+use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuotationItemsDraftServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +16,22 @@ class CotizacionBorradorController extends Controller
 {
     use JsonResponseTrait, ExecuteApiTransactions;
 
-    public function __construct(protected readonly QuoteDraftServiceInterface $draft) {}
+    private const TEST_QUOTATION_USER_ID = 6;
+
+    public function __construct(
+        protected readonly QuoteDraftServiceInterface $draft,
+        protected readonly QuotationItemsDraftServiceInterface $itemsDraft
+    ) {}
+
+    public function crearBorradorDesdeArticulos(StoreQuotationItemsDraftRequest $request): JsonResponse
+    {
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $user = GpUsuario::find(self::TEST_QUOTATION_USER_ID);
+            $result = $this->itemsDraft->create($request->validated(), $user);
+            return $this->successResponse("Cotización borrador {$result['numero']} creada.", $result, 201);
+        }, 'cotizaciones', 'crear borrador por items');
+    }
+
     public function sincronizarBorrador(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {

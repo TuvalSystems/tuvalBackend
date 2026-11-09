@@ -45,8 +45,8 @@ use App\Services\Compras\Proveedores\Contracts\ExternalFreightServiceInterface;
 use App\Services\Compras\Proveedores\Contracts\ProviderServiceInterface;
 use App\Services\Compras\Proveedores\ProviderService;
 use App\Services\Ventas\Cotizaciones\QuotationCreatorService;
-use App\Services\Ventas\Cotizaciones\QuotationItemsDraftService;
-use App\Services\Ventas\Cotizaciones\Contracts\QuotationItemsDraftServiceInterface;
+use App\Services\Ventas\Cotizaciones\Borradores\QuotationItemsDraftService;
+use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuotationItemsDraftServiceInterface;
 use App\Services\Ventas\Cotizaciones\Borradores\QuoteDraftService;
 use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 

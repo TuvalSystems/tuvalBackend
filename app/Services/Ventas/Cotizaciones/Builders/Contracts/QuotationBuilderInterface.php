@@ -33,7 +33,7 @@ interface QuotationBuilderInterface
     public function formPayloadProvidersDetailQuotation(int $quoteId, int $detailId, array $provider): GpCotizacionDetalleProveedores;
     public function formPayloadStocksDetailQuotation(int $quoteId, int $detailId, array $stock): GpCotizacionDetalleStock;
 
-    public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion;
+    public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info, GpVendedor $seller): GpCotizacion;
     public function payloadQuotationDetailDraft(GpArticulo $art, int $quoteId, GpCliente $cliente): void;
 
 

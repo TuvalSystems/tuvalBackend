@@ -12,20 +12,13 @@
 - SSH a `administrador@172.30.1.7`, con comprobación estricta del host y las llaves
   existentes, terminó con `Permission denied (publickey,password)`. No se abrió
   sesión y no se repitió con credenciales inventadas o permisos nuevos.
-- Por ese bloqueo de acceso no se verificaron los IDs reales, configuración
-  desplegada de piloto, conexión/DDL de QA ni estado real de la migración.
-- No se ejecutó migración, configuración compartida, publicación o creación real.
-
-Los IDs de `tests/Support/QuotationDraftSchema.php` son fixtures locales. El PV
-7 y cliente 2 de esas pruebas **no son IDs verificados de QA**. El propietario
-autorizado para el piloto es el usuario 30, cuya existencia/actividad en QA sigue
-pendiente de comprobar. No se tomó ningún candidato de la imagen como aprobado.
+- Por ese bloqueo de acceso quedaron pendientes los IDs reales, la conexión
+  y el esquema de QA.
 
 ## Comprobaciones pendientes de solo lectura
 
 Ejecutar con un acceso **existente autorizado** al servidor de QA confirmado.
 No copiar `.env`, contraseñas, tokens ni hashes de tokens a evidencias o al PR.
-No cambiar `APP_ENV` para hacer pasar la comprobación del piloto.
 
 1. Confirmar el host y checkout de la aplicación:
 
@@ -48,16 +41,15 @@ No cambiar `APP_ENV` para hacer pasar la comprobación del piloto.
      "app_url" => config("app.url"),
      "db_connection" => config("database.default"),
      "db_host" => config("database.connections.".config("database.default").".host"),
-     "db_database" => config("database.connections.".config("database.default").".database"),
-     "pilot" => config("quotation_item_drafts.pilot")
+     "db_database" => config("database.connections.".config("database.default").".database")
    ]);'
    ```
 
    Contrastar host y nombre de BD con la referencia de QA del responsable del
    entorno. `APP_ENV`, HTTP 200 o un nombre de perfil por sí solos no lo prueban.
-   `pilot=null` indica que el checkout/configuración nuevos aún no están cargados.
 
-3. En la conexión de QA ya confirmada, ejecutar estas consultas MySQL de lectura:
+3. En la conexión de QA ya confirmada, usar el ID 6 de `adminWeb` como
+   `ID_USUARIO` y sustituir `ID_PV` y `RUC_CLIENTE` por los valores de la operación.
 
    ```sql
    SELECT @@hostname AS db_server, DATABASE() AS db_database;
@@ -66,106 +58,73 @@ No cambiar `APP_ENV` para hacer pasar la comprobación del piloto.
           p.state AS perfil_state
    FROM gp_usuarios u
    LEFT JOIN perfiles p ON p.id = u.perfil_id
-   WHERE u.id = 30;
+   WHERE u.id = ID_USUARIO;
 
    SELECT id, PTO_VTA_ID, PTO_VTA_DESCRIPCION, PTO_VTA_ESTADO
    FROM gp_punto_ventas
-   WHERE UPPER(TRIM(PTO_VTA_DESCRIPCION)) LIKE '%CALIFORNIA%';
+   WHERE id = ID_PV;
 
    SELECT id, CLI_RUC, CLI_RAZON_SOCIAL, CLI_ESTADO
    FROM gp_clientes
-   WHERE CLI_RUC = '0990007020001';
+   WHERE CLI_RUC = 'RUC_CLIENTE';
+
+   SELECT cc.cliente_id, cc.pv_id, cc.vendedor_id, v.VEND_ID
+   FROM clientes_configuraciones cc
+   JOIN gp_clientes c ON c.id = cc.cliente_id
+   JOIN gp_vendedors v ON v.id = cc.vendedor_id
+   WHERE c.CLI_RUC = 'RUC_CLIENTE' AND cc.pv_id = ID_PV AND cc.estado = 1;
 
    SELECT r.user_id, r.USER_PTO_VTA_PUNTO_VENTA,
           pv.id AS pv_id, pv.PTO_VTA_DESCRIPCION, pv.PTO_VTA_ESTADO
    FROM gp_relacion_usuario_punto_ventas r
    JOIN gp_punto_ventas pv
      ON pv.PTO_VTA_ID = r.USER_PTO_VTA_PUNTO_VENTA
-   WHERE r.user_id = 30;
+   WHERE r.user_id = ID_USUARIO AND pv.id = ID_PV;
 
-   SELECT pv.id AS pv_id, pv.PTO_VTA_DESCRIPCION, b.PTO_VTA_BOD_BODEGA
+   SELECT pv.id AS pv_id, pv.PTO_VTA_DESCRIPCION, b.PTO_VTA_BOD_REL_BODEGA
    FROM gp_punto_ventas pv
-   LEFT JOIN gp_relacion_punto_venta_bodegas b
-     ON b.PTO_VTA_BOD_PUNTO_VENTA = pv.PTO_VTA_ID
-   WHERE UPPER(TRIM(pv.PTO_VTA_DESCRIPCION)) LIKE '%CALIFORNIA%';
+   JOIN gp_relacion_punto_venta_bodega_relacionadas b
+     ON b.PTO_VTA_BOD_REL_PUNTO_VENTA = pv.PTO_VTA_ID
+   WHERE pv.id = ID_PV
+   ORDER BY b.orden, b.id
+   LIMIT 1;
    ```
 
-   Usar el ID y la descripción exacta devueltos. Si hay varios PV activos
-   compatibles, resolver cuál corresponde antes de crear. Repetir la consulta
-   de usuario/perfil/asignación con el ID real del actor si es distinto de 30.
-   El actor también debe tener el acceso al PV; no se conceden permisos aquí.
+   Comprobar que el usuario y su perfil web estén activos, que el usuario esté
+   asignado al punto de venta y que ese punto tenga una bodega relacionada.
+   Verificar que la configuración activa del cliente para ese punto tenga vendedor.
 
-4. Comprobar esquema y migración sin ejecutarla:
+4. Comprobar el esquema:
 
    ```sql
    SELECT TABLE_NAME, ENGINE
    FROM information_schema.TABLES
    WHERE TABLE_SCHEMA = DATABASE()
-     AND TABLE_NAME IN ('gp_usuarios', 'gp_cotizacions',
-                        'gp_cotizacion_detalles', 'quotation_item_draft_requests');
+     AND TABLE_NAME IN ('gp_cotizacions', 'gp_cotizacion_detalles');
 
    SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE
    FROM information_schema.COLUMNS
    WHERE TABLE_SCHEMA = DATABASE()
-     AND ((TABLE_NAME = 'gp_cotizacions' AND COLUMN_NAME = 'estado')
-          OR TABLE_NAME = 'quotation_item_draft_requests');
-
-   SELECT migration, batch
-   FROM migrations
-   WHERE migration = '2026_11_09_000001_create_quotation_item_draft_requests_table';
+     AND TABLE_NAME = 'gp_cotizacions'
+     AND COLUMN_NAME = 'estado';
    ```
 
    Deben ser transaccionales las tablas implicadas y el enum debe admitir
-   `borrador_app`. La tabla nueva requiere `user_id` (actor), `owner_id`, UUID,
-   hash de contenido, FK de cotización, snapshot JSON e índice único de actor/UUID.
-   Si existe una tabla parcial, revisar su DDL antes de cualquier ejecución.
+   `borrador_app`.
 
-5. Comprobar que un token existente del actor tiene `web` y
-   `quotation-items:pilot` (o el alcance equivalente `*`), y que sigue vigente.
-   Consultar solamente `tokenable_id`, `abilities` y `expires_at` en
-   `personal_access_tokens`; nunca seleccionar `token` ni copiar su contenido.
-   Si no existe un acceso con esos permisos, hace falta la autorización del
-   administrador correspondiente; no crear token ni otorgar abilities en esta tarea.
-
-## Cambios que requieren autorización posterior
-
-No se han ejecutado. Después de confirmar destino, acceso y esquema:
-
-- Incorporar el código mediante la publicación/despliegue que se autorice.
-- Si la tabla/migración no están presentes, autorizar específicamente la
-  migración nueva y ejecutarla aislada, revisando primero su SQL:
-
-  ```bash
-  php artisan migrate --path=database/migrations/2026_11_09_000001_create_quotation_item_draft_requests_table.php --pretend
-  # Solo después de la autorización específica, en el QA ya verificado:
-  php artisan migrate --path=database/migrations/2026_11_09_000001_create_quotation_item_draft_requests_table.php
-  ```
-
-  No ejecutar un `migrate` general. La FK restringe eliminar físicamente las
-  cotizaciones vinculadas, para conservar su registro de idempotencia.
-- Configurar el piloto usando los nombres exactos del
-  [contrato](cotizacion-borrador-items.md#piloto-restringido-para-la-prueba-autorizada),
-  propietario 30, actor real autorizado, URL QA verificada, descripción exacta de
-  California y RUC por defecto `0990007020001`. No activar en producción.
-  Si hay caché de configuración, su actualización también es un cambio compartido
-  pendiente de autorización; leer `.env` nuevo no basta si sigue activo el caché.
+5. Comprobar que el entorno de la aplicación sea `local`, `testing`, `qa`
+   o `staging`. En Postman, seleccionar `No Auth` y enviar el cuerpo como JSON.
 
 ## Creación real preparada, todavía pendiente
 
-Cuando los puntos anteriores estén resueltos, usar el request «Piloto QA
-restringido» de [Postman](postman/cotizacion-borrador-items.postman_collection.json)
-con un UUID nuevo para esta operación y **solo códigos GP confirmados por el
-usuario**, junto con sus cantidades. Omitir cantidad aplica 1 y lo informa.
-Omitir cliente aplica el RUC del piloto; uno explícito se respeta.
+Cuando los puntos anteriores estén resueltos, usar la solicitud «Crear
+borrador confirmado» de [Postman](postman/cotizacion-borrador-items.postman_collection.json).
+Enviar el RUC del cliente, el `pv_id` del punto de venta y los códigos GP
+confirmados con sus cantidades. Para California (005), enviar `pv_id: 2`.
+Cada artículo debe incluir una cantidad mayor que cero.
 
 No sustituir una selección por el primer candidato ni usar el código de ejemplo
-`020-000006-I` como si estuviera aprobado. Enviar una sola vez; si la respuesta
-se pierde, reintentar exactamente con el mismo UUID y contenido.
+`020-000006-I` como si estuviera aprobado.
 
-Resultado esperado: 201 con ID/número y estado `borrador_app`; reintento 200 con
-el mismo ID y `reutilizado=true`. La API no consulta precios ni modifica la
-validación del proceso de generar cotización real. No envía correos/notificaciones.
-
-Bloqueos separados: falta confirmar selección/destino/IDs reales (datos), falta
-un acceso QA existente utilizable y comprobar permisos del actor (acceso), y
-siguen sin autorizarse migración/configuración/publicación compartidas (acciones).
+Cada solicitud exitosa crea un borrador nuevo y devuelve HTTP 201 con su ID,
+número y estado `borrador_app`.

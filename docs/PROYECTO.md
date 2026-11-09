@@ -46,7 +46,6 @@ database/migrations/       Esquema histórico y evolutivo de tablas.
 database/seeders/          Seeders disponibles.
 resources/views/           Plantillas Blade para PDFs y vistas básicas.
 routes/                    Definición de rutas web, API, móvil, test y console.
-tests/                     Base de pruebas PHPUnit.
 ```
 
 ## 4. Arquitectura y patrones usados
@@ -522,7 +521,6 @@ composer dump-autoload
 php artisan migrate
 php artisan db:seed
 php artisan route:list
-php artisan test
 npm run dev
 npm run watch
 npm run prod
@@ -547,15 +545,7 @@ Después de crear interfaces, registrar los bindings en el service provider corr
 - Los enums agrupan estados/tipos de dominio para evitar strings mágicos.
 - Los procesos largos deben ejecutarse por jobs/comandos, no por requests síncronos.
 
-## 15. Testing y verificación
-
-La base de pruebas PHPUnit está en `tests/`. Para ejecutar:
-
-```bash
-php artisan test
-# o
-vendor/bin/phpunit
-```
+## 15. Verificación
 
 Verificaciones recomendadas antes de desplegar:
 
@@ -563,7 +553,6 @@ Verificaciones recomendadas antes de desplegar:
 composer validate
 php artisan config:clear
 php artisan route:list
-php artisan test
 npm run prod
 ```
 

@@ -3,11 +3,14 @@
 namespace App\Services\Movil\Gestion;
 
 use App\Mail\Cotizacion\CotizacionBorradorAppMail;
+use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Ventas\Clientes\ClienteConfiguracion;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
+use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Movil\Gestion\TrampaVapor;
@@ -26,6 +29,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SteamTrapService implements SteamTrapServiceInterface
 {
@@ -162,19 +166,32 @@ class SteamTrapService implements SteamTrapServiceInterface
 
     public function generateQuoteDraft(array $payload, GpUsuario $user): mixed
     {
-        $clienteId          = data_get($payload, 'customer_id');
-        $ruc                = data_get($payload, 'customer_ruc');
-        $cliente             = $this->client->getAvailabeCreditCustomer($ruc);
-        if (!data_get($cliente, 'cliente')) {
+        $client = data_get($this->client->getAvailabeCreditCustomer($payload['customer_ruc']), 'cliente');
+        if (!$client) {
             throw new \RuntimeException('No se encontró información del cliente.');
         }
+        if ((int) $client->id !== (int) $payload['customer_id']) {
+            throw ValidationException::withMessages(['customer_id' => 'El ID del cliente no corresponde al RUC enviado.']);
+        }
 
-        $sucursalId           = GpClienteSucursal::where('cliente_id', $clienteId)->where('estado', true)->where('CLI_SUC_ID_DIRECCION', 'PRINCIPAL')->value('id');
+        $pointOfSale = GpPuntoVenta::where('PTO_VTA_ID', $payload['pvCode'])->first();
+        if (!$pointOfSale) {
+            throw ValidationException::withMessages(['pvCode' => 'El punto de venta no existe.']);
+        }
+
+        $clientConfig = ClienteConfiguracion::with('vendedor')->where('cliente_id', $client->id)
+            ->where('pv_id', $pointOfSale->id)->where('estado', 1)->first();
+        $seller = $clientConfig?->vendedor;
+        if (!$seller) {
+            throw ValidationException::withMessages(['customer_ruc' => 'El cliente no tiene un vendedor configurado para este punto de venta.']);
+        }
+
+        $sucursalId           = GpClienteSucursal::where('cliente_id', $client->id)->where('estado', true)->where('CLI_SUC_ID_DIRECCION', 'PRINCIPAL')->value('id');
         if (!$sucursalId) {
             throw new \RuntimeException('La sucursal seleccionada no existe o no se encuentra activa.');
         }
 
-        $condPayment        = data_get($cliente, 'cliente.CLI_CONDICION_PAGO');
+        $condPayment        = $client->CLI_CONDICION_PAGO;
         $typePayment           = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CONDICION_PAGO', $condPayment)->orderBy('id', 'asc')->value('DESC_FORMA_PAGO_CODIGO');
         if (!$typePayment) {
             throw new \RuntimeException('No existen formas de pago relacionadas para la condición de pago del cliente al cual quiere generar el borrador.');
@@ -195,21 +212,22 @@ class SteamTrapService implements SteamTrapServiceInterface
         $articulos          = GpArticulo::whereIn('ART_CODIGO_TRES_LETRAS', $artCodes)->get();
         //obtener lista de precio de los articulos
         $groupPrices        = $this->getPriceListGroupedByArticle($articulos);
-        $this->identifyGroupPricesToArticle($articulos, $groupPrices, $itemMetaByCode, data_get($cliente, 'cliente', []));
+        $this->identifyGroupPricesToArticle($articulos, $groupPrices, $itemMetaByCode, $client);
         $articulos          = $articulos->sortBy(fn($item) => $item->orden ?? 999)->values();
-        $warehouse         = $this->getWarehouseByPtoVta(data_get($payload, 'pvCode'));
+        $warehouse         = $this->getWarehouseByPtoVta($pointOfSale->PTO_VTA_ID);
 
         $info = [
             'sucursalId'    => $sucursalId,
             'warehouse'     => $warehouse,
-            'ptoVtaCode'    => data_get($payload, 'pvCode'),
+            'pvId'          => $pointOfSale->id,
+            'ptoVtaCode'    => $pointOfSale->PTO_VTA_ID,
             'agency'        => data_get($payload, 'pvDescription'),
             'typePayment'   => $typePayment,
         ];
-        $headerQuote        = $this->payloadQuotationHeaderDraft($user, data_get($cliente, 'cliente'),  $info);
-        $this->payloadQuotationDetailDraft($articulos, $headerQuote->id, data_get($cliente, 'cliente'));
+        $headerQuote        = $this->payloadQuotationHeaderDraft($user, $client, $info, $seller);
+        $this->payloadQuotationDetailDraft($articulos, $headerQuote->id, $client);
         $this->OrderQuoteCommon->recalculateQuotation($headerQuote->id);
-        $clienteNombre = data_get($cliente, 'cliente.CLI_RUC', 'el cliente');
+        $clienteNombre = $client->CLI_RUC ?? 'el cliente';
         $mensaje = "Se generó la cotización borrador {$headerQuote->cotizacion} para {$clienteNombre}. Revísala desde el sistema Web antes de continuar.";
         $user->notify(new UserNotification('Cotización Borrador', $mensaje));
 
@@ -303,9 +321,9 @@ class SteamTrapService implements SteamTrapServiceInterface
         return $articles;
     }
 
-    protected function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion
+    protected function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info, GpVendedor $seller): GpCotizacion
     {
-        $quote = $this->quoteBuilder->payloadQuotationHeaderDraft($user, $cliente, $info);
+        $quote = $this->quoteBuilder->payloadQuotationHeaderDraft($user, $cliente, $info, $seller);
         $quote->save();
         return $quote;
     }

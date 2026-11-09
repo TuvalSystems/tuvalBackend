@@ -253,14 +253,14 @@ class QuotationBuilder implements QuotationBuilderInterface
             //paqueteria
             'responsable_flete'                 => data_get($data, 'responsable_flete'),
             'tipo_despacho_id'                  => $typeDispatch->id,
-            'fle_valor'                       => data_get($data, 'fle_valor') ?? 0,
+            'fle_valor'                         => data_get($data, 'fle_valor') ?? 0,
             'peso'                              => data_get($data, 'peso') ?? 0,
-            'fle_peso'                        => data_get($data, 'fle_peso') ?? 0,
-            'fle_proveedor_id'             => data_get($data, 'fle_proveedor_id', null),
-            'fle_usuario_id'                  => data_get($data, 'fle_valor') > 0 ? $user->id : null,
-            'fle_fecha'                       => data_get($data, 'fle_valor') > 0 ? now() : null,
-            'fle_fecha_aut'          => $freightAuthorization['fle_fecha_aut'],
-            'fle_usuario_aut_id'      => $freightAuthorization['fle_usuario_aut_id'],
+            'fle_peso'                          => data_get($data, 'fle_peso') ?? 0,
+            'fle_proveedor_id'                  => data_get($data, 'fle_proveedor_id', null),
+            'fle_usuario_id'                    => data_get($data, 'fle_valor') > 0 ? $user->id : null,
+            'fle_fecha'                         => data_get($data, 'fle_valor') > 0 ? now() : null,
+            'fle_fecha_aut'                     => $freightAuthorization['fle_fecha_aut'],
+            'fle_usuario_aut_id'                => $freightAuthorization['fle_usuario_aut_id'],
             'facturar_ahora'                    => data_get($data, 'facturar_ahora',false),
         ]);
     }
@@ -350,12 +350,14 @@ class QuotationBuilder implements QuotationBuilderInterface
 
     /** funciones para armar la cotizacion borrador de la appmovil */
 
-    public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info): GpCotizacion
+    public function payloadQuotationHeaderDraft(GpUsuario $user, GpCliente $cliente, array $info, GpVendedor $seller): GpCotizacion
     {
         $quote = new GpCotizacion();
         $quote->fill([
             'estado'                            => 'borrador_app',
             'user_id'                           => $user->id,
+            'pv_id'                             => data_get($info, 'pvId'),
+            'vendedor_id'                       => $seller->id,
             'sucursal_id'                       => data_get($info, 'sucursalId'),
             'sucursal_facturacion_id'           => data_get($info, 'sucursalId'),
             'cliente_id'                        => $cliente->id,
@@ -373,10 +375,10 @@ class QuotationBuilder implements QuotationBuilderInterface
             'CLI_CORREO_ELECT_SRI'              => $cliente->CLI_CORREO_ELECT_SRI,
             'COND_ID'                           => $cliente->CLI_CONDICION_PAGO,
             'COND_ID_ORIGINAL'                  => $cliente->CLI_CONDICION_PAGO,
-            'VEND_ID'                           => $cliente->gpvendedor->VEND_ID,
-            'VEND_NOMBRES'                      => $cliente->gpvendedor->VEND_NOMBRES,
-            'VEND_APELLIDOS'                    => $cliente->gpvendedor->VEND_APELLIDOS,
-            'tipo_despacho'                     => 1,
+            'VEND_ID'                           => $seller->VEND_ID,
+            'VEND_NOMBRES'                      => $seller->VEND_NOMBRES,
+            'VEND_APELLIDOS'                    => $seller->VEND_APELLIDOS,
+            'tipo_despacho_id'                  => 1,
             'despacho'                          => 'Retiro en bodega',
             'orden_de_compra'                   => null,
             'porcentage_descuento'              => $cliente->CLI_DSTO_COMERCIAL,
@@ -459,7 +461,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'user_id'                           => $quote->user_id,
             'pv_id'                             => $quote->pv_id,
             'tipo_despacho_id'                  => $quote->tipo_despacho_id,
-            'fle_proveedor_id'             => $quote->fle_proveedor_id ?? null,
+            'fle_proveedor_id'                  => $quote->fle_proveedor_id ?? null,
             'vendedor_id'                       => $quote->vendedor_id,
             'sucursal_id'                       => $quote->sucursal_id,
             'sucursal_facturacion_id'           => $quote->sucursal_facturacion_id,

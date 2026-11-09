@@ -28,6 +28,7 @@ use App\Http\Controllers\Ventas\Aprobaciones\AprobacionesController;
 use App\Http\Controllers\Ventas\Clientes\ClienteController;
 use App\Http\Controllers\Compras\Proveedores\ProveedoresController;
 use App\Http\Controllers\Inventario\Transporte\FleteExternoController;
+use App\Http\Controllers\Ventas\Cotizaciones\Borradores\CotizacionBorradorController;
 use App\Http\Controllers\Ventas\Reservas\ReservasController;
 use Illuminate\Support\Facades\Mail;
 
@@ -107,6 +108,11 @@ Route::prefix('cotizaciones')->group(function () {
 
     Route::get('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
     Route::get('lista-facturas-historicas', [CotizacionesController::class, 'obtenerFacturasHistoricasCotizacion']);
+
+
+    // Creación de borradores para pruebas desde Postman, sin sesión web.
+    Route::get('borrador-items', [CotizacionBorradorController::class, 'crearBorradorDesdeArticulos'])
+        ->withoutMiddleware('web');
 });
 
 Route::prefix('bodegas')->group(function () {
@@ -193,9 +199,6 @@ Route::prefix('devoluciones')->group(function () {
     Route::get('generar-nota-credito-errores/{id}', [DevolucionesController::class, 'generarNotaCreditoDevolucionesFallidas']);
     Route::get('generar-ajuste-devolucion/{id}', [DevolucionesController::class, 'generarAjusteDevolucionesFallidas']);
     Route::get('detalle-solicitud-devolucion', [DevolucionesController::class, 'detallepedidodevolucion']);
-
-
-
 });
 
 
@@ -258,7 +261,6 @@ Route::group(['prefix' => 'cobranzas'], function () {
         Route::get('registrar-cobro', [CobrosController::class, 'registrarCobroV1']);
         Route::get('enviar-cobro', [CobrosController::class, 'enviarCobroGp']);
         Route::get('validar-cobros', [AplicacionesController::class, 'obtenerInformacionPagosFacturas']);
-
     });
 
 
@@ -300,9 +302,8 @@ Route::group(['prefix' => 'inventario-web'], function () {
         Route::get('configuracion-segmentacion', [ArticuloController::class, 'obtenerConfiguracionClasificacionSegmento']);
         Route::get('lista-alternativas', [ArticuloController::class, 'obtenerListaItemsFiltroSegmentacion']);
         Route::get('item-logistico', [ArticuloController::class, 'obtenerArticuloLogistico']);
-         Route::get('item-l', [ArticuloController::class, 'buscarArticuloL']);
-
-        });
+        Route::get('item-l', [ArticuloController::class, 'buscarArticuloL']);
+    });
 });
 
 
