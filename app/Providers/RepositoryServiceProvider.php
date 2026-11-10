@@ -26,6 +26,8 @@ use App\Repositories\Cobranzas\WebInvoiceApplicationRepository;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Repositories\User\UserRepository;
+use App\Repositories\Reportes\AprobacionesComercialesRepository;
+use App\Repositories\Reportes\Contracts\AprobacionesComercialesRepositoryInterface;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Repositories\Venta\InventoryReservationRepository;
 
@@ -40,6 +42,8 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
         TransferRepositoryInterface::class                  => TransferRepository::class,
         InventoryReservationRepositoryInterface::class      => InventoryReservationRepository::class,
 
+
+        AprobacionesComercialesRepositoryInterface::class     => AprobacionesComercialesRepository::class,
 
         //cobranza
         CashClosureRepositoryInterface::class               => CashClosureRepository::class,
