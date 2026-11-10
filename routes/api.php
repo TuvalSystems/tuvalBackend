@@ -13,6 +13,7 @@ use App\Http\Controllers\Ventas\Consultas\ConsultasController;
 use App\Http\Controllers\Ventas\Cotizaciones\CotizacionesController;
 use App\Http\Controllers\Ventas\Pedidos\PedidosController;
 use App\Http\Controllers\Ventas\Aprobaciones\AprobacionesController;
+use App\Http\Controllers\Reportes\AprobacionesComercialesController;
 use App\Http\Controllers\Cobranzas\CajasController;
 use App\Http\Controllers\Cobranzas\DepositosController;
 use App\Http\Controllers\Cobranzas\AplicacionesController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\Inventario\Despachos\TipoDespachosController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('reportes/aprobaciones-comerciales', [AprobacionesComercialesController::class, 'consultar']);
 
 
 Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(function () {
