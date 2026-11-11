@@ -41,6 +41,8 @@ El workflow instala Node 22 en el entorno del runner, ejecuta `npm ci` y `npm ru
 
 `administrador` pertenece al grupo `www-data`; PHP y las colas se ejecutan con `www-data`. No se cambia el propietario de los archivos que Laravel genera con este último usuario. En `config/filesystems.php`, los discos `local` y `public` crean archivos privados con `0660` y directorios privados con `0770`; los públicos usan `0664` y `0775`. Así Flysystem no vuelve a retirar la escritura del grupo al aplicar la visibilidad de un archivo o directorio.
 
+`bootstrap/app.php` y el script de despliegue usan `umask 0002` para conservar la escritura del grupo también cuando Laravel reemplaza vistas compiladas y archivos de caché mediante archivos temporales. La máscara se aplica a los procesos de esta aplicación; no se cambian las unidades compartidas de PHP-FPM ni la configuración global del sistema.
+
 ## Comportamiento y recuperación
 
 El backend comprueba que no existan cambios versionados locales. Importa el commit desde el checkout local de Actions, sin guardar credenciales de GitHub en la copia servida, y pasa la rama local a `develop`. Conserva archivos no versionados; Git aborta si alguno entra en conflicto con el checkout. Mantiene el `.env` del servidor y no ejecuta migraciones ni seeders.

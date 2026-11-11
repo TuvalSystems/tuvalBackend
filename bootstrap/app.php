@@ -1,5 +1,8 @@
 <?php
 
+// Compartir los archivos generados por Laravel con el grupo del servidor web.
+umask(0002);
+
 /*
 |--------------------------------------------------------------------------
 | Create The Application
