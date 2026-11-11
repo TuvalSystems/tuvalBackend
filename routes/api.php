@@ -671,11 +671,13 @@ Route::group(['prefix' => 'inventario'], function () {
     });
     Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
     Route::get('lista-reposiciones/{anio}/{mes}/{bodegaOrigen}/{bodegaDestino}', [TransferenciasController::class, 'obtenerListaReposiciones']);
-
 });
 
 
-Route::group(['prefix' => 'reportes'], function(){
-    Route::get('inventory/replenishment-receipt-history', [ReplenishmentReceiptHistoryController::class, 'index']);
+Route::group(['prefix' => 'reportes'], function () {
+    Route::group(['prefix' => 'inventario'], function () {
+        Route::get('replenishment-receipt-history', [ReplenishmentReceiptHistoryController::class, 'index']);
+    });
+
     Route::get('aprobaciones-comerciales', [AprobacionesComercialesController::class, 'consultar']);
 });
