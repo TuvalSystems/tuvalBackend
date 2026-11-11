@@ -1,0 +1,40 @@
+name: Desplegar backend en pruebas
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tuval-backend-pruebas
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, Linux, X64, tuval-backend-pruebas]
+    timeout-minutes: 20
+    steps:
+      - name: Obtener el commit del despliegue
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Comprobar que develop sigue en este commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(curl --fail --silent --show-error --retry 3 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/develop" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')
+          test "$latest" = "$GITHUB_SHA" || { echo '::error::develop tiene un commit más reciente.'; exit 1; }
+
+      - name: Desplegar Laravel conservando configuración y archivos
+        run: bash scripts/deploy-pruebas.sh
