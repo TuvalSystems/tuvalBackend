@@ -43,6 +43,10 @@ chown -R "$runner_user:$runner_user" "$runner_dir"
 getfacl -R -p "$target" > "/root/tuval-$component-acl-before-$(date +%Y%m%d%H%M%S).txt"
 setfacl -R -m "u:$runner_user:rwX" "$target"
 find "$target" -type d -exec setfacl -m "d:u:$runner_user:rwx" {} +
+# Git 2.37 del servidor requiere safe.directory en la configuración global.
+if ! sudo -H -u "$runner_user" git config --global --get-all safe.directory | grep -Fxq "$target"; then
+    sudo -H -u "$runner_user" git config --global --add safe.directory "$target"
+fi
 
 token=$(tr -d '\r\n' < "$token_file")
 cd "$runner_dir"

@@ -26,6 +26,7 @@ live_git diff --cached --quiet
 
 # Usar el checkout validado por Actions evita guardar credenciales de GitHub.
 live_git fetch --no-tags "$source_dir" "$sha"
+[[ $(live_git rev-parse --verify 'FETCH_HEAD^{commit}') == "$sha" ]] || { echo 'No se importó el commit solicitado.' >&2; exit 1; }
 previous=$(live_git rev-parse HEAD)
 echo "Backend: $previous -> $sha"
 cd "$target"
