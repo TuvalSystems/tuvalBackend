@@ -185,6 +185,7 @@ return [
         App\Providers\Service\BodegasServiceProvider::class,
         App\Providers\Service\FuncionServiceProvider::class,
         App\Providers\Service\ReposicionesServiceProvider::class,
+        App\Providers\Service\ReportesServiceProvider::class,
         App\Providers\Service\VentaServiceProvider::class,
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\Service\UserServiceProvider::class,
