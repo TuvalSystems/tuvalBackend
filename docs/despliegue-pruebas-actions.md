@@ -35,6 +35,12 @@ En **TuvalFront → Settings → Secrets and variables → Actions → Secrets �
 
 El workflow instala Node 22 en el entorno del runner, ejecuta `npm ci` y `npm run build`, y comprueba `vue/index.html` y `vue/version.json`. No sustituye el Node del sistema.
 
+## Permisos de Laravel
+
+`storage` y `bootstrap/cache` comparten el grupo `www-data`. Los directorios usan setgid para heredar ese grupo, con permisos de lectura/escritura/recorrido para el grupo y ACL por defecto que mantienen esa colaboración en los nuevos archivos. Los archivos tienen lectura/escritura para su propietario y para el grupo. Se conserva la restricción de acceso de otros usuarios en las rutas privadas.
+
+`administrador` pertenece al grupo `www-data`; PHP y las colas se ejecutan con `www-data`. No se cambia el propietario de los archivos que Laravel genera con este último usuario. En `config/filesystems.php`, los discos `local` y `public` crean archivos privados con `0660` y directorios privados con `0770`; los públicos usan `0664` y `0775`. Así Flysystem no vuelve a retirar la escritura del grupo al aplicar la visibilidad de un archivo o directorio.
+
 ## Comportamiento y recuperación
 
 El backend comprueba que no existan cambios versionados locales. Importa el commit desde el checkout local de Actions, sin guardar credenciales de GitHub en la copia servida, y pasa la rama local a `develop`. Conserva archivos no versionados; Git aborta si alguno entra en conflicto con el checkout. Mantiene el `.env` del servidor y no ejecuta migraciones ni seeders.
