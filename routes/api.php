@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Secciones\SectionsController;
 use App\Http\Controllers\Admin\Usuarios\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Reportes\Inventory\ReplenishmentReceiptHistoryController;
 use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
 use App\Http\Controllers\Ventas\Consultas\ConsultasController;
@@ -675,5 +676,6 @@ Route::group(['prefix' => 'inventario'], function () {
 
 
 Route::group(['prefix' => 'reportes'], function(){
+    Route::get('inventory/replenishment-receipt-history', [ReplenishmentReceiptHistoryController::class, 'index']);
     Route::get('aprobaciones-comerciales', [AprobacionesComercialesController::class, 'consultar']);
 });
