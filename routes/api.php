@@ -609,5 +609,7 @@ Route::group(['prefix' => 'inventario'], function () {
 });
 
 Route::prefix('reportes')->group(function (): void {
-    Route::get('inventory/replenishment-receipt-history', [ReplenishmentReceiptHistoryController::class, 'index']);
+    Route::group(['prefix' => 'inventario'], function () {
+        Route::get('historial-reposiciones-guia-ingreso', [ReplenishmentReceiptHistoryController::class, 'index']);
+    });
 });
