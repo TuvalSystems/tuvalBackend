@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\SectionsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Reportes\Inventory\ReplenishmentReceiptHistoryController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\SincronizacionController;
 use App\Http\Controllers\ventas\ConsultasController;
@@ -605,4 +606,8 @@ Route::group(['prefix' => 'inventario'], function () {
     });
     Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
     Route::get('lista-reposiciones/{anio}/{mes}/{bodegaOrigen}/{bodegaDestino}', [TransferenciasController::class, 'obtenerListaReposiciones']);
+});
+
+Route::prefix('reportes')->group(function (): void {
+    Route::get('inventory/replenishment-receipt-history', [ReplenishmentReceiptHistoryController::class, 'index']);
 });
