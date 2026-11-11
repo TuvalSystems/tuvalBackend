@@ -653,8 +653,6 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 });
 
 
-
-
 Route::group(['prefix' => 'consultas-externas'], function () {
     Route::prefix('cobranzas')->group(function () {
         Route::get('consultar-cobro-por-comprobante', [CobrosController::class, 'consultarCobroPorComprobante']);
