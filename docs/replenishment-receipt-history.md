@@ -2,11 +2,11 @@
 
 Consulta pública de solo lectura:
 
-`GET /api/reportes/inventory/replenishment-receipt-history?periodo=202611`
+`GET /api/reportes/inventario/historial-reposiciones-guia-ingreso?periodo=202611`
 
 Filtro opcional, conservando ceros iniciales:
 
-`GET /api/reportes/inventory/replenishment-receipt-history?periodo=202611&numero_reposicion=000000000012672`
+`GET /api/reportes/inventario/historial-reposiciones-guia-ingreso?periodo=202611&numero_reposicion=000000000012672`
 
 - `periodo`: obligatorio, string `YYYYMM` con mes entre 01 y 12.
 - `numero_reposicion`: opcional, string de hasta 255 caracteres; omitido, vacío o null se consulta sin número (los middleware generales normalizan vacío a null).
@@ -28,7 +28,7 @@ Con las dependencias de desarrollo instaladas:
 
 ```sh
 php vendor/bin/phpunit --bootstrap vendor/autoload.php tests/Unit/Reportes/Inventory/ReplenishmentReceiptHistoryTest.php
-php artisan route:list --path=reportes/inventory/replenishment-receipt-history -v
+php artisan route:list --path=reportes/inventario/historial-reposiciones-guia-ingreso -v
 ```
 
 Las pruebas unitarias cubren validación, acceso permitido, bindings SQL (incluyendo null y texto hostil), conservación de ceros y resultados vacíos. No sustituyen la verificación del procedimiento almacenado ni una llamada HTTP real sin autenticación en pruebas.
