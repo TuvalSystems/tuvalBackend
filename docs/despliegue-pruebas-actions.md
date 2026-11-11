@@ -31,7 +31,7 @@ El instalador verifica hostname, arquitectura del paquete Linux x64 y checksum S
 
 ## Configurar el frontend
 
-En **TuvalFront → Settings → Secrets and variables → Actions → Variables**, definir `VITE_API_BASE_URL` con la URL del backend de pruebas. Configurar también las variables públicas de Pusher que utilice el entorno: `VITE_PUSHER_APP_KEY`, `VITE_PUSHER_APP_CLUSTER`, `VITE_PUSHER_HOST`, `VITE_PUSHER_PORT` y `VITE_PUSHER_SCHEME`. Vite incorpora las variables `VITE_*` al JavaScript público: no colocar secretos privados.
+En **TuvalFront → Settings → Secrets and variables → Actions → Secrets → Repository secrets**, definir `VITE_API_BASE_URL` con la URL del backend de pruebas. Configurar también `VITE_PUSHER_APP_KEY`, `VITE_PUSHER_APP_CLUSTER`, `VITE_PUSHER_HOST`, `VITE_PUSHER_PORT` y `VITE_PUSHER_SCHEME`. El workflow lee los seis valores mediante `secrets.*`, según la configuración elegida por el usuario. Vite incorpora las variables `VITE_*` al JavaScript público: no colocar secretos privados como `PUSHER_APP_SECRET`.
 
 El workflow instala Node 22 en el entorno del runner, ejecuta `npm ci` y `npm run build`, y comprueba `vue/index.html` y `vue/version.json`. No sustituye el Node del sistema.
 
@@ -54,6 +54,8 @@ El frontend guarda compilaciones en `/var/www/TuvalFront/.releases/`. En la prim
 
 El 11 de noviembre de 2026 se registraron e iniciaron los dos runners en `srv-web02`, versión 2.338.2, con el usuario `tuval-runner`. Ambos servicios quedaron habilitados para iniciar con el servidor y conectados a GitHub, escuchando trabajos. Se retiraron los archivos de tokens temporales usados para el registro.
 
-Las compilaciones reales y el primer despliegue de Actions requieren publicar los workflows en `develop` y configurar las variables del frontend en GitHub. El `.env` local del frontend apunta a una API de desarrollo, por lo que no se copió al servidor. Estos checks no prueban todavía el flujo real de despliegue.
+Los workflows están publicados en `develop`. El backend completó correctamente el [despliegue 43066774221](https://github.com/TuvalSystems/tuvalBackend/actions/runs/43066774221), sirviendo el commit `1800ee6d`; la sonda HTTP devuelve `405`. Para Git 2.37 se registraron las rutas exactas de los proyectos en `safe.directory` del usuario del runner. El checkout del backend descarga historial completo y valida `FETCH_HEAD` antes de entrar en mantenimiento; se comprobó el rechazo de un fetch superficial y la importación correcta desde historial completo en repositorios temporales.
+
+El workflow del frontend lee Repository secrets. El [intento 43066919000](https://github.com/TuvalSystems/TuvalFront/actions/runs/43066919000) se detuvo antes de compilar porque `VITE_API_BASE_URL` llegó vacío. Queda pendiente completar ese secreto y validar la primera compilación/publicación real. La web anterior sigue respondiendo `200`. El `.env` local del frontend apunta a una API de desarrollo, por lo que no se copió al servidor.
 
 Referencias: [registro de runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners) y [versión oficial del runner](https://github.com/actions/runner/releases/tag/v2.338.2).
