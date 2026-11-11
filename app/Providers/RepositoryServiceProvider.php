@@ -25,6 +25,8 @@ use App\Repositories\Cobranzas\WebInvoiceApplicationRepository;
 use App\Repositories\Devoluciones\Contracts\DevolucionRepositoryInterface;
 use App\Repositories\User\Contracts\UserRepositoryInterface;
 use App\Repositories\User\UserRepository;
+use App\Repositories\Reportes\Inventory\Contracts\ReplenishmentReceiptHistoryRepositoryInterface;
+use App\Repositories\Reportes\Inventory\ReplenishmentReceiptHistoryRepository;
 use App\Repositories\Venta\Contracts\InventoryReservationRepositoryInterface;
 use App\Repositories\Venta\InventoryReservationRepository;
 
@@ -32,6 +34,7 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
 {
 
     public array $singletons = [
+        ReplenishmentReceiptHistoryRepositoryInterface::class => ReplenishmentReceiptHistoryRepository::class,
         DevolucionRepositoryInterface::class                => DevolucionRepository::class,
         OrderRepositoryInterface::class                     => OrderRepository::class,
         PurchaseReceipRepositoryInterface::class            => PurchaseReceipRepository::class,
