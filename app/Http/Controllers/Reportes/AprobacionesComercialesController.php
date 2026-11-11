@@ -6,32 +6,27 @@ namespace App\Http\Controllers\Reportes;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reportes\ConsultarAprobacionesComercialesRequest;
-use App\Services\Reportes\Contracts\AprobacionesComercialesServiceInterface;
+use App\Services\Reportes\Contracts\CommercialApprovalsServiceInterface;
+use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 class AprobacionesComercialesController extends Controller
 {
-    use JsonResponseTrait;
+    use JsonResponseTrait, ExecuteApiTransactions;
 
     public function __construct(
-        private readonly AprobacionesComercialesServiceInterface $service,
+        private readonly CommercialApprovalsServiceInterface $service,
     ) {
     }
 
     public function consultar(ConsultarAprobacionesComercialesRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $data = $request->validated();
+            $approvals = $this->service->getApprovals($data['tipo_documento'], (int) $data['documento_id']);
 
-        try {
-            $aprobaciones = $this->service->consultar($data['tipo_documento'], (int) $data['documento_id']);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return $this->errorResponse('No se pudieron consultar las aprobaciones comerciales.');
-        }
-
-        return $this->successResponse('Consulta de aprobaciones comerciales realizada.', $aprobaciones);
+            return $this->successResponse('Consulta de aprobaciones comerciales realizada.', $approvals);
+        }, 'stack', 'consultarAprobacionesComerciales');
     }
 }

@@ -11,11 +11,9 @@ use App\Models\Devoluciones\GpDevoluciones;
 use App\Models\Devoluciones\GpDevolucionesDetalle;
 use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Models\Ventas\Cotizaciones\GpCotizacionImagen;
-use App\Models\Integraciones\Sincronizacion\GpCronLog;
 use App\Models\Inventario\Despachos\GpOrdenDespacho;
 use App\Models\Ventas\Pedidos\GpPedido;
 use App\Models\Ventas\Pedidos\GpPedidoDetalle;
-use App\Models\Ventas\Pedidos\GpPedidoDetalleStock;
 use App\Models\Ventas\Pedidos\GpPedidoImagen;
 use App\Models\Admin\PuntosVenta\GpRelacionPuntoVentaBodega;
 use App\Services\Inventario\Despachos\Contracts\DispatchServiceInterface;
@@ -631,7 +629,7 @@ class DespachosController extends Controller
     public function checkdespachadoscompletos()
     {
         return 1;
-    
+
     }
 
     public function checkdespachosweb($id): Response|Application|ResponseFactory

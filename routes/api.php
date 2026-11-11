@@ -51,7 +51,7 @@ use App\Http\Controllers\Inventario\Despachos\TipoDespachosController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('reportes/aprobaciones-comerciales', [AprobacionesComercialesController::class, 'consultar']);
+
 
 
 Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(function () {
@@ -673,4 +673,9 @@ Route::group(['prefix' => 'inventario'], function () {
     Route::get('reposiciones-pendientes', [ReposicionController::class, 'obtenerReposicionesPendientes']);
     Route::get('lista-reposiciones/{anio}/{mes}/{bodegaOrigen}/{bodegaDestino}', [TransferenciasController::class, 'obtenerListaReposiciones']);
 
+});
+
+
+Route::group(['prefix' => 'reportes'], function(){
+    Route::get('aprobaciones-comerciales', [AprobacionesComercialesController::class, 'consultar']);
 });

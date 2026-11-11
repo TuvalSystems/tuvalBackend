@@ -3,8 +3,8 @@
 namespace App\Providers\Service;
 
 use App\Services\Devoluciones\Aprobaciones\ApprovalDevolutionService;
-use App\Services\Reportes\AprobacionesComercialesService;
-use App\Services\Reportes\Contracts\AprobacionesComercialesServiceInterface;
+use App\Services\Reportes\CommercialApprovalsService;
+use App\Services\Reportes\Contracts\CommercialApprovalsServiceInterface;
 use App\Services\Ventas\Aprobaciones\ApprovalOrderService;
 use App\Services\Ventas\Aprobaciones\ApprovalQuotationService;
 use App\Services\Ventas\Aprobaciones\ApprovalReservationService;
@@ -22,7 +22,7 @@ use App\Services\Ventas\Aprobaciones\Utils\Contracts\ApprovalFunctionsServiceInt
 class AprobacionServiceProvider extends ServiceProvider implements DeferrableProvider
 {
     public array $singletons = [
-        AprobacionesComercialesServiceInterface::class => AprobacionesComercialesService::class,
+        CommercialApprovalsServiceInterface::class => CommercialApprovalsService::class,
         ApprovalServiceInterface::class             => ApprovalService::class,
         ApprovalReservationServiceInterface::class  => ApprovalReservationService::class,
         ApprovalQuotationServiceInterface::class    => ApprovalQuotationService::class,
