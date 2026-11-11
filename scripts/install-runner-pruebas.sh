@@ -15,18 +15,15 @@ case "$component" in
     frontend) repo=TuvalFront; target=/var/www/TuvalFront ;;
     *) echo 'Componente desconocido.' >&2; exit 1 ;;
 esac
-command -v setfacl >/dev/null
 [[ -d $target/.git ]]
-runner_user=tuval-runner
+runner_user=administrador
+runner_group=$(id -gn "$runner_user")
 runner_dir=/var/lib/tuval-runner/$component
 version=2.338.2
 checksum=baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40
 
-if ! id "$runner_user" >/dev/null 2>&1; then
-    useradd --create-home --home-dir /var/lib/tuval-runner --shell /bin/bash "$runner_user"
-fi
-usermod -a -G www-data "$runner_user"
-install -d -o "$runner_user" -g "$runner_user" -m 0700 "$runner_dir"
+id "$runner_user" >/dev/null
+install -d -o "$runner_user" -g "$runner_group" -m 0700 "$runner_dir"
 [[ ! -e $runner_dir/.runner ]] || { echo 'Este runner ya está registrado.' >&2; exit 1; }
 
 archive=$(mktemp /tmp/tuval-runner.XXXXXX.tar.gz)
@@ -36,13 +33,9 @@ curl --fail --silent --show-error --location --retry 3 \
     --output "$archive"
 echo "$checksum  $archive" | sha256sum --check --status
 tar -xzf "$archive" -C "$runner_dir" --no-same-owner
-chown -R "$runner_user:$runner_user" "$runner_dir"
+chown -R "$runner_user:$runner_group" "$runner_dir"
 
-# Acceso al proyecto; el usuario del runner no recibe sudo ni privilegios root.
-# ACL conserva los propietarios y los permisos de www-data existentes.
-getfacl -R -p "$target" > "/root/tuval-$component-acl-before-$(date +%Y%m%d%H%M%S).txt"
-setfacl -R -m "u:$runner_user:rwX" "$target"
-find "$target" -type d -exec setfacl -m "d:u:$runner_user:rwx" {} +
+# Usar el propietario existente de los proyectos, sin crear usuarios ni ACL.
 # Git 2.37 del servidor requiere safe.directory en la configuración global.
 if ! sudo -H -u "$runner_user" git config --global --get-all safe.directory | grep -Fxq "$target"; then
     sudo -H -u "$runner_user" git config --global --add safe.directory "$target"

@@ -9,7 +9,7 @@ Los repositorios `TuvalSystems/tuvalBackend` y `TuvalSystems/TuvalFront` tienen 
 | Laravel | `/var/www/webtuval` | `tuval-backend-pruebas` |
 | Vue | `/var/www/TuvalFront/vue` | `tuval-frontend-pruebas` |
 
-Los dos servicios usan el usuario `tuval-runner`, sin sudo, con acceso a los proyectos mediante ACL. El instalador guarda las ACL anteriores en `/root/tuval-<componente>-acl-before-<fecha>.txt`. Los dos despliegues comparten `/var/lib/tuval-runner/deploy.lock`; cada workflow también serializa sus ejecuciones en GitHub.
+Los dos servicios usan el usuario existente `administrador`, propietario de los proyectos, por solicitud del usuario. El instalador no crea cuentas ni añade ACL a los proyectos. La instalación se conserva en `/var/lib/tuval-runner/`, cuyo nombre es solo una ruta: los procesos y archivos pertenecen a `administrador`. Los dos despliegues comparten `/var/lib/tuval-runner/deploy.lock`; cada workflow también serializa sus ejecuciones en GitHub.
 
 ## Registrar los runners
 
@@ -52,7 +52,7 @@ El frontend guarda compilaciones en `/var/www/TuvalFront/.releases/`. En la prim
 - Publicación inicial, reemplazo del enlace y recuperación ante fallo HTTP probados en un directorio temporal aislado.
 - `GET /api/login` devuelve `405` en el servidor actual.
 
-El 11 de noviembre de 2026 se registraron e iniciaron los dos runners en `srv-web02`, versión 2.338.2, con el usuario `tuval-runner`. Ambos servicios quedaron habilitados para iniciar con el servidor y conectados a GitHub, escuchando trabajos. Se retiraron los archivos de tokens temporales usados para el registro.
+El 11 de noviembre de 2026 se registraron e iniciaron los dos runners en `srv-web02`, versión 2.338.2. La instalación inicial usó una cuenta separada; a petición del usuario se migraron ambos servicios a `administrador`, se transfirieron los archivos creados por la cuenta anterior dentro de los proyectos, los runners y la caché temporal de Node, y se retiraron sus ACL. Se eliminaron la cuenta y el grupo `tuval-runner` después de comprobar que no quedaban procesos ni propietarios con su UID/GID. Se respaldaron las unidades y ACL previas en `/root/tuval-runner-migration-20261111124518`. Ambos servicios quedaron habilitados para iniciar con el servidor y conectados a GitHub, escuchando trabajos. Se retiraron los archivos de tokens temporales usados para el registro.
 
 Los workflows están publicados en `develop`. El backend completó correctamente el [despliegue 43066774221](https://github.com/TuvalSystems/tuvalBackend/actions/runs/43066774221), sirviendo el commit `1800ee6d`; la sonda HTTP devuelve `405`. Para Git 2.37 se registraron las rutas exactas de los proyectos en `safe.directory` del usuario del runner. El checkout del backend descarga historial completo y valida `FETCH_HEAD` antes de entrar en mantenimiento; se comprobó el rechazo de un fetch superficial y la importación correcta desde historial completo en repositorios temporales.
 
