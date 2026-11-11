@@ -1208,8 +1208,7 @@ class CollectionGpSenderService implements CollectionGpSenderServiceInterface
             $retentionTolerance = round($orderTotal * CollectionConstants::RETENTION_TOLERANCE, 2);
             $pendingAmount      = round($orderTotal - ($appliedAmount + $sumApplyPayments), 2);
             $releaseValidation = $this->api->getValidationReleaseDispatchOrder([
-                'factura'       => $order->factura,
-                'condicionPago' => $order->COND_ID,
+                'factura'       => $order->factura
             ]);
             $shouldRelease = data_get($releaseValidation, 'success') === true
                 && in_array(data_get($releaseValidation, 'data.codigo'), [1, '1'], true);
