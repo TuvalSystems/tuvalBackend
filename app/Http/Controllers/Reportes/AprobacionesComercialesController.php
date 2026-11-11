@@ -25,7 +25,6 @@ class AprobacionesComercialesController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $data = $request->validated();
             $approvals = $this->service->getApprovals($data['tipo_documento'], (int) $data['documento_id']);
-
             return $this->successResponse('Consulta de aprobaciones comerciales realizada.', $approvals);
         }, 'stack', 'consultarAprobacionesComerciales');
     }
