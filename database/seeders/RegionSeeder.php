@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Admin\Ubicaciones\Region;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class RegionSeeder extends Seeder
@@ -24,12 +23,12 @@ class RegionSeeder extends Seeder
                     'nombre' => 'SIERRA',
                 ],
                 [
-                    'codigo' => 'AMAZONIA',
-                    'nombre' => 'AMAZONÍA',
+                    'codigo' => 'ORIENTE',
+                    'nombre' => 'ORIENTE',
                 ],
                 [
-                    'codigo' => 'INSULAR',
-                    'nombre' => 'INSULAR',
+                    'codigo' => 'GALAPAGOS',
+                    'nombre' => 'GALAPAGOS',
                 ],
             ],
             ['codigo'],

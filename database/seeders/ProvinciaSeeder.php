@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Admin\Ubicaciones\Provincia;
 use App\Models\Admin\Ubicaciones\Region;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ProvinciaSeeder extends Seeder
@@ -39,15 +38,15 @@ class ProvinciaSeeder extends Seeder
             ['codigo_inec' => '18', 'nombre' => 'TUNGURAHUA', 'region' => 'SIERRA'],
 
             // AMAZONÍA
-            ['codigo_inec' => '14', 'nombre' => 'MORONA SANTIAGO', 'region' => 'AMAZONIA'],
-            ['codigo_inec' => '15', 'nombre' => 'NAPO', 'region' => 'AMAZONIA'],
-            ['codigo_inec' => '16', 'nombre' => 'PASTAZA', 'region' => 'AMAZONIA'],
-            ['codigo_inec' => '19', 'nombre' => 'ZAMORA CHINCHIPE', 'region' => 'AMAZONIA'],
-            ['codigo_inec' => '21', 'nombre' => 'SUCUMBÍOS', 'region' => 'AMAZONIA'],
-            ['codigo_inec' => '22', 'nombre' => 'ORELLANA', 'region' => 'AMAZONIA'],
+            ['codigo_inec' => '14', 'nombre' => 'MORONA SANTIAGO', 'region' => 'ORIENTE'],
+            ['codigo_inec' => '15', 'nombre' => 'NAPO', 'region' => 'ORIENTE'],
+            ['codigo_inec' => '16', 'nombre' => 'PASTAZA', 'region' => 'ORIENTE'],
+            ['codigo_inec' => '19', 'nombre' => 'ZAMORA CHINCHIPE', 'region' => 'ORIENTE'],
+            ['codigo_inec' => '21', 'nombre' => 'SUCUMBÍOS', 'region' => 'ORIENTE'],
+            ['codigo_inec' => '22', 'nombre' => 'ORELLANA', 'region' => 'ORIENTE'],
 
             // INSULAR
-            ['codigo_inec' => '20', 'nombre' => 'GALÁPAGOS', 'region' => 'INSULAR'],
+            ['codigo_inec' => '20', 'nombre' => 'GALÁPAGOS', 'region' => 'GALAPAGOS'],
         ];
 
         $data = array_map(
