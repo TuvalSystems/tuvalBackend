@@ -1019,9 +1019,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     }
 
 
-
-
-
     public function accountStatusClient(int $id): array
     {
         $order = GpPedido::findOrFail($id);
