@@ -16,6 +16,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -89,6 +90,26 @@ class QuotationImageExtractionTest extends TestCase
             return $request->url() === 'https://api.openai.com/v1/responses';
         });
         Http::assertSentCount(1);
+    }
+
+    public function testProviderUsageIsReturnedAndRecordedWithoutDocumentContent(): void
+    {
+        $this->loginUser();
+        $response = $this->providerResponse($this->extraction());
+        $response['model'] = 'gpt-4.1-mini-2025-04-14';
+        $response['usage'] = ['input_tokens' => 814, 'output_tokens' => 47, 'total_tokens' => 861,
+            'input_tokens_details' => ['cached_tokens' => 100]];
+        Log::shouldReceive('channel')->once()->with('quotation_ai')->andReturnSelf();
+        Log::shouldReceive('info')->once()->with('quotation_image_usage', \Mockery::on(function ($record) {
+            return $record['userId'] === 179 && $record['pvId'] === 2
+                && $record['usage']['totalTokens'] === 861
+                && !str_contains(json_encode($record), 'QA_CUSTOMER_PRIVATE')
+                && !str_contains(json_encode($record), 'codo galvanizado');
+        }));
+        Http::fake(['api.openai.com/*' => Http::response($response)]);
+        $this->upload()->assertOk()->assertJsonPath('data.usage.totalTokens', 861)
+            ->assertJsonPath('data.usage.cachedInputTokens', 100)
+            ->assertJsonPath('data.usage.reasoningTokens', null);
     }
 
     public function testAuthenticationAndProductionGatePreventProviderCalls(): void

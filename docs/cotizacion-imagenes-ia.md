@@ -154,3 +154,21 @@ sintética; no se enviaron documentos de clientes.
 Referencias: [visión](https://developers.openai.com/api/docs/guides/images-vision),
 [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs),
 [GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
+
+## Registro de consumo
+
+Cada respuesta del proveedor se registra en `storage/logs/quotation-ai-AAAA-MM-DD.log`
+con retención de 90 días: usuario, punto de venta, cantidad de imágenes, modelo,
+identificador de respuesta, estado HTTP, duración y tokens de entrada/salida/total.
+Los tokens en caché y de razonamiento son subconjuntos, no se suman al total.
+Se registra antes de validar la extracción porque una respuesta inválida también
+puede consumir tokens. Si el proveedor no informa uso, los campos quedan null;
+un error de conexión deja el consumo desconocido. No se registran imágenes,
+texto extraído, RUC ni credenciales. El estado es el del proveedor, no una garantía
+de que la extracción haya pasado las validaciones de TUVAL.
+
+La respuesta de lectura agrega `data.usage` con `model`, `inputTokens`,
+`cachedInputTokens`, `outputTokens`, `reasoningTokens` y `totalTokens`.
+La vista muestra entrada, salida y total de la última lectura vigente.
+Este registro empieza con el despliegue: no reconstruye consumos anteriores,
+no es un reporte histórico en base de datos ni calcula importes facturados.

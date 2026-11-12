@@ -7,6 +7,7 @@ use App\Models\Ventas\Clientes\GpCliente;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -37,6 +38,9 @@ class QuotationImageExtractionService
             $content[] = $this->imageContent($image);
         }
 
+        $startedAt = microtime(true);
+        $audit = ['userId' => $user->getKey(), 'pvId' => (int) $data['pv_id'],
+            'imageCount' => count($data['imagenes']), 'model' => $model];
         try {
             $response = Http::withToken($key)->acceptJson()->asJson()
                 ->connectTimeout(10)->timeout(max(1, min(120, (int) config('services.openai.timeout', 60))))
@@ -53,10 +57,29 @@ class QuotationImageExtractionService
                     ]],
                 ]);
         } catch (ConnectionException) {
+            Log::channel('quotation_ai')->info('quotation_image_usage', [
+                ...$audit, 'status' => 'connection_error', 'usage' => null,
+                'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
+            ]);
             // Do not propagate HTTP exceptions containing authorization headers or images.
             throw new HttpException(504, 'No se pudo completar la conexión con el servicio de IA.');
         }
 
+        $body = $response->json();
+        $usage = [
+            'model' => $body['model'] ?? $model,
+            'inputTokens' => data_get($body, 'usage.input_tokens'),
+            'cachedInputTokens' => data_get($body, 'usage.input_tokens_details.cached_tokens'),
+            'outputTokens' => data_get($body, 'usage.output_tokens'),
+            'reasoningTokens' => data_get($body, 'usage.output_tokens_details.reasoning_tokens'),
+            'totalTokens' => data_get($body, 'usage.total_tokens'),
+        ];
+        // Record before parsing: an unusable extraction can still consume tokens.
+        Log::channel('quotation_ai')->info('quotation_image_usage', [
+            ...$audit, 'responseId' => $body['id'] ?? null,
+            'httpStatus' => $response->status(), 'status' => $body['status'] ?? 'provider_error',
+            'durationMs' => (int) round((microtime(true) - $startedAt) * 1000), 'usage' => $usage,
+        ]);
         if (!$response->successful()) {
             if ($response->status() === 429 && (
                 $response->json('error.type') === 'insufficient_quota'
@@ -67,7 +90,6 @@ class QuotationImageExtractionService
             $status = in_array($response->status(), [401, 403, 429], true) ? 503 : 502;
             throw new HttpException($status, 'El servicio de IA no está disponible. Revise la configuración, acceso al modelo o cuota del proyecto.');
         }
-        $body = $response->json();
         if (!is_array($body) || ($body['status'] ?? null) !== 'completed') {
             throw new HttpException(502, 'La IA no completó la lectura. Intente con imágenes más claras o menos líneas.');
         }
@@ -113,6 +135,7 @@ class QuotationImageExtractionService
 
         return [
             ...$context,
+            'usage' => $usage,
             'payload' => [
                 'cliente_ruc' => $data['cliente_ruc'],
                 'pv_id' => (int) $data['pv_id'],

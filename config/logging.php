@@ -48,6 +48,12 @@ return [
     */
 
     'channels' => [
+        'quotation_ai' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/quotation-ai.log'),
+            'level' => 'info',
+            'days' => 90,
+        ],
         'stack' => [
             'driver' => 'stack',
             'channels' => ['single'],
