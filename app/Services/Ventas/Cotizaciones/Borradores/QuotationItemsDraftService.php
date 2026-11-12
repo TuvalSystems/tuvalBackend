@@ -13,8 +13,11 @@ use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Models\Ventas\Vendedores\GpVendedor;
 use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Inventario\Stock\Contracts\StockWarehouseServiceInterface;
+use App\Services\Ventas\Compartido\Contracts\OrderAndQuotationServiceInterface;
 use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuotationItemsDraftServiceInterface;
 use App\Services\Ventas\Cotizaciones\Builders\Contracts\QuotationBuilderInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -25,6 +28,8 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
     public function __construct(
         protected readonly QuotationBuilderInterface $builder,
         protected readonly ApiGpService $apiGp,
+        protected readonly StockWarehouseServiceInterface $stockWarehouse,
+        protected readonly OrderAndQuotationServiceInterface $orderQuoteCommon,
     ) {}
 
     public function create(array $data, GpUsuario $user): array
@@ -47,8 +52,12 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
                 return ['id' => null, 'numero' => null, 'incluidos' => [], 'omitidos' => $omitted, 'advertencias' => $warnings];
             }
 
+            $groupPrices = $this->getPriceListGroupedByArticle($articles);
+            $this->identifyGroupPricesToArticle($articles, $groupPrices, $client);
+
             $quote = $this->saveDraftHeader($user, $client, $headerInfo, $seller);
             $this->saveDraftDetails($articles, $quote->id, $client);
+            $this->orderQuoteCommon->recalculateQuotation($quote->id);
             $quote->refresh();
 
             $response = $this->buildDraftResponse($quote, $user, $pv, $client, $included);
@@ -264,9 +273,6 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
             }
             $article->ART_CANTIDAD = $quantity;
             $article->ART_PLAN_UMEDIDA = $unit->UMEDIDA_BASE;
-            // The existing draft builder uses zero placeholders; do not price or validate them here.
-            $article->ART_VALOR = 0;
-            $article->ART_VALOR_ORIGINAL = 0;
             $articles[] = $article;
             $included[] = [
                 'indice' => $item['indice'],
@@ -282,6 +288,44 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
         }
 
         return [$articles, $included, $omitted];
+    }
+
+    protected function getPriceListGroupedByArticle(array $articles): Collection
+    {
+        $codes = collect($articles)
+            ->reject(fn (GpArticulo $article) => $article->ART_TIPO_COMPRA === 'L')
+            ->pluck('ART_CODIGO')
+            ->unique()
+            ->values();
+
+        if ($codes->isEmpty()) {
+            return collect();
+        }
+
+        return collect($this->stockWarehouse->fetchListPricesArticle($codes->implode(',') . ','))
+            ->groupBy('item');
+    }
+
+    protected function identifyGroupPricesToArticle(array $articles, Collection $groupPrices, GpCliente $client): void
+    {
+        $priceListId = $client->CLI_NIVEL_PRECIO;
+        if (!$priceListId) {
+            throw ValidationException::withMessages([
+                'cliente_ruc' => 'El cliente no tiene nivel de precio configurado.',
+            ]);
+        }
+
+        foreach ($articles as $article) {
+            $value = 0;
+            if ($article->ART_TIPO_COMPRA !== 'L') {
+                $prices = $groupPrices->get($article->ART_CODIGO, collect());
+                $price = $prices->firstWhere('idLista', $priceListId);
+                $value = (float) data_get($price, 'valor', 0);
+            }
+
+            $article->ART_VALOR = round($value, 4);
+            $article->ART_VALOR_ORIGINAL = round($value, 4);
+        }
     }
 
     protected function saveDraftHeader(GpUsuario $user, GpCliente $client, array $info, GpVendedor $seller): GpCotizacion

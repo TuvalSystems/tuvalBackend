@@ -94,13 +94,18 @@ Para la bodega, usa la primera relación de `gp_relacion_punto_venta_bodega_rela
 por `orden` e `id`, filtrada por el código GP del punto de venta. Si no hay una
 bodega relacionada, devuelve HTTP 422.
 
-La creación del borrador no consulta listas de precios ni exige nivel de precios
-o precio disponible. Los importes quedan en cero como valores iniciales del
-builder de `borrador_app`, sin presentarse en la respuesta como una cotización
-calculada. Al seleccionar el borrador para generar la cotización, se usa la
-validación de precios del proceso existente, conforme a la instrucción del
-usuario. Esta API no modifica ese proceso ni añade reglas de conversión,
-aprobación o impresión.
+Antes de guardar el borrador se consultan las listas de precios mediante
+`StockWarehouseServiceInterface::fetchListPricesArticle`, agrupadas por código GP.
+Se selecciona `idLista` según `CLI_NIVEL_PRECIO` del cliente y se asigna `valor`
+a `ART_VALOR` y `ART_VALOR_ORIGINAL`, redondeado a cuatro decimales, como en
+`generateQuoteDraft`. Si el cliente no tiene nivel de precio, responde HTTP 422
+sin crear el borrador. Los artículos de compra `L` no se consultan y conservan
+precio cero; si no hay precio para el nivel seleccionado, también se usa cero,
+siguiendo el flujo de referencia.
+Después de guardar los detalles se recalculan descuentos, impuestos y totales
+mediante el servicio compartido, dentro de la misma transacción.
+La validación de precios al generar la cotización sigue en el proceso existente.
+Esta API no añade reglas de conversión, aprobación o impresión.
 
 No se crea una aprobación ni se reserva stock, factura, envía correo,
 notificación, cotización al cliente o sincronización transaccional hacia GP.
