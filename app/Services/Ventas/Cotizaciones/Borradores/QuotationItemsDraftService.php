@@ -32,7 +32,7 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
         [$items, $warnings] = $this->resolveDraftItems($data);
 
         if (!$items) {
-            return ['id' => null, 'numero' => null, 'incluidos' => [], 'advertencias' => $warnings];
+            return ['id' => null, 'numero' => null, 'incluidos' => [], 'omitidos' => [], 'advertencias' => $warnings];
         }
 
         return DB::transaction(function () use ($data, $user, $items, $warnings) {
@@ -41,7 +41,11 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
             $seller = $this->getConfiguredSeller($client, $pv);
             $client->CLI_DSTO_COMERCIAL = (float) ($client->CLI_DSTO_COMERCIAL ?? 0);
             $headerInfo = $this->prepareDraftHeaderInfo($client, $pv);
-            [$articles, $included] = $this->prepareDraftArticles($items);
+            [$articles, $included, $omitted] = $this->prepareDraftArticles($items);
+
+            if (!$articles) {
+                return ['id' => null, 'numero' => null, 'incluidos' => [], 'omitidos' => $omitted, 'advertencias' => $warnings];
+            }
 
             $quote = $this->saveDraftHeader($user, $client, $headerInfo, $seller);
             $this->saveDraftDetails($articles, $quote->id, $client);
@@ -49,6 +53,7 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
 
             $response = $this->buildDraftResponse($quote, $user, $pv, $client, $included);
             $response['advertencias'] = $warnings;
+            $response['omitidos'] = $omitted;
 
             return $response;
         }, 3);
@@ -205,6 +210,7 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
         $errors = [];
         $articles = [];
         $included = [];
+        $omitted = [];
         foreach ($items as $item) {
             $errorKey = "detalle.{$item['indice']}";
             $matches = $articlesByCode->get($item['codigo'], collect());
@@ -213,13 +219,29 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
                 continue;
             }
             $article = clone $matches->first();
-            if (
-                $article->ART_ESTADO !== 'ACTIVO'
-                || in_array($article->ART_CLASE_ARTICULO, ['BNS-INACT', 'CMP-GASTOS'], true)
-                || $article->es_servicio_logistico
-                || ($article->ART_TIPO_COMPRA === 'L' && !$article->disponible)
-            ) {
-                $errors[$errorKey] = ["El artículo {$item['codigo']} no está disponible para cotizar."];
+            $unavailableReasons = [];
+            if ($article->ART_ESTADO !== 'ACTIVO') {
+                $state = $article->ART_ESTADO ?? 'sin configurar';
+                $unavailableReasons[] = "su estado es {$state} (ART_ESTADO); debe ser ACTIVO";
+            }
+            if (in_array($article->ART_CLASE_ARTICULO, ['BNS-INACT', 'CMP-GASTOS'], true)) {
+                $unavailableReasons[] = "su clase {$article->ART_CLASE_ARTICULO} (ART_CLASE_ARTICULO) está excluida de cotizaciones";
+            }
+            if ($article->es_servicio_logistico) {
+                $unavailableReasons[] = 'está marcado como servicio logístico (es_servicio_logistico = true)';
+            }
+            if ($article->ART_TIPO_COMPRA === 'L' && !$article->disponible) {
+                $available = var_export($article->disponible, true);
+                $unavailableReasons[] = "su tipo de compra es L (ART_TIPO_COMPRA) y no está habilitado como disponible (disponible = {$available})";
+            }
+            if ($unavailableReasons) {
+                $omitted[] = [
+                    'indice' => $item['indice'],
+                    'codigo' => $item['codigo'],
+                    'art_id' => $article->id,
+                    'cantidad' => $item['cantidad'],
+                    'razones' => $unavailableReasons,
+                ];
                 continue;
             }
             $unitMatches = $units->get($article->ART_PLAN_UMEDIDA, collect());
@@ -259,7 +281,7 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
             throw ValidationException::withMessages($errors);
         }
 
-        return [$articles, $included];
+        return [$articles, $included, $omitted];
     }
 
     protected function saveDraftHeader(GpUsuario $user, GpCliente $client, array $info, GpVendedor $seller): GpCotizacion

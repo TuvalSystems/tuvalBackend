@@ -70,6 +70,14 @@ Los fallos de la consulta a API GP responden 502 y no crean el borrador.
 No se acepta la respuesta del resolver
 enviada por el llamante: Laravel realiza la consulta.
 
+Los artículos inactivos, de clase `BNS-INACT` o `CMP-GASTOS`, marcados como
+servicio logístico o de compra `L` sin disponibilidad se omiten. La respuesta
+incluye `omitidos`, con `indice`, `codigo`, `art_id`, `cantidad` y `razones`
+(todas las restricciones de disponibilidad que aplican al artículo).
+El borrador se crea con los artículos disponibles. Si todos se omiten, responde
+200 con `id` y `numero` nulos, sin guardar una cabecera vacía, y conserva los
+omitidos y sus razones. Las validaciones de unidad y cantidad siguen vigentes.
+
 ## Datos mínimos del borrador
 
 El servidor conserva cliente, usuario, punto de venta, bodega y metadatos locales
