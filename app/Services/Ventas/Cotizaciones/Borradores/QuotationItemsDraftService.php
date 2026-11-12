@@ -12,6 +12,7 @@ use App\Models\Ventas\Clientes\GpClienteSucursal;
 use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
 use App\Models\Ventas\Vendedores\GpVendedor;
+use App\Services\Integraciones\Api\ApiGpService;
 use App\Services\Ventas\Cotizaciones\Borradores\Contracts\QuotationItemsDraftServiceInterface;
 use App\Services\Ventas\Cotizaciones\Builders\Contracts\QuotationBuilderInterface;
 use Illuminate\Support\Facades\DB;
@@ -23,24 +24,90 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
 
     public function __construct(
         protected readonly QuotationBuilderInterface $builder,
+        protected readonly ApiGpService $apiGp,
     ) {}
 
     public function create(array $data, GpUsuario $user): array
     {
-        return DB::transaction(function () use ($data, $user) {
+        [$items, $warnings] = $this->resolveDraftItems($data);
+
+        if (!$items) {
+            return ['id' => null, 'numero' => null, 'incluidos' => [], 'advertencias' => $warnings];
+        }
+
+        return DB::transaction(function () use ($data, $user, $items, $warnings) {
             $pv     = $this->getAuthorizedPointOfSale($data['pv_id'], $user);
             $client = $this->getActiveClient($data['cliente_ruc']);
             $seller = $this->getConfiguredSeller($client, $pv);
             $client->CLI_DSTO_COMERCIAL = (float) ($client->CLI_DSTO_COMERCIAL ?? 0);
             $headerInfo = $this->prepareDraftHeaderInfo($client, $pv);
-            [$articles, $included] = $this->prepareDraftArticles($data['items']);
+            [$articles, $included] = $this->prepareDraftArticles($items);
 
             $quote = $this->saveDraftHeader($user, $client, $headerInfo, $seller);
             $this->saveDraftDetails($articles, $quote->id, $client);
             $quote->refresh();
 
-            return $this->buildDraftResponse($quote, $user, $pv, $client, $included);
+            $response = $this->buildDraftResponse($quote, $user, $pv, $client, $included);
+            $response['advertencias'] = $warnings;
+
+            return $response;
         }, 3);
+    }
+
+    protected function resolveDraftItems(array $data): array
+    {
+        $details = $data['detalle'];
+        $response = $this->apiGp->resolveArticles([
+            'detalle' => $details,
+            'maxCandidatos' => $data['maxCandidatos'] ?? 6,
+        ]);
+
+        if (($response['success'] ?? false) !== true || !is_array($response['data'] ?? null)) {
+            throw new HttpException(502, 'No se pudieron resolver los artículos en API GP.');
+        }
+
+        $items = [];
+        $warnings = [];
+        $seen = [];
+        foreach ($response['data'] as $result) {
+            $index = $result['indice'] ?? null;
+            if (!is_int($index) || !array_key_exists($index, $details) || isset($seen[$index])) {
+                continue;
+            }
+            $seen[$index] = true;
+            $candidates = !empty($result['articulo'])
+                ? [$result['articulo']]
+                : ($result['candidatos'] ?? []);
+            if (!is_array($candidates) || !$candidates) {
+                continue;
+            }
+
+            if (!empty($result['busquedaTruncada']) || !empty($result['candidatosTruncados'])) {
+                $warnings[] = [
+                    'indice' => $index,
+                    'texto' => $details[$index]['texto'],
+                    'mensaje' => 'Se incluyeron los candidatos devueltos; la búsqueda tiene resultados truncados.',
+                ];
+            }
+
+            foreach ($candidates as $candidate) {
+                if (!is_array($candidate)) {
+                    continue;
+                }
+                $code = $candidate['codigoGP'] ?? null;
+                if (!is_string($code) || trim($code) === '') {
+                    continue;
+                }
+                $items[] = [
+                    'codigo' => $code,
+                    'cantidad' => $details[$index]['cantidad'] ?? 1,
+                    'indice' => $index,
+                    'cantidad_asumida' => !isset($details[$index]['cantidad']),
+                ];
+            }
+        }
+
+        return [$items, $warnings];
     }
 
     protected function getAuthorizedPointOfSale(int $pvId, GpUsuario $user): GpPuntoVenta
@@ -138,38 +205,39 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
         $errors = [];
         $articles = [];
         $included = [];
-        foreach ($items as $index => $item) {
+        foreach ($items as $item) {
+            $errorKey = "detalle.{$item['indice']}";
             $matches = $articlesByCode->get($item['codigo'], collect());
             if ($matches->count() !== 1 || $matches->first()->ART_CODIGO !== $item['codigo']) {
-                $errors["items.$index.codigo"] = ['Código GP exacto inexistente o no inequívoco.'];
+                $errors[$errorKey] = ["El código GP {$item['codigo']} no existe o no es inequívoco."];
                 continue;
             }
-            $article = $matches->first();
+            $article = clone $matches->first();
             if (
                 $article->ART_ESTADO !== 'ACTIVO'
                 || in_array($article->ART_CLASE_ARTICULO, ['BNS-INACT', 'CMP-GASTOS'], true)
                 || $article->es_servicio_logistico
                 || ($article->ART_TIPO_COMPRA === 'L' && !$article->disponible)
             ) {
-                $errors["items.$index.codigo"] = ['Artículo no disponible para cotizar.'];
+                $errors[$errorKey] = ["El artículo {$item['codigo']} no está disponible para cotizar."];
                 continue;
             }
             $unitMatches = $units->get($article->ART_PLAN_UMEDIDA, collect());
             $unit = $unitMatches->first();
             if ($unitMatches->count() !== 1 || !$unit->UMEDIDA_BASE) {
-                $errors["items.$index.codigo"] = ['El artículo no tiene una unidad base configurada de forma inequívoca.'];
+                $errors[$errorKey] = ["El artículo {$item['codigo']} no tiene una unidad base configurada de forma inequívoca."];
                 continue;
             }
             $articleDecimals = filter_var($article->ART_DECIMAL_CANTIDAD, FILTER_VALIDATE_INT);
             $unitDecimals = filter_var($unit->UMEDIDA_CANTIDAD_DECIMAL, FILTER_VALIDATE_INT);
             if ($articleDecimals === false || $unitDecimals === false || $articleDecimals < 0 || $unitDecimals < 0) {
-                $errors["items.$index.codigo"] = ['Falta configurar la precisión de la unidad del artículo.'];
+                $errors[$errorKey] = ["Falta configurar la precisión de la unidad del artículo {$item['codigo']}."];
                 continue;
             }
             $decimals = min($articleDecimals, $unitDecimals, 2);
             $quantity = (float) $item['cantidad'];
             if (abs($quantity - round($quantity, $decimals)) > 0.0000001) {
-                $errors["items.$index.cantidad"] = ["La unidad del artículo admite hasta $decimals decimales."];
+                $errors["$errorKey.cantidad"] = ["La unidad del artículo {$item['codigo']} admite hasta $decimals decimales."];
                 continue;
             }
             $article->ART_CANTIDAD = $quantity;
@@ -179,11 +247,11 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
             $article->ART_VALOR_ORIGINAL = 0;
             $articles[] = $article;
             $included[] = [
-                'indice' => $index,
+                'indice' => $item['indice'],
                 'codigo' => $article->ART_CODIGO,
                 'art_id' => $article->id,
                 'cantidad' => $quantity,
-                'cantidad_asumida' => false,
+                'cantidad_asumida' => $item['cantidad_asumida'],
                 'unidad' => $unit->UMEDIDA_BASE,
             ];
         }

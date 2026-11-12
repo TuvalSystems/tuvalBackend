@@ -1,7 +1,7 @@
-# Cotización borrador desde artículos confirmados
+# Cotización borrador desde resolución de artículos
 
-La [preparación de QA](qa-cotizacion-borrador-items.md) registra qué se comprobó,
-las consultas pendientes de solo lectura y las acciones todavía no autorizadas.
+La [preparación de QA](qa-cotizacion-borrador-items.md) registra comprobaciones
+históricas anteriores a la integración del resolver.
 
 `GET /cotizaciones/borrador-items` recibe un cuerpo JSON y crea una cabecera en `gp_cotizacions`
 con estado `borrador_app` y sus registros en `gp_cotizacion_detalles`.
@@ -19,23 +19,25 @@ al punto de venta.
 {
   "cliente_ruc": "RUC_DEL_CLIENTE_SELECCIONADO",
   "pv_id": 1,
-  "items": [
-    {"codigo": "CODIGO_GP_CONFIRMADO", "cantidad": 2},
-    {"codigo": "OTRO_CODIGO_GP_CONFIRMADO", "cantidad": 2}
-  ]
+  "detalle": [
+    {"texto": "codo galvanizado 1 por 90", "cantidad": 2},
+    {"texto": "neplo galvanizado 1/2 por 2", "cantidad": 3}
+  ],
+  "maxCandidatos": 6
 }
 ```
 
-Sustituir el RUC y los códigos por los valores confirmados. Para usar
+Sustituir el RUC por el del cliente seleccionado. Para usar
 California (005), enviar `pv_id: 2`.
 
 | Campo | Regla |
 | --- | --- |
 | `cliente_ruc` | Obligatorio. RUC de un cliente activo |
 | `pv_id` | Obligatorio. ID numérico del punto de venta activo asignado al usuario |
-| `items` | Lista de 1 a 20 renglones; códigos duplicados se rechazan |
-| `codigo` | `ART_CODIGO` GP exacto, activo y único; no es código Zafiro ni código 3L |
-| `cantidad` | Obligatoria. Mayor que 0, máximo 1000000, hasta 2 decimales y sin notación exponencial |
+| `detalle` | Lista de 1 a 20 líneas de texto |
+| `texto` | Obligatorio, máximo 200 caracteres |
+| `cantidad` | Opcional o null: 1. Mayor que 0, máximo 1000000, hasta 2 decimales y sin notación exponencial |
+| `maxCandidatos` | Opcional, entero de 1 a 6; este servicio envía 6 por defecto |
 
 La API obtiene `UMEDIDA_BASE` del plan `ART_PLAN_UMEDIDA` de cada artículo.
 La unidad aplicada aparece en `data.incluidos[].unidad`.
@@ -49,18 +51,24 @@ del buscador y descuentos enviados por el llamante.
 
 ## Resolución y selección
 
-La consulta de api-gp `POST /api/reportes/resolucion-articulos/consultar` permanece
-separada y no escribe. Para cada renglón se debe usar `articulo.codigoGP` solamente
-cuando `estado=identificado`, `busquedaCompleta=true`, el artículo y el código
-sean no vacíos y no exista una observación de búsqueda incompleta o timeout.
-Un HTTP 200 del buscador no basta. Los renglones ambiguos requieren selección
-explícita; nunca usar `candidatos[0]` automáticamente. No elegir por cuenta propia
-material, clase 150/300, refuerzo u otra variante.
+Antes de abrir la transacción de creación, el servicio consulta
+`POST /api/reportes/inventario/articulos/resolver` mediante `ApiGpService`,
+reutilizando `API_GP_URL` y `API_GP_TIMEOUT`. Envía `detalle` y `maxCandidatos`.
 
-Este endpoint recibe la selección final, no texto libre ni respuestas del buscador.
-No puede comprobar cómo obtuvo el llamante un código exacto; esa confirmación
-corresponde al flujo que presenta y selecciona los resultados. No elimina ni
-descarta silenciosamente ningún renglón enviado.
+Por cada línea usa `articulo.codigoGP` si hay un artículo identificado; en caso
+contrario incluye todos los elementos de `candidatos`. Cada candidato conserva
+la cantidad de la línea original. Cuatro candidatos para una línea con cantidad 2
+generan cuatro detalles con cantidad 2 cada uno. Un código repetido en distintas
+líneas conserva cada aparición y su cantidad, sin agruparlas.
+
+Las líneas sin candidatos válidos se omiten sin errores ni advertencias. Si ninguna
+línea tiene artículos, responde 200 con `id` y `numero` nulos e `incluidos` vacío,
+sin crear el borrador. Las búsquedas truncadas
+también se indican en `advertencias`; se incluyen los candidatos recibidos, hasta
+el máximo admitido por API GP. Los candidatos sin código GP válido también se omiten.
+Los fallos de la consulta a API GP responden 502 y no crean el borrador.
+No se acepta la respuesta del resolver
+enviada por el llamante: Laravel realiza la consulta.
 
 ## Datos mínimos del borrador
 
@@ -97,7 +105,7 @@ toda la operación.
 
 La API devuelve 403 si el entorno o los permisos impiden crear el borrador, 422 si
 la entrada o los datos requeridos son inválidos y 409 si hay un conflicto de
-concurrencia.
+concurrencia, y 502 si falla la resolución en API GP.
 La respuesta no serializa modelos completos ni expone costos o márgenes.
 
 Ejemplo abreviado de respuesta:
@@ -122,7 +130,7 @@ Ejemplo abreviado de respuesta:
 
 ## curl y Postman
 
-Verificar el destino de QA y guardar el cuerpo con la selección confirmada en
+Verificar el destino de QA y guardar el cuerpo con el detalle de texto en
 `borrador-items.json`.
 
 ```bash
@@ -132,9 +140,8 @@ curl --request GET "$TUVAL_QA_URL/cotizaciones/borrador-items" \
   --data-binary @borrador-items.json
 ```
 
-Importar [la colección Postman](postman/cotizacion-borrador-items.postman_collection.json).
-Configurar `base_url`, `cliente_ruc`, `pv_id`, `codigo_gp` y `cantidad`
-en un entorno local.
+En Postman usar GET, cuerpo raw JSON y el ejemplo de entrada anterior.
+La colección histórica del repositorio corresponde al contrato anterior.
 
 ## Preparación del entorno
 

@@ -28,6 +28,9 @@ class CotizacionBorradorController extends Controller
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $user = GpUsuario::find(self::TEST_QUOTATION_USER_ID);
             $result = $this->itemsDraft->create($request->validated(), $user);
+            if ($result['id'] === null) {
+                return $this->successResponse('No se encontraron candidatos para crear el borrador.', $result, 200);
+            }
             return $this->successResponse("Cotización borrador {$result['numero']} creada.", $result, 201);
         }, 'cotizaciones', 'crear borrador por items');
     }

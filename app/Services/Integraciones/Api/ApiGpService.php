@@ -39,6 +39,14 @@ class ApiGpService
         return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_CONSULTAR_STOCK_BODEGA, 'POST', $params, 'json');
     }
 
+    /**
+     * @param array{detalle: array<array{texto: string, cantidad?: float|int|null}>, maxCandidatos?: int|null} $params
+     */
+    public function resolveArticles(array $params)
+    {
+        return $this->httpClient->makeRequest(ApiGpEndpoints::INVENTARIO_RESOLVER_ARTICULOS, 'POST', $params, 'json');
+    }
+
 
 
 
