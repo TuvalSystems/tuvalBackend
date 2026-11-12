@@ -32,6 +32,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class ApprovalOrderService implements ApprovalOrderServiceInterface
 {
@@ -442,6 +443,15 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         if (!$order) {
             throw new \RuntimeException("Pedido no encontrado");
         }
+        if ($order->rechazado || $order->aprobado_crediticio === 'yes' || filled($order->factura)) {
+            throw new RuntimeException('El pedido ya fue aprobado, rechazado o facturado. Actualice la lista.');
+        }
+
+        // La consulta previa del frontend es informativa: validar nuevamente bajo bloqueo.
+        $this->updateStockOnOrderApproval(
+            $order,
+            $order->requiere_aprobacion_comercial !== 'yes' || $order->aprobado_comercial === 'yes'
+        );
         $order->fill([
             'aprobado_crediticio'               => 'yes',
             'aprobador_crediticio_id'           => $user->id,
@@ -463,8 +473,6 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 $camposModificados
             ),
         ];
-        $this->updateOrderStockOnCreditOrCommercialApproval($order, 'crediticia');
-
         DB::afterCommit(function () use ($order) {
             $this->invoiceService->checkSendInvoice($order);
         });
@@ -569,14 +577,14 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         }
         // requiere ambas aprobaciones
         if ($requiresComercialApproval && $requiresCreditApproval) {
-            if ($isComercialApproved && $isCreditApproved && $typeApproval == 'crediticia') {
+            if ($isComercialApproved && $isCreditApproved) {
                 $this->updateStockOnOrderApproval($order);
             }
         }
     }
 
 
-    protected function updateStockOnOrderApproval(GpPedido $order): void
+    protected function updateStockOnOrderApproval(GpPedido $order, bool $reserveStock = true): void
     {
         $quoteReservedOriginId = $this->approvalFuntions->validateExistsReserve($order->cotizacion_id);
         $detalles = $this->getDetailArticlesWithStock($order->id);
@@ -590,7 +598,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         $parmas         = $this->stockFormatterParametersUpdateApproval($flatDetails);
         $stocksResult   = $this->getStockWarehouseAsyncAndFormatter($parmas);
         $newFormatStock = $this->formattedFlatDetailWithStockGeneral($flatDetails, $stocksResult);
-        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId);
+        $this->updateOrderDetailStockAndGetStockDisponible($detalles, $newFormatStock, $order->id, $quoteReservedOriginId, $reserveStock);
     }
 
 
@@ -600,7 +608,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
 
 
-    protected function updateOrderDetailStockAndGetStockDisponible(EloquentCollection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null): void
+    protected function updateOrderDetailStockAndGetStockDisponible(EloquentCollection $detalles, SupportCollection $newFormatStock, int $orderId, ?int $quoteReservedOriginId = null, bool $reserveStock = true): void
     {
         $allFormattedStock = collect();
         foreach ($detalles as $detail) {
@@ -614,6 +622,10 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
         }
 
         $this->assertFormattedStockCoversSelection($allFormattedStock);
+
+        if (!$reserveStock) {
+            return;
+        }
 
         foreach ($allFormattedStock as $stock) {
             if (isset($stock['stock_id']) && ($st = GpPedidoDetalleStock::whereKey($stock['stock_id'])->lockForUpdate()->first())) {
@@ -698,6 +710,17 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     /** rechazo de aprobacion crediticio por stock o por rechazo manual  */
     public function rejectCreditOrder(int $id, GpUsuario $user, ?string $alert = null): GpPedido
     {
+        // Tomar el mismo mutex que facturación ANTES de abrir la transacción.
+        // Se conserva hasta que el rechazo queda confirmado en la base de datos.
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $id,
+            fn () => DB::transaction(fn () => $this->rejectCreditOrderWithinTransaction($id, $user, $alert)),
+            'No se puede rechazar el pedido: tiene un proceso de facturacion o cancelacion activo.'
+        );
+    }
+
+    protected function rejectCreditOrderWithinTransaction(int $id, GpUsuario $user, ?string $alert): GpPedido
+    {
         $order = GpPedido::where('id', $id)
             ->whereNotIn('estado', [
                 OrderStatus::ELIMINADO,
@@ -708,6 +731,10 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
 
         if (!$order) {
             throw new \Exception("Pedido no encontrado", 500);
+        }
+
+        if (filled($order->factura) || in_array($order->estado, [OrderStatus::ENVIANDO, OrderStatus::FACTURADO], true)) {
+            throw new RuntimeException('No se puede rechazar un pedido que se esta facturando o ya fue facturado.');
         }
 
         $isRejectedByStock = !empty($alert);

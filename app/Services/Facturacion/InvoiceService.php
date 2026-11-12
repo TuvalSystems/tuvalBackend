@@ -75,7 +75,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         try {
             $pedido->refresh();
-            if (filled($pedido->factura) && $pedido->estado === OrderStatus::FACTURADO) {
+            if (filled($pedido->factura) || $pedido->estado === OrderStatus::FACTURADO) {
                 Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya se encuentra facturado.");
                 return;
             }
@@ -122,7 +122,7 @@ class InvoiceService implements InvoiceServiceInterface
     /** funciones anidadas a  checkSendInvoice*/
     protected function shouldSkipProcessing(GpPedido $order)
     {
-        return $this->shouldSkipOrderForStatus($order) ||
+        return $order->rechazado || $this->shouldSkipOrderForStatus($order) ||
             ($order->requiere_aprobacion_comercial == 'yes' && $order->aprobado_comercial == 'no') ||
             ($order->requiere_aprobacion_crediticia == 'yes' && $order->aprobado_crediticio == 'no');
     }
@@ -612,10 +612,10 @@ class InvoiceService implements InvoiceServiceInterface
     {
         $isInvalidStatus    = $pedido->estado !== OrderStatus::ENVIANDO;
         $hasInvoice         = $pedido->factura !== null && trim((string)$pedido->factura) !== '';
-        $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial === 'no';
-        $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio === 'no';
+        $missingCommercial  = $pedido->requiere_aprobacion_comercial === 'yes' && $pedido->aprobado_comercial !== 'yes';
+        $missingCredit      = $pedido->requiere_aprobacion_crediticia === 'yes' && $pedido->aprobado_crediticio !== 'yes';
 
-        if ($isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
+        if ($pedido->rechazado || $isInvalidStatus || $hasInvoice || $missingCommercial || $missingCredit) {
             Log::channel('invoice')->warning("Validación fallida facturación pedido {$pedido->pedido}", [
                 'status'            => $pedido->estado->value,
                 'invoice'           => $hasInvoice,

@@ -195,9 +195,7 @@ class AprobacionesController extends Controller
             $orderId    = data_get($validate, 'id');
             $alert      = data_get($validate, 'msg');
             $user       = $request->user();
-            $order     = DB::transaction(function () use ($orderId, $user, $alert) {
-                return $this->approvalOrder->rejectCreditOrder($orderId, $user, $alert);
-            });
+            $order = $this->approvalOrder->rejectCreditOrder($orderId, $user, $alert);
             return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado", 200);
         }, 'laravel', 'rechazarPedidoCrediticio');
     }
@@ -212,9 +210,7 @@ class AprobacionesController extends Controller
             $orderId    = data_get($validate, 'id');
             $alert      = data_get($validate, 'msg');
             $user       = $request->user();
-            $order = DB::transaction(function () use ($orderId, $user, $alert) {
-                return $this->approvalOrder->rejectCreditOrder($orderId,  $user, $alert);
-            });
+            $order = $this->approvalOrder->rejectCreditOrder($orderId, $user, $alert);
 
             return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
         }, 'laravel', 'rechazarPedidoCrediticioPorStock');
