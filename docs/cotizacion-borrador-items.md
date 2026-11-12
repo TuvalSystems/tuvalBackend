@@ -1,5 +1,10 @@
 # Cotización borrador desde resolución de artículos
 
+El [piloto MCP autenticado](tuval-mcp-piloto.md) añade herramientas MCP y
+`POST /api/borradores/items` usando el usuario del request, `pv_id` explícito
+y protección contra duplicados. La ruta GET descrita abajo sigue siendo
+la prueba histórica con usuario fijo; no es la entrada del nuevo frontend.
+
 La [preparación de QA](qa-cotizacion-borrador-items.md) registra comprobaciones
 históricas anteriores a la integración del resolver.
 

@@ -2,6 +2,12 @@
 
 return [
 
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+        'quotation_model' => env('OPENAI_QUOTATION_MODEL', 'gpt-4.1-mini'),
+        'timeout' => (int) env('OPENAI_TIMEOUT', 60),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

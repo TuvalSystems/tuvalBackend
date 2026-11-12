@@ -7,6 +7,9 @@ use App\Http\Controllers\Admin\Secciones\SectionsController;
 use App\Http\Controllers\Admin\Usuarios\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureTuvalMcpPilot;
+use App\Http\Controllers\Ventas\Cotizaciones\Borradores\QuotationDraftPilotController;
+use App\Http\Controllers\Ventas\Cotizaciones\Borradores\QuotationImageExtractionController;
 use App\Http\Controllers\Reportes\Inventory\ReplenishmentReceiptHistoryController;
 use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
@@ -535,6 +538,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
         });
 
         Route::prefix('borradores')->group(function () {
+            Route::post('extraer-imagenes', [QuotationImageExtractionController::class, 'extract'])
+                ->middleware([EnsureTuvalMcpPilot::class, 'throttle:10,1,quotation-images:'])
+                ->name('borradores.images.extract');
+            Route::post('items', [QuotationDraftPilotController::class, 'store'])
+                ->middleware(EnsureTuvalMcpPilot::class)
+                ->name('borradores.items.pilot');
             Route::post('sync', [CotizacionBorradorController::class, 'sincronizarBorrador']);
             Route::post('list', [CotizacionBorradorController::class, 'listarBorradores']);
             Route::post('get', [CotizacionBorradorController::class, 'obtenerBorrador']);

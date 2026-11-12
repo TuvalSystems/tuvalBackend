@@ -34,7 +34,8 @@ class StoreQuotationItemsDraftRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            foreach (array_diff(array_keys($validator->getData()), ['cliente_ruc', 'pv_id', 'detalle', 'maxCandidatos']) as $key) {
+            $allowed = array_filter(array_keys($this->rules()), fn (string $key) => !str_contains($key, '.'));
+            foreach (array_diff(array_keys($validator->getData()), $allowed) as $key) {
                 $validator->errors()->add($key, 'Campo no admitido.');
             }
         });
