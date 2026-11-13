@@ -7,5 +7,5 @@ namespace App\Services\Reportes\Contracts;
 interface CommercialApprovalsServiceInterface
 {
     /** @return list<array<string, mixed>> */
-    public function getApprovals(string $documentType, int $documentId): array;
+    public function getApprovals(?string $cotizacion, ?string $factura, ?string $cliente, ?string $sucursal, ?string $aprobadorFinal, string $periodo): array;
 }

@@ -14,11 +14,11 @@ class CommercialApprovalsService implements CommercialApprovalsServiceInterface
     ) {
     }
 
-    public function getApprovals(string $documentType, int $documentId): array
+    public function getApprovals(?string $cotizacion, ?string $factura, ?string $cliente, ?string $sucursal, ?string $aprobadorFinal, string $periodo): array
     {
         $approvals = [];
 
-        foreach ($this->repository->consultar($documentType, $documentId) as $result) {
+        foreach ($this->repository->consultar($cotizacion, $factura, $cliente, $sucursal, $aprobadorFinal, $periodo) as $result) {
             $approval = (array) $result;
 
             foreach ($approval as $column => $value) {

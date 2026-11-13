@@ -24,7 +24,14 @@ class AprobacionesComercialesController extends Controller
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
             $data = $request->validated();
-            $approvals = $this->service->getApprovals($data['tipo_documento'], (int) $data['documento_id']);
+            $approvals = $this->service->getApprovals(
+                $data['cotizacion'] ?? null,
+                $data['factura'] ?? null,
+                $data['cliente'] ?? null,
+                isset($data['sucursal']) ? (string) $data['sucursal'] : null,
+                isset($data['aprobador_final']) ? (string) $data['aprobador_final'] : null,
+                $data['periodo'],
+            );
             return $this->successResponse('Consulta de aprobaciones comerciales realizada.', $approvals);
         }, 'stack', 'consultarAprobacionesComerciales');
     }
