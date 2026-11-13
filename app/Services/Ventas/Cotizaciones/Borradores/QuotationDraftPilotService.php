@@ -35,20 +35,20 @@ class QuotationDraftPilotService
     {
         // Re-check permission even for a replay, before consulting external services.
         $this->context((int) $data['pv_id'], $user);
-        $payload = Arr::only($data, ['cliente_ruc', 'pv_id', 'detalle', 'maxCandidatos']);
-        $payload['pv_id'] = (int) $payload['pv_id'];
-        $payload['maxCandidatos'] = (int) ($payload['maxCandidatos'] ?? 6);
-        $payload['detalle'] = array_map(fn (array $item) => [
-            'texto' => $item['texto'],
-            'cantidad' => isset($item['cantidad']) ? (float) $item['cantidad'] : null,
+        $payload                    = Arr::only($data, ['cliente_ruc', 'pv_id', 'detalle', 'maxCandidatos']);
+        $payload['pv_id']           = (int) $payload['pv_id'];
+        $payload['maxCandidatos']   = (int) ($payload['maxCandidatos'] ?? 6);
+        $payload['detalle']         = array_map(fn (array $item) => [
+            'texto'     => $item['texto'],
+            'cantidad'  => isset($item['cantidad']) ? (float) $item['cantidad'] : null,
         ], $payload['detalle']);
         $hash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($data, $user, $payload, $hash): array {
             $record = QuotationDraftPilotRequest::query()->createOrFirst([
-                'user_id' => $user->id,
-                'request_id' => strtolower($data['request_id']),
-            ], ['payload_hash' => $hash]);
+                'user_id'       => $user->id,
+                'request_id'    => strtolower($data['request_id']),
+            ], ['payload_hash'  => $hash]);
             $record = QuotationDraftPilotRequest::whereKey($record->id)->lockForUpdate()->firstOrFail();
 
             if (!hash_equals($record->payload_hash, $hash)) {

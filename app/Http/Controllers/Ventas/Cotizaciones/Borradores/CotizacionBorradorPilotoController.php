@@ -9,7 +9,7 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 
-class QuotationDraftPilotController extends Controller
+class CotizacionBorradorPilotoController extends Controller
 {
     use ExecuteApiTransactions, JsonResponseTrait;
 

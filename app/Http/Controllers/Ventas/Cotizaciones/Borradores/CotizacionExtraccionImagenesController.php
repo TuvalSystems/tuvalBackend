@@ -9,7 +9,7 @@ use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 
-class QuotationImageExtractionController extends Controller
+class CotizacionExtraccionImagenesController extends Controller
 {
     use ExecuteApiTransactions, JsonResponseTrait;
 

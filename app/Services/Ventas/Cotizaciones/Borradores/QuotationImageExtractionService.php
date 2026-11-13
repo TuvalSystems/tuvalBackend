@@ -39,8 +39,12 @@ class QuotationImageExtractionService
         }
 
         $startedAt = microtime(true);
-        $audit = ['userId' => $user->getKey(), 'pvId' => (int) $data['pv_id'],
-            'imageCount' => count($data['imagenes']), 'model' => $model];
+        $audit = [
+            'userId' => $user->getKey(),
+            'pvId' => (int) $data['pv_id'],
+            'imageCount' => count($data['imagenes']),
+            'model' => $model
+        ];
         try {
             $response = Http::withToken($key)->acceptJson()->asJson()
                 ->connectTimeout(10)->timeout(max(1, min(120, (int) config('services.openai.timeout', 60))))
@@ -52,13 +56,17 @@ class QuotationImageExtractionService
                     'instructions' => $this->instructions(),
                     'input' => [['role' => 'user', 'content' => $content]],
                     'text' => ['format' => [
-                        'type' => 'json_schema', 'name' => 'tuval_quotation_items',
-                        'strict' => true, 'schema' => $this->schema(),
+                        'type' => 'json_schema',
+                        'name' => 'tuval_quotation_items',
+                        'strict' => true,
+                        'schema' => $this->schema(),
                     ]],
                 ]);
         } catch (ConnectionException) {
             Log::channel('quotation_ai')->info('quotation_image_usage', [
-                ...$audit, 'status' => 'connection_error', 'usage' => null,
+                ...$audit,
+                'status' => 'connection_error',
+                'usage' => null,
                 'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
             ]);
             // Do not propagate HTTP exceptions containing authorization headers or images.
@@ -67,18 +75,21 @@ class QuotationImageExtractionService
 
         $body = $response->json();
         $usage = [
-            'model' => $body['model'] ?? $model,
-            'inputTokens' => data_get($body, 'usage.input_tokens'),
+            'model'             => $body['model'] ?? $model,
+            'inputTokens'       => data_get($body, 'usage.input_tokens'),
             'cachedInputTokens' => data_get($body, 'usage.input_tokens_details.cached_tokens'),
-            'outputTokens' => data_get($body, 'usage.output_tokens'),
-            'reasoningTokens' => data_get($body, 'usage.output_tokens_details.reasoning_tokens'),
-            'totalTokens' => data_get($body, 'usage.total_tokens'),
+            'outputTokens'      => data_get($body, 'usage.output_tokens'),
+            'reasoningTokens'   => data_get($body, 'usage.output_tokens_details.reasoning_tokens'),
+            'totalTokens'       => data_get($body, 'usage.total_tokens'),
         ];
         // Record before parsing: an unusable extraction can still consume tokens.
         Log::channel('quotation_ai')->info('quotation_image_usage', [
-            ...$audit, 'responseId' => $body['id'] ?? null,
-            'httpStatus' => $response->status(), 'status' => $body['status'] ?? 'provider_error',
-            'durationMs' => (int) round((microtime(true) - $startedAt) * 1000), 'usage' => $usage,
+            ...$audit,
+            'responseId' => $body['id'] ?? null,
+            'httpStatus' => $response->status(),
+            'status' => $body['status'] ?? 'provider_error',
+            'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
+            'usage' => $usage,
         ]);
         if (!$response->successful()) {
             if ($response->status() === 429 && (
@@ -135,15 +146,15 @@ class QuotationImageExtractionService
 
         return [
             ...$context,
-            'usage' => $usage,
-            'payload' => [
-                'cliente_ruc' => $data['cliente_ruc'],
-                'pv_id' => (int) $data['pv_id'],
-                'detalle' => $details,
-                'maxCandidatos' => (int) ($data['maxCandidatos'] ?? 6),
+            'usage'                 => $usage,
+            'payload'               => [
+                'cliente_ruc'       => $data['cliente_ruc'],
+                'pv_id'             => (int) $data['pv_id'],
+                'detalle'           => $details,
+                'maxCandidatos'     => (int) ($data['maxCandidatos'] ?? 6),
             ],
-            'revisiones' => $reviews,
-            'observaciones' => $extracted['observaciones'],
+            'revisiones'            => $reviews,
+            'observaciones'         => $extracted['observaciones'],
             'requiere_confirmacion' => true,
         ];
     }
@@ -152,7 +163,7 @@ class QuotationImageExtractionService
     {
         return [
             'type' => 'input_image',
-            'image_url' => 'data:'.$image->getMimeType().';base64,'.base64_encode($image->getContent()),
+            'image_url' => 'data:' . $image->getMimeType() . ';base64,' . base64_encode($image->getContent()),
             'detail' => 'high',
         ];
     }
@@ -163,16 +174,16 @@ class QuotationImageExtractionService
             throw new HttpException(502, 'La IA devolvió una extracción inválida.');
         }
         $validator = Validator::make(['extraccion' => $data], [
-            'extraccion' => ['required', 'array:detalle,observaciones,excede_limite'],
-            'extraccion.detalle' => ['present', 'array', 'list', 'max:20'],
-            'extraccion.detalle.*' => ['required', 'array:texto,cantidad,requiere_revision,observacion'],
-            'extraccion.detalle.*.texto' => ['required', 'string', 'max:200'],
-            'extraccion.detalle.*.cantidad' => ['present', 'nullable', 'numeric', 'gt:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/D'],
+            'extraccion'                             => ['required', 'array:detalle,observaciones,excede_limite'],
+            'extraccion.detalle'                     => ['present', 'array', 'list', 'max:20'],
+            'extraccion.detalle.*'                   => ['required', 'array:texto,cantidad,requiere_revision,observacion'],
+            'extraccion.detalle.*.texto'             => ['required', 'string', 'max:200'],
+            'extraccion.detalle.*.cantidad'          => ['present', 'nullable', 'numeric', 'gt:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/D'],
             'extraccion.detalle.*.requiere_revision' => ['required', 'boolean'],
-            'extraccion.detalle.*.observacion' => ['present', 'nullable', 'string', 'max:500'],
-            'extraccion.observaciones' => ['present', 'array', 'list', 'max:20'],
-            'extraccion.observaciones.*' => ['required', 'string', 'max:500'],
-            'extraccion.excede_limite' => ['required', 'boolean'],
+            'extraccion.detalle.*.observacion'       => ['present', 'nullable', 'string', 'max:500'],
+            'extraccion.observaciones'               => ['present', 'array', 'list', 'max:20'],
+            'extraccion.observaciones.*'             => ['required', 'string', 'max:500'],
+            'extraccion.excede_limite'               => ['required', 'boolean'],
         ]);
         if ($validator->fails()) {
             throw new HttpException(502, 'La IA devolvió datos incompatibles con el detalle. Revise las imágenes e intente nuevamente.');
@@ -184,20 +195,22 @@ class QuotationImageExtractionService
     private function schema(): array
     {
         return [
-            'type' => 'object', 'additionalProperties' => false,
-            'properties' => [
-                'detalle' => ['type' => 'array', 'maxItems' => 20, 'items' => [
-                    'type' => 'object', 'additionalProperties' => false,
-                    'properties' => [
-                        'texto' => ['type' => 'string', 'maxLength' => 200],
-                        'cantidad' => ['type' => ['number', 'null']],
+            'type'                          => 'object',
+            'additionalProperties' => false,
+            'properties'                    => [
+                'detalle'                   => ['type' => 'array', 'maxItems' => 20, 'items' => [
+                    'type'                  => 'object',
+                    'additionalProperties'  => false,
+                    'properties'            => [
+                        'texto'             => ['type' => 'string', 'maxLength' => 200],
+                        'cantidad'          => ['type' => ['number', 'null']],
                         'requiere_revision' => ['type' => 'boolean'],
-                        'observacion' => ['type' => ['string', 'null']],
+                        'observacion'       => ['type' => ['string', 'null']],
                     ],
-                    'required' => ['texto', 'cantidad', 'requiere_revision', 'observacion'],
+                    'required'              => ['texto', 'cantidad', 'requiere_revision', 'observacion'],
                 ]],
-                'observaciones' => ['type' => 'array', 'items' => ['type' => 'string']],
-                'excede_limite' => ['type' => 'boolean'],
+                'observaciones'             => ['type' => 'array', 'items' => ['type' => 'string']],
+                'excede_limite'             => ['type' => 'boolean'],
             ],
             'required' => ['detalle', 'observaciones', 'excede_limite'],
         ];
