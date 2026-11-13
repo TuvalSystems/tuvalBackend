@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureTuvalMcpPilot;
 use App\Http\Controllers\Ventas\Cotizaciones\Borradores\CotizacionBorradorPilotoController;
 use App\Http\Controllers\Ventas\Cotizaciones\Borradores\CotizacionExtraccionImagenesController;
+use App\Http\Controllers\Sistemas\InteligenciaArtificial\ConfiguracionIaController;
 use App\Http\Controllers\Reportes\Inventory\ReplenishmentReceiptHistoryController;
 use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Integraciones\Sincronizacion\SincronizacionController;
@@ -535,6 +536,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
             Route::post('orden-almacenamiento', [DevolucionesController::class, 'imprimirOrdenDeAlmacenamiento']);
             Route::post('recibir-devolucion', [DevolucionesController::class, 'recibirDevolucion']);
             Route::post('rechazar-devolucion', [DevolucionesController::class, 'rechazarDevolucion']);
+        });
+
+        Route::prefix('sistemas/inteligencia-artificial')->middleware('web.section:sistemas-ia-configuracion')->group(function () {
+            Route::get('configuracion', [ConfiguracionIaController::class, 'obtener']);
+            Route::put('configuracion', [ConfiguracionIaController::class, 'actualizar']);
+            Route::get('consumos', [ConfiguracionIaController::class, 'consumos']);
         });
 
         Route::prefix('borradores')->group(function () {

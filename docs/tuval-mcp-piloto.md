@@ -6,8 +6,10 @@ Los usuarios trabajan en el frontend TUVAL con su inicio de sesión habitual.
 No necesitan cuentas de ChatGPT ni vincularlas mediante OAuth.
 
 El [endpoint de extracción de imágenes](cotizacion-imagenes-ia.md) añade la
-recepción de archivos y la llamada a OpenAI desde el backend. La interfaz de
-subida, revisión o conversación todavía debe integrarse en el frontend.
+recepción de archivos y la llamada a OpenAI desde el backend. El frontend dispone
+del flujo de subida/revisión de imágenes. La ampliación del
+13 de noviembre, su control de consumo en Sistemas y sus pasos de instalación
+se describen al final de esa guía. Su implementación local no implica despliegue.
 Dots/ChatGPT puede actuar como cliente de pruebas si admite el transporte y
 la autenticación descritos aquí. No es el servicio de IA que invoca el frontend.
 

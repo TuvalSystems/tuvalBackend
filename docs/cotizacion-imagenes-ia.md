@@ -97,7 +97,8 @@ const borrador = await api.post('/borradores/items', solicitud);
 ```
 
 La extracciÃ³n no crea cotizaciones ni resuelve candidatos o precios. Esto
-ocurre al confirmar, con las reglas existentes. No se incluyen cambios Vue.
+ocurre al confirmar, con las reglas existentes. El frontend dispone del flujo
+de imÃ¡genes y del asistente conversacional descrito al final de esta guÃ­a.
 
 ## Controles y errores
 
@@ -172,3 +173,52 @@ La respuesta de lectura agrega `data.usage` con `model`, `inputTokens`,
 La vista muestra entrada, salida y total de la Ãºltima lectura vigente.
 Este registro empieza con el despliegue: no reconstruye consumos anteriores,
 no es un reporte histÃ³rico en base de datos ni calcula importes facturados.
+
+## Control de tokens por usuario
+
+Se conserva el flujo de extracción de imágenes, revisión y confirmación del borrador.
+La configuración e histórico están en `/sistemas/inteligencia-artificial`.
+No hay flujo de conversación ni mensajes.
+
+- `ia_configuracion`: habilitación, límites diarios y mensuales por usuario, mensual global y entrada/salida por llamada.
+- `ia_consumos`: usuario, operación, modelo, tokens de entrada/salida, reserva, estado y fecha. No almacena imágenes ni prompts.
+- `GET|PUT /api/sistemas/inteligencia-artificial/configuracion`
+- `GET /api/sistemas/inteligencia-artificial/consumos`: filtros desde, hasta y userId, con paginación.
+
+La extracción cuenta la entrada y reserva entrada más salida máxima antes de generar.
+Las reservas se serializan con bloqueo de configuración. El uso real sustituye la reserva;
+si se desconoce el consumo, se conserva la reserva para no exceder los límites.
+Crear el borrador con el detalle revisado no consume tokens.
+
+Instalación de tablas en entornos nuevos:
+
+```bash
+php artisan migrate --path=database/migrations/2026_11_13_160000_create_asistente_ia_tables.php --force
+php artisan db:seed --class=AsistenteIaSeccionesSeeder --force
+```
+
+La sección se registra bajo Sistemas; los permisos se asignan desde perfiles.
+El nombre histórico del archivo de migración se mantiene por compatibilidad.
+
+En instalaciones que ya tenían las tablas del chat, aplicar también
+`2026_11_13_170000_remove_ia_conversation_tables.php` al desplegar esta versión.
+Elimina conversaciones y operaciones; conserva configuración e histórico de tokens.
+
+### Avisos de cuota al 80%
+
+Al finalizar una llamada se encola la comprobación de las cuotas diaria y mensual
+por usuario y mensual global. Al alcanzar o superar el 80% se notifica dentro de
+TUVAL a usuarios activos con `perfil_id` 1 o 2 mediante `UserNotification`
+(base de datos y broadcast). El mensaje identifica usuario, cuota, período,
+porcentaje y tokens contabilizados; estos incluyen reservas de consumo incierto
+y llamadas en curso, igual que el control de límites.
+
+`ia_alertas_tokens` evita repetir el aviso por cuota, usuario y período, con
+bloqueo de la configuración para serializar comprobaciones concurrentes.
+Un cambio de límite no reinicia los avisos del período. Las cuotas en cero no
+producen avisos porcentuales. El histórico de consumo no se modifica.
+
+Antes de desplegar el código, aplicar
+`2026_11_13_180000_create_ia_alertas_tokens_table.php` y mantener activos los
+workers de las colas `notifications` y `broadcasts`. No se generan avisos
+retroactivos hasta que se registre una nueva llamada.

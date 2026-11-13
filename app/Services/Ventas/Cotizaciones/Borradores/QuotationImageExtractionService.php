@@ -4,9 +4,8 @@ namespace App\Services\Ventas\Cotizaciones\Borradores;
 
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Ventas\Clientes\GpCliente;
-use Illuminate\Http\Client\ConnectionException;
+use App\Services\Sistemas\InteligenciaArtificial\ProveedorIaService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -15,9 +14,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class QuotationImageExtractionService
 {
-    private const ENDPOINT = 'https://api.openai.com/v1/responses';
-
-    public function __construct(protected readonly QuotationDraftPilotService $pilot) {}
+    public function __construct(protected readonly QuotationDraftPilotService $pilot, private readonly ProveedorIaService $proveedor) {}
 
     public function extract(array $data, GpUsuario $user): array
     {
@@ -38,72 +35,29 @@ class QuotationImageExtractionService
             $content[] = $this->imageContent($image);
         }
 
-        $startedAt = microtime(true);
-        $audit = [
-            'userId' => $user->getKey(),
-            'pvId' => (int) $data['pv_id'],
-            'imageCount' => count($data['imagenes']),
-            'model' => $model
-        ];
-        try {
-            $response = Http::withToken($key)->acceptJson()->asJson()
-                ->connectTimeout(10)->timeout(max(1, min(120, (int) config('services.openai.timeout', 60))))
-                ->withoutRedirecting()
-                ->post(self::ENDPOINT, [
-                    'model' => $model,
-                    'store' => false,
-                    'max_output_tokens' => 6000,
-                    'instructions' => $this->instructions(),
-                    'input' => [['role' => 'user', 'content' => $content]],
-                    'text' => ['format' => [
-                        'type' => 'json_schema',
-                        'name' => 'tuval_quotation_items',
-                        'strict' => true,
-                        'schema' => $this->schema(),
-                    ]],
-                ]);
-        } catch (ConnectionException) {
-            Log::channel('quotation_ai')->info('quotation_image_usage', [
-                ...$audit,
-                'status' => 'connection_error',
-                'usage' => null,
-                'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
-            ]);
-            // Do not propagate HTTP exceptions containing authorization headers or images.
-            throw new HttpException(504, 'No se pudo completar la conexión con el servicio de IA.');
-        }
-
-        $body = $response->json();
+        $body = $this->proveedor->responder([
+            'model' => $model,
+            'max_output_tokens' => 6000,
+            'instructions' => $this->instructions(),
+            'input' => [['role' => 'user', 'content' => $content]],
+            'text' => ['format' => [
+                'type' => 'json_schema', 'name' => 'tuval_quotation_items',
+                'strict' => true, 'schema' => $this->schema(),
+            ]],
+        ], (int) $user->id, 'extraccion_imagen');
         $usage = [
-            'model'             => $body['model'] ?? $model,
-            'inputTokens'       => data_get($body, 'usage.input_tokens'),
+            'model' => $body['model'] ?? $model,
+            'inputTokens' => data_get($body, 'usage.input_tokens'),
             'cachedInputTokens' => data_get($body, 'usage.input_tokens_details.cached_tokens'),
-            'outputTokens'      => data_get($body, 'usage.output_tokens'),
-            'reasoningTokens'   => data_get($body, 'usage.output_tokens_details.reasoning_tokens'),
-            'totalTokens'       => data_get($body, 'usage.total_tokens'),
+            'outputTokens' => data_get($body, 'usage.output_tokens'),
+            'reasoningTokens' => data_get($body, 'usage.output_tokens_details.reasoning_tokens'),
+            'totalTokens' => data_get($body, 'usage.total_tokens'),
         ];
-        // Record before parsing: an unusable extraction can still consume tokens.
         Log::channel('quotation_ai')->info('quotation_image_usage', [
-            ...$audit,
-            'responseId' => $body['id'] ?? null,
-            'httpStatus' => $response->status(),
-            'status' => $body['status'] ?? 'provider_error',
-            'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
-            'usage' => $usage,
+            'userId' => $user->id, 'pvId' => (int) $data['pv_id'],
+            'imageCount' => count($data['imagenes']), 'model' => $model,
+            'responseId' => $body['id'] ?? null, 'usage' => $usage,
         ]);
-        if (!$response->successful()) {
-            if ($response->status() === 429 && (
-                $response->json('error.type') === 'insufficient_quota'
-                || in_array($response->json('error.code'), ['insufficient_quota', 'credit_balance_exhausted'], true)
-            )) {
-                throw new HttpException(503, 'El proyecto de OpenAI no tiene cuota o saldo disponible. Revise la facturación de la API.');
-            }
-            $status = in_array($response->status(), [401, 403, 429], true) ? 503 : 502;
-            throw new HttpException($status, 'El servicio de IA no está disponible. Revise la configuración, acceso al modelo o cuota del proyecto.');
-        }
-        if (!is_array($body) || ($body['status'] ?? null) !== 'completed') {
-            throw new HttpException(502, 'La IA no completó la lectura. Intente con imágenes más claras o menos líneas.');
-        }
 
         $text = '';
         foreach (($body['output'] ?? []) as $output) {
