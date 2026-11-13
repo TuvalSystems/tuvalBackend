@@ -7,5 +7,5 @@ namespace App\Repositories\Reportes\Contracts;
 interface AprobacionesComercialesRepositoryInterface
 {
     /** @return list<object> */
-    public function consultar(string $tipoDocumento, int $documentoId): array;
+    public function consultar(?string $cotizacion, ?string $factura, ?string $cliente, ?string $sucursal, ?string $aprobadorFinal, string $periodo): array;
 }
