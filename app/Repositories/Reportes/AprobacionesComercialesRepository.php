@@ -9,11 +9,11 @@ use Illuminate\Support\Facades\DB;
 
 class AprobacionesComercialesRepository implements AprobacionesComercialesRepositoryInterface
 {
-    public function consultar(string $tipoDocumento, int $documentoId): array
+    public function consultar(?string $cotizacion, ?string $factura, ?string $cliente, ?string $sucursal, ?string $aprobadorFinal, string $periodo): array
     {
         return DB::connection('mysql')->select(
-            'CALL tuvalapi.sp_consultar_aprobaciones_pedido(?, ?)',
-            [$tipoDocumento, $documentoId],
+            'CALL tuvalapi.sp_consultar_aprobaciones_pedido(?, ?, ?, ?, ?, ?)',
+            [$cotizacion, $factura, $cliente, $sucursal, $aprobadorFinal, $periodo],
         );
     }
 }
