@@ -61,6 +61,7 @@ class ConfiguracionIaController extends Controller
             'c.tokens_contabilizados as accountedTokens', 'c.tokens_reservados as reservedTokens', 'c.created_at as fecha',
         ])->orderByDesc('c.id')->paginate(30);
         return $this->successResponse('Consumo de IA.', ['totales' => $totales, 'usuarios' => $usuarios,
+            'totalRegistros' => $registros->total(),
             'registros' => $registros->items(), 'pagina' => $registros->currentPage(), 'ultimaPagina' => $registros->lastPage()]);
     }
 }
