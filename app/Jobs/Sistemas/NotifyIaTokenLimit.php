@@ -18,7 +18,7 @@ class NotifyIaTokenLimit implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(public int $userId, public string $fecha)
+    public function __construct(public int $userId, public string $fecha, public ?int $perfilId = null)
     {
         $this->onQueue('notifications');
         $this->afterCommit();
@@ -31,27 +31,30 @@ class NotifyIaTokenLimit implements ShouldQueue
             if (!$config) return;
             $dia = substr($this->fecha, 0, 10);
             $mes = substr($dia, 0, 7).'-01';
+            $perfilId = $this->perfilId ?? DB::table('gp_usuarios')->where('id', $this->userId)->value('perfil_id');
+            $puntos = (int) DB::table('ia_presupuestos_perfil')->where('perfil_id', $perfilId)->value('puntos_porcentaje');
             $cuotas = [
-                ['diario_usuario', $this->userId, $dia, $config->limite_diario_usuario, 'diario'],
-                ['mensual_usuario', $this->userId, $mes, $config->limite_mensual_usuario, 'mensual'],
+                ['diario_perfil', (int) $perfilId, $dia, intdiv((int) $config->limite_diario_global * $puntos, 10000), 'diario del perfil'],
+                ['mensual_perfil', (int) $perfilId, $mes, intdiv((int) $config->limite_mensual_global * $puntos, 10000), 'mensual del perfil'],
+                ['diario_global', 0, $dia, $config->limite_diario_global, 'diario global'],
                 ['mensual_global', 0, $mes, $config->limite_mensual_global, 'mensual global'],
             ];
-            foreach ($cuotas as [$tipo, $usuario, $desde, $limite, $nombre]) {
+            foreach ($cuotas as [$tipo, $perfil, $desde, $limite, $nombre]) {
                 if ($limite <= 0) continue;
-                $hasta = $tipo === 'diario_usuario'
+                $hasta = str_starts_with($tipo, 'diario_')
                     ? date('Y-m-d', strtotime($desde.' +1 day'))
                     : date('Y-m-d', strtotime($desde.' +1 month'));
                 $usado = (int) DB::table('ia_consumos')->where('created_at', '>=', $desde)
                     ->where('created_at', '<', $hasta)
-                    ->when($usuario !== 0, fn ($q) => $q->where('user_id', $usuario))
+                    ->when($perfil !== 0, fn ($q) => $q->where('perfil_id', $perfil))
                     ->sum('tokens_contabilizados');
                 if ($usado * 100 < $limite * 80) continue;
-                $clave = ['tipo' => $tipo, 'user_id' => $usuario, 'periodo' => $desde];
+                $clave = ['tipo' => $tipo, 'user_id' => 0, 'perfil_id' => $perfil, 'periodo' => $desde];
                 if (DB::table('ia_alertas_tokens')->where($clave)->exists()) continue;
                 $destinatarios = GpUsuario::whereIn('perfil_id', [1, 2])->where('status', 1)->get();
                 if ($destinatarios->isEmpty()) continue;
-                $identidad = $usuario === 0 ? 'global' : 'del usuario '.
-                    (GpUsuario::find($usuario)?->USERNAME ?? $usuario).' (ID '.$usuario.')';
+                $identidad = $perfil === 0 ? 'global' : 'del perfil '.
+                    (DB::table('perfiles')->where('id', $perfil)->value('name') ?? $perfil).' (ID '.$perfil.')';
                 $porcentaje = round($usado * 100 / $limite, 1);
                 $mensaje = "El consumo de tokens {$identidad} alcanzó el {$porcentaje}% del límite {$nombre}: "
                     .number_format($usado, 0, ',', '.').' de '.number_format($limite, 0, ',', '.')

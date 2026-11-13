@@ -22,18 +22,24 @@ class ConsumoIaService
             $config = DB::table('ia_configuracion')->where('id', 1)->lockForUpdate()->first();
             abort_unless($config && $config->habilitado, 429, 'El uso de IA está deshabilitado en Sistemas.');
             abort_if($entrada > $config->max_entrada || $salida > $config->max_salida, 429, 'La solicitud supera el límite de tokens por llamada.');
+            $perfilId = DB::table('gp_usuarios')->where('id', $userId)->value('perfil_id');
+            abort_unless($perfilId, 429, 'El usuario no tiene un perfil con presupuesto de IA.');
+            $puntos = (int) DB::table('ia_presupuestos_perfil')->where('perfil_id', $perfilId)->value('puntos_porcentaje');
+            abort_if($puntos === 0, 429, 'El perfil no tiene presupuesto de tokens asignado.');
+            $diario = intdiv((int) $config->limite_diario_global * $puntos, 10000);
+            $mensual = intdiv((int) $config->limite_mensual_global * $puntos, 10000);
             $reserva = $entrada + $salida;
             $mes = now()->startOfMonth();
             $dia = now()->startOfDay();
-            foreach ([[$dia, $userId, $config->limite_diario_usuario], [$mes, $userId, $config->limite_mensual_usuario], [$mes, null, $config->limite_mensual_global]] as [$desde, $usuario, $limite]) {
+            foreach ([[$dia, $perfilId, $diario], [$mes, $perfilId, $mensual], [$dia, null, $config->limite_diario_global], [$mes, null, $config->limite_mensual_global]] as [$desde, $perfil, $limite]) {
                 $usado = DB::table('ia_consumos')->where('created_at', '>=', $desde)
-                    ->when($usuario !== null, fn ($query) => $query->where('user_id', $usuario))->sum('tokens_contabilizados');
+                    ->when($perfil !== null, fn ($query) => $query->where('perfil_id', $perfil))->sum('tokens_contabilizados');
                 if ($usado + $reserva > $limite) {
                     throw new HttpException(429, 'No hay cupo de tokens suficiente. Revise los límites y el consumo en Sistemas.');
                 }
             }
             return DB::table('ia_consumos')->insertGetId([
-                'user_id' => $userId, 'operacion' => $operacion,
+                'user_id' => $userId, 'perfil_id' => $perfilId, 'operacion' => $operacion,
                 'modelo' => $modelo, 'estado' => 'reservado', 'tokens_reservados' => $reserva,
                 'tokens_contabilizados' => $reserva, 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -54,7 +60,7 @@ class ConsumoIaService
         DB::table('ia_consumos')->where('id', $id)->update($datos);
         $consumo = DB::table('ia_consumos')->where('id', $id)->first();
         if ($consumo) {
-            NotifyIaTokenLimit::dispatch((int) $consumo->user_id, (string) $consumo->created_at);
+            NotifyIaTokenLimit::dispatch((int) $consumo->user_id, (string) $consumo->created_at, (int) $consumo->perfil_id);
         }
     }
 

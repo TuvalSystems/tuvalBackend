@@ -174,51 +174,49 @@ La vista muestra entrada, salida y total de la última lectura vigente.
 Este registro empieza con el despliegue: no reconstruye consumos anteriores,
 no es un reporte histórico en base de datos ni calcula importes facturados.
 
-## Control de tokens por usuario
+## Presupuesto compartido por perfil
 
-Se conserva el flujo de extracci�n de im�genes, revisi�n y confirmaci�n del borrador.
-La configuraci�n e hist�rico est�n en `/sistemas/inteligencia-artificial`.
-No hay flujo de conversaci�n ni mensajes.
+La vista `/sistemas/inteligencia-artificial` conserva el flujo de imágenes y
+el histórico por usuario. El apartado **Límites por perfil** permite distribuir
+porcentajes del presupuesto diario y mensual global. Por ejemplo, 30% para
+Ventas y 70% para Administrador. La suma admite hasta 100%, con dos decimales;
+la parte no asignada no está disponible. Un perfil sin asignación o con 0%
+no puede generar. El límite en tokens se redondea hacia abajo.
 
-- `ia_configuracion`: habilitaci�n, l�mites diarios y mensuales por usuario, mensual global y entrada/salida por llamada.
-- `ia_consumos`: usuario, operaci�n, modelo, tokens de entrada/salida, reserva, estado y fecha. No almacena im�genes ni prompts.
-- `GET|PUT /api/sistemas/inteligencia-artificial/configuracion`
-- `GET /api/sistemas/inteligencia-artificial/consumos`: filtros desde, hasta y userId, con paginaci�n.
+Todos los usuarios de un perfil comparten la bolsa. Se conserva el límite
+global y los máximos de entrada/salida por llamada. Las reservas cuentan para
+los límites y se ajustan al uso real; el consumo desconocido conserva su reserva.
+Cambiar porcentajes no reinicia consumos ni cancela llamadas ya reservadas.
 
-La extracci�n cuenta la entrada y reserva entrada m�s salida m�xima antes de generar.
-Las reservas se serializan con bloqueo de configuraci�n. El uso real sustituye la reserva;
-si se desconoce el consumo, se conserva la reserva para no exceder los l�mites.
-Crear el borrador con el detalle revisado no consume tokens.
+- `ia_configuracion`: presupuestos globales y límites por llamada. Los antiguos
+  campos de cuota individual quedan solo para compatibilidad de esquema.
+- `ia_presupuestos_perfil`: porcentaje por perfil, en centésimas de porcentaje.
+- `ia_consumos`: histórico individual con el perfil capturado al reservar.
+  Cambiar el perfil de un usuario no mueve sus consumos anteriores.
+- `ia_alertas_tokens`: un aviso por cuota, perfil y período. Los avisos al 80%
+  siguen llegando a usuarios activos con perfil 1 o 2 por las colas existentes.
 
-Instalaci�n de tablas en entornos nuevos:
+El GET/PUT de configuración incluye `limiteDiarioGlobal`, `limiteMensualGlobal`,
+`maxEntrada`, `maxSalida`, `habilitado` y `perfiles` (perfilId y porcentaje).
+Al guardar se reemplaza la distribución completa. La respuesta añade nombre,
+estado, límites calculados y consumos diario/mensual por perfil.
+El histórico individual mantiene sus filtros y expone el perfil de cada llamada.
 
-```bash
-php artisan migrate --path=database/migrations/2026_11_13_160000_create_asistente_ia_tables.php --force
-php artisan db:seed --class=AsistenteIaSeccionesSeeder --force
-```
+### Instalación de esta ampliación
 
-La secci�n se registra bajo Sistemas; los permisos se asignan desde perfiles.
-El nombre hist�rico del archivo de migraci�n se mantiene por compatibilidad.
+Aplicar `2026_11_13_190000_create_ia_presupuestos_perfil.php` después de las
+migraciones de configuración/consumo y alertas. Desplegar backend y frontend
+juntos y reiniciar los workers. Configurar y guardar la distribución antes de
+habilitar nuevas lecturas: no se asignan porcentajes automáticamente.
+El presupuesto diario inicial copia el anterior límite diario; revisar su valor
+como presupuesto global. El mensual global conserva su valor.
 
-En instalaciones que ya ten�an las tablas del chat, aplicar tambi�n
-`2026_11_13_170000_remove_ia_conversation_tables.php` al desplegar esta versi�n.
-Elimina conversaciones y operaciones; conserva configuraci�n e hist�rico de tokens.
+La migración no elimina consumos. Para registros anteriores atribuye el perfil
+actual del usuario, porque no se disponía de la asignación histórica; si no
+existe el usuario quedan sin perfil y siguen contando para el presupuesto global.
+Las alertas antiguas se conservan. No se revierte automáticamente esta transición.
 
-### Avisos de cuota al 80%
-
-Al finalizar una llamada se encola la comprobaci�n de las cuotas diaria y mensual
-por usuario y mensual global. Al alcanzar o superar el 80% se notifica dentro de
-TUVAL a usuarios activos con `perfil_id` 1 o 2 mediante `UserNotification`
-(base de datos y broadcast). El mensaje identifica usuario, cuota, per�odo,
-porcentaje y tokens contabilizados; estos incluyen reservas de consumo incierto
-y llamadas en curso, igual que el control de l�mites.
-
-`ia_alertas_tokens` evita repetir el aviso por cuota, usuario y per�odo, con
-bloqueo de la configuraci�n para serializar comprobaciones concurrentes.
-Un cambio de l�mite no reinicia los avisos del per�odo. Las cuotas en cero no
-producen avisos porcentuales. El hist�rico de consumo no se modifica.
-
-Antes de desplegar el c�digo, aplicar
-`2026_11_13_180000_create_ia_alertas_tokens_table.php` y mantener activos los
-workers de las colas `notifications` y `broadcasts`. No se generan avisos
-retroactivos hasta que se registre una nueva llamada.
+Validación local: pruebas de bolsa compartida, independencia entre perfiles,
+límite mensual/global, cambios de perfil, porcentajes inválidos, alertas sin
+duplicados y extracción con HTTP simulado. No equivale a una prueba de
+concurrencia real en MySQL.
