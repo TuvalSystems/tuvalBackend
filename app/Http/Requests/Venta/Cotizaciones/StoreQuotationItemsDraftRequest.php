@@ -22,7 +22,7 @@ class StoreQuotationItemsDraftRequest extends FormRequest
         return [
             'cliente_ruc' => ['required', 'string', 'max:30'],
             'pv_id' => ['required', 'integer', 'min:1'],
-            'detalle' => ['required', 'array', 'list', 'min:1', 'max:20'],
+            'detalle' => ['required', 'array', 'list', 'min:1', 'max:100'],
             'detalle.*' => ['required', 'array:texto,cantidad'],
             'detalle.*.texto' => ['required', 'string', 'max:200'],
             // The persisted detail has decimal(11,2). Never silently round a request.

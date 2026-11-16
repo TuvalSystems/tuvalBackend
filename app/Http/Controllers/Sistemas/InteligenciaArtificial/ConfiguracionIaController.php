@@ -30,12 +30,12 @@ class ConfiguracionIaController extends Controller
             ->groupBy('perfil_id')->get()->keyBy('perfil_id');
         $data['perfiles'] = DB::table('perfiles')->where('platform', 'web')->orderBy('name')->get()->map(function ($perfil) use ($config, $presupuestos, $usos) {
             $puntos = (int) ($presupuestos[$perfil->id] ?? 0);
-            return ['perfilId' => $perfil->id, 'nombre' => $perfil->name, 'estado' => $perfil->state,
-                'porcentaje' => $puntos / 100,
-                'limiteDiario' => intdiv((int) $config->limite_diario_global * $puntos, 10000),
-                'limiteMensual' => intdiv((int) $config->limite_mensual_global * $puntos, 10000),
-                'consumoDiario' => (int) ($usos[$perfil->id]->diario ?? 0),
-                'consumoMensual' => (int) ($usos[$perfil->id]->mensual ?? 0)];
+            return ['perfilId'      => $perfil->id, 'nombre' => $perfil->name, 'estado' => $perfil->state,
+                'porcentaje'        => $puntos / 100,
+                'limiteDiario'      => intdiv((int) $config->limite_diario_global * $puntos, 10000),
+                'limiteMensual'     => intdiv((int) $config->limite_mensual_global * $puntos, 10000),
+                'consumoDiario'     => (int) ($usos[$perfil->id]->diario ?? 0),
+                'consumoMensual'    => (int) ($usos[$perfil->id]->mensual ?? 0)];
         });
         $data['actualizadoPor'] = $config->actualizado_por;
         $data['actualizadoEn'] = $config->updated_at;
@@ -47,7 +47,7 @@ class ConfiguracionIaController extends Controller
         $data = $request->validate([
             'habilitado' => 'required|boolean', 'limiteDiarioGlobal' => 'required|integer|min:0|max:1000000000',
             'limiteMensualGlobal' => 'required|integer|gte:limiteDiarioGlobal|max:2000000000',
-            'maxEntrada' => 'required|integer|min:1000|max:100000', 'maxSalida' => 'required|integer|min:256|max:6000',
+            'maxEntrada' => 'required|integer|min:1000|max:100000', 'maxSalida' => 'required|integer|min:256|max:32000',
             'perfiles' => 'required|array|max:1000',
             'perfiles.*.perfilId' => ['required', 'integer', 'distinct', Rule::exists('perfiles', 'id')->where('platform', 'web')],
             'perfiles.*.porcentaje' => 'required|numeric|decimal:0,2|min:0|max:100',

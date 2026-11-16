@@ -213,7 +213,7 @@ Los errores de autenticación o del protocolo se resuelven antes del servicio.
 
 ## Reglas heredadas del servicio de borradores
 
-- De 1 a 20 líneas; descripción hasta 200 caracteres; cantidad hasta 1000000
+- De 1 a 100 líneas; descripción hasta 200 caracteres; cantidad hasta 1000000
   con máximo dos decimales. Cantidad omitida o null asume 1; confirmar esa
   suposición antes de guardar. Se conserva la validación de unidad real.
 - Cliente, vendedor y bodega se validan con las reglas existentes.

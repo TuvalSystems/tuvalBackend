@@ -39,7 +39,7 @@ California (005), enviar `pv_id: 2`.
 | --- | --- |
 | `cliente_ruc` | Obligatorio. RUC de un cliente activo |
 | `pv_id` | Obligatorio. ID numérico del punto de venta activo asignado al usuario |
-| `detalle` | Lista de 1 a 20 líneas de texto |
+| `detalle` | Lista de 1 a 100 líneas de texto |
 | `texto` | Obligatorio, máximo 200 caracteres |
 | `cantidad` | Opcional o null: 1. Mayor que 0, máximo 1000000, hasta 2 decimales y sin notación exponencial |
 | `maxCandidatos` | Opcional, entero de 1 a 6; este servicio envía 6 por defecto |

@@ -28,7 +28,7 @@ class CreateQuotationDraftTool extends TuvalQuotationTool
             'confirmado' => $schema->boolean()->description('true solo después de confirmar el detalle con el usuario.')->required(),
             'cliente_ruc' => $schema->string()->max(30)->description('RUC del cliente seleccionado.')->required(),
             'pv_id' => $schema->integer()->min(1)->description('ID seleccionado en el frontend; debe estar autorizado.')->required(),
-            'detalle' => $schema->array()->min(1)->max(20)->items($schema->object([
+            'detalle' => $schema->array()->min(1)->max(100)->items($schema->object([
                 'texto' => $schema->string()->max(200)->description('Descripción del artículo, incluidas medidas y características.')->required(),
                 'cantidad' => $schema->number()->nullable()->description('Cantidad positiva hasta 1000000, máximo dos decimales. null u omitida asume 1; confirmar esa suposición con el usuario.'),
             ])->withoutAdditionalProperties())->required(),

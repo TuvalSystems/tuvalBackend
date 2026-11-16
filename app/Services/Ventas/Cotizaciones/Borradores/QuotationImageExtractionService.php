@@ -37,7 +37,7 @@ class QuotationImageExtractionService
 
         $body = $this->proveedor->responder([
             'model' => $model,
-            'max_output_tokens' => 6000,
+            'max_output_tokens' => 32000,
             'instructions' => $this->instructions(),
             'input' => [['role' => 'user', 'content' => $content]],
             'text' => ['format' => [
@@ -81,7 +81,7 @@ class QuotationImageExtractionService
         }
         $extracted = $this->validateExtraction($extracted);
         if ($extracted['excede_limite']) {
-            throw new HttpException(422, 'Las imágenes contienen más de 20 líneas. Divida la solicitud para revisar todos los artículos.');
+            throw new HttpException(422, 'Las imágenes contienen más de 100 líneas. Divida la solicitud para revisar todos los artículos.');
         }
 
         $details = [];
@@ -129,13 +129,13 @@ class QuotationImageExtractionService
         }
         $validator = Validator::make(['extraccion' => $data], [
             'extraccion'                             => ['required', 'array:detalle,observaciones,excede_limite'],
-            'extraccion.detalle'                     => ['present', 'array', 'list', 'max:20'],
+            'extraccion.detalle'                     => ['present', 'array', 'list', 'max:100'],
             'extraccion.detalle.*'                   => ['required', 'array:texto,cantidad,requiere_revision,observacion'],
             'extraccion.detalle.*.texto'             => ['required', 'string', 'max:200'],
             'extraccion.detalle.*.cantidad'          => ['present', 'nullable', 'numeric', 'gt:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/D'],
             'extraccion.detalle.*.requiere_revision' => ['required', 'boolean'],
             'extraccion.detalle.*.observacion'       => ['present', 'nullable', 'string', 'max:500'],
-            'extraccion.observaciones'               => ['present', 'array', 'list', 'max:20'],
+            'extraccion.observaciones'               => ['present', 'array', 'list', 'max:100'],
             'extraccion.observaciones.*'             => ['required', 'string', 'max:500'],
             'extraccion.excede_limite'               => ['required', 'boolean'],
         ]);
@@ -152,7 +152,7 @@ class QuotationImageExtractionService
             'type'                          => 'object',
             'additionalProperties' => false,
             'properties'                    => [
-                'detalle'                   => ['type' => 'array', 'maxItems' => 20, 'items' => [
+                'detalle'                   => ['type' => 'array', 'maxItems' => 100, 'items' => [
                     'type'                  => 'object',
                     'additionalProperties'  => false,
                     'properties'            => [
@@ -265,7 +265,7 @@ class QuotationImageExtractionService
             Describe cada línea en hasta 200 caracteres. Si es ambigua o no cabe sin
             perder información, marca requiere_revision=true y explica la limitación.
             Conserva el orden de las imágenes y líneas. No agrupes líneas repetidas.
-            Si hay más de 20 líneas, excede_limite=true; no ocultes el exceso.
+            Si hay más de 100 líneas, excede_limite=true; no ocultes el exceso.
             Si no hay artículos legibles, devuelve detalle=[] y explica el motivo
             en observaciones. Señala las líneas ilegibles en observaciones sin inventar
             un artículo. Antes de responder verifica el orden obligatorio de cada texto y

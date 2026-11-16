@@ -23,7 +23,7 @@ exportadas, prompts o logs. Tras cambiar variables, refrescar la configuración
 cacheada de Laravel. El cliente no puede elegir el modelo mediante parámetros.
 La integración usa el cliente HTTP existente, sin SDK nuevo, y HTTPS fijo a
 `https://api.openai.com/v1/responses`, sin redirecciones ni reintentos automáticos.
-La salida está limitada a 6000 tokens.
+La extracción solicita hasta 32000 tokens de salida, limitada por maxSalida en Sistemas > Inteligencia Artificial. Para lotes de hasta 100 líneas, revisar ese máximo y las cuotas del perfil: una configuración existente de 6000 sigue aplicándose y puede dejar la respuesta incompleta. No se modifican automáticamente las cuotas guardadas.
 
 La clave creada conserva el nombre `Codex` y el proyecto seleccionados en el
 formulario del usuario; su vigencia solicitada es de 30 días. Planificar su
@@ -111,7 +111,7 @@ Los archivos se usan temporalmente, sin guardarlos como adjuntos en TUVAL.
 Responses lleva `store:false`; esto no promete retención cero del proveedor.
 Se exige JSON Schema estricto y se vuelve a validar el resultado en Laravel.
 El formato correcto no garantiza una lectura exacta; se requiere revisión.
-Si hay más de 20 líneas se pide dividirlas, y si no hay artículos legibles se
+Si hay más de 100 líneas se pide dividirlas, y si no hay artículos legibles se
 devuelve `detalle:[]` con observaciones. No se crea un borrador vacío.
 
 | HTTP | Significado |
