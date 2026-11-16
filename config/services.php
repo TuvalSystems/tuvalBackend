@@ -4,7 +4,7 @@ return [
 
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
-        'quotation_model' => env('OPENAI_QUOTATION_MODEL', 'gpt-4.1-mini'),
+        'quotation_model' => env('OPENAI_QUOTATION_MODEL', 'gpt-6-sol'),
         'timeout' => (int) env('OPENAI_TIMEOUT', 60),
     ],
 
