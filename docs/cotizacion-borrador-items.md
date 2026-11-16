@@ -60,8 +60,13 @@ Antes de abrir la transacción de creación, el servicio consulta
 `POST /api/reportes/inventario/articulos/resolver` mediante `ApiGpService`,
 reutilizando `API_GP_URL` y `API_GP_TIMEOUT`. Envía `detalle` y `maxCandidatos`.
 
-Por cada línea usa `articulo.codigoGP` si hay un artículo identificado; en caso
-contrario incluye todos los elementos de `candidatos`. Cada candidato conserva
+La respuesta contiene `data[]` con `texto`, `cantidad`, `estado` y `coincidencias`.
+Cada entrada corresponde a la misma posición de `detalle`, incluso cuando no
+hay coincidencias; ya no requiere `indice`. Por cada línea se incluyen todos los
+elementos de `coincidencias` con `codigoGP` válido, tanto para `identificado` como
+para `ambiguo`. `descripcion`, `codigo3L` y `porcentajeCoincidencia` no sustituyen
+los datos locales del artículo ni alteran la selección. Se mantiene compatibilidad
+con la respuesta anterior (`indice`, `articulo` y `candidatos`). Cada candidato conserva
 la cantidad de la línea original. Cuatro candidatos para una línea con cantidad 2
 generan cuatro detalles con cantidad 2 cada uno. Un código repetido en distintas
 líneas conserva cada aparición y su cantidad, sin agruparlas.

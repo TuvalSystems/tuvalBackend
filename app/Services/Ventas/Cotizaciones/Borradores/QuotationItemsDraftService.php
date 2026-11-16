@@ -83,15 +83,20 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
         $items = [];
         $warnings = [];
         $seen = [];
-        foreach ($response['data'] as $result) {
-            $index = $result['indice'] ?? null;
+        foreach ($response['data'] as $position => $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+            // El nuevo contrato devuelve una entrada por línea, en el orden solicitado.
+            $hasMatches = array_key_exists('coincidencias', $result);
+            $index = $hasMatches ? $position : ($result['indice'] ?? null);
             if (!is_int($index) || !array_key_exists($index, $details) || isset($seen[$index])) {
                 continue;
             }
             $seen[$index] = true;
-            $candidates = !empty($result['articulo'])
+            $candidates = $hasMatches ? $result['coincidencias'] : (!empty($result['articulo'])
                 ? [$result['articulo']]
-                : ($result['candidatos'] ?? []);
+                : ($result['candidatos'] ?? []));
             if (!is_array($candidates) || !$candidates) {
                 continue;
             }
@@ -346,19 +351,19 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
     protected function buildDraftResponse(GpCotizacion $quote, GpUsuario $user, GpPuntoVenta $pv, GpCliente $client, array $included): array
     {
         return [
-            'id' => $quote->id,
-            'numero' => $quote->cotizacion,
-            'estado' => $quote->estado,
-            'usuario' => ['id' => $user->id, 'codigo' => $user->USERID],
-            'actor' => ['id' => $user->id, 'codigo' => $user->USERID],
-            'punto_venta' => [
-                'id' => $pv->id,
-                'codigo' => $pv->PTO_VTA_ID,
-                'descripcion' => $pv->PTO_VTA_DESCRIPCION,
+            'id'                => $quote->id,
+            'numero'            => $quote->cotizacion,
+            'estado'            => $quote->estado,
+            'usuario'           => ['id' => $user->id, 'codigo' => $user->USERID],
+            'actor'             => ['id' => $user->id, 'codigo' => $user->USERID],
+            'punto_venta'       => [
+                'id'            => $pv->id,
+                'codigo'        => $pv->PTO_VTA_ID,
+                'descripcion'   => $pv->PTO_VTA_DESCRIPCION,
             ],
-            'cliente' => ['id' => $client->id, 'ruc' => $client->CLI_RUC],
-            'incluidos' => $included,
-            'advertencias' => [],
+            'cliente'           => ['id' => $client->id, 'ruc' => $client->CLI_RUC],
+            'incluidos'         => $included,
+            'advertencias'      => [],
         ];
     }
 }
