@@ -179,11 +179,23 @@ class QuotationImageExtractionService
             Responde en español. Conserva medidas, fracciones, material, diámetro,
             longitud, marca y especificaciones legibles en texto; no confundas medidas
             como 1/2, 2 pulgadas o 90 grados con la cantidad solicitada.
-            Construye texto con esta estructura: producto + características + medidas
-            con su unidad cuando esté explícita + referencia o marca. Omite las partes
-            ausentes, sin agregar etiquetas ni completar datos por conocimiento general.
-            Coloca primero el producto (canal, tubo, disco, alambre, etc.); después su
-            forma o tipo, material y acabado, luego medidas, norma, referencia y marca.
+            El campo texto debe seguir obligatoriamente este orden, independientemente
+            del orden de las palabras o columnas en la imagen:
+            producto + características (forma/tipo, material, acabado, presentación)
+            + medidas con unidad explícita + norma + referencia/modelo + marca.
+            Omite las partes ausentes sin etiquetas ni datos añadidos por conocimiento general.
+            Empieza por el nombre del producto en singular: canal, tubo, disco, alambre,
+            difusor, plancha, etc. Rollo o caja no deben desplazar al producto al inicio.
+            Si la presentación forma parte de la descripción, colócala después del
+            producto y sus características, por ejemplo alambre sólido en rollo 09.
+            Coloca siempre el material y acabado antes de las medidas; la referencia
+            o modelo antes de la marca; la marca al final. No copies el orden original
+            cuando contradiga esta estructura. Conserva el orden interno de las medidas.
+            Ejemplos de reordenación (solo si esos datos aparecen en la imagen):
+            rollo de alambre sólido 09 => alambre sólido en rollo 09;
+            difusor Lincoln MB15 002 007 => difusor MB15 002 007 Lincoln;
+            plancha lisa de 2 mm hn => plancha hierro negro lisa 2 mm;
+            discos de zirconio de 4 pulgadas grano 40 => disco de zirconio grano 40 4 pulgadas.
             Une descripción, medidas y referencias de las columnas de una misma fila,
             aunque ocupen varias líneas visuales; no mezcles datos de artículos distintos.
             Desarrolla abreviaturas solo si son claras en contexto, como hn a hierro negro.
@@ -197,11 +209,23 @@ class QuotationImageExtractionService
             Ejemplos: canal U. hn | 200 x 50 x 4 => canal U hierro negro 200 x 50 x 4;
             tubo rectangular hn | 100 x 50 x 3 mm => tubo rectangular hierro negro 100 x 50 x 3 mm;
             disco de corte Norton | 7 pulgadas x 1/16 pulgadas => disco de corte 7 pulgadas x 1/16 pulgadas Norton.
-            Mantén la cantidad solicitada separada de texto; no la confundas con medidas
-            ni conviertas metros, cajas, rollos o kilos a piezas. Si la unidad solicitada
-            necesita conservarse para revisar la cantidad, indícala en observacion.
+            cantidad es el número solicitado en la imagen, NO el número de piezas
+            individuales ni una cantidad convertida a la unidad de venta del catálogo.
+            Conserva ese número aunque la unidad sea caja, rollo, metro o kilo:
+            2 cajas => cantidad=2; 1 caja => cantidad=1; 5 rollos => cantidad=5;
+            226 MTS => cantidad=226; 10 kilos => cantidad=10.
+            En esos casos conserva la unidad original en observacion, por ejemplo
+            Cantidad solicitada: 2 cajas; contenido por caja no indicado.
+            No conviertas cantidades, no calcules piezas por caja ni dividas metros
+            por el largo del artículo. No incluyas la cantidad solicitada en texto.
+            La falta de contenido por caja o de equivalencia con la unidad del catálogo
+            NO hace dudoso el número legible y NUNCA justifica cantidad=null.
+            Si hay que revisar la unidad o presentación, usa requiere_revision=true
+            y explica el motivo en observacion, conservando la cantidad numérica.
             No inventes códigos GP, precios, unidades de venta ni cantidades.
-            Usa cantidad=null si falta o es dudosa y requiere_revision=true.
+            Usa cantidad=null solo si el número solicitado falta, es ilegible, ambiguo
+            o incumple los límites numéricos siguientes; marca requiere_revision=true.
+            Una descripción o referencia dudosa no invalida una cantidad claramente legible.
             Las cantidades identificadas deben ser positivas, hasta 1000000 y con
             máximo dos decimales. Si no puedes representarlas fielmente, devuelve
             null y explica el dato original en observacion; nunca redondees.
@@ -211,7 +235,20 @@ class QuotationImageExtractionService
             Si hay más de 20 líneas, excede_limite=true; no ocultes el exceso.
             Si no hay artículos legibles, devuelve detalle=[] y explica el motivo
             en observaciones. Señala las líneas ilegibles en observaciones sin inventar
-            un artículo. Para líneas claras usa requiere_revision=false y observacion=null.
+            un artículo. Antes de responder verifica el orden obligatorio de cada texto y
+            que las cantidades legibles se conserven, incluso con cajas u otras unidades.
+            Comprobación final obligatoria antes de emitir el JSON:
+            - Relee el nombre del producto en cada fila: platina y plancha son productos
+              distintos; no sustituyas uno por otro ni por el producto de un ejemplo.
+            - Ningún texto debe empezar por rollo de o caja de. Si leíste rollo de
+              alambre sólido 09, emite alambre sólido en rollo 09, con cantidad=5
+              únicamente si la cantidad de esa fila es 5. Conserva rollos en observacion.
+            - Verifica producto, características, medidas, norma/referencia y marca en
+              ese orden; corrige cualquier línea que aún copie el orden de la imagen.
+            - Un número de cajas legible siempre se conserva: 2 cajas es cantidad=2,
+              y 1 caja es cantidad=1, aunque no conozcas cuántas piezas contiene.
+            Para líneas sin dudas ni unidad que aclarar usa requiere_revision=false y
+            observacion=null; conserva las observaciones de unidad solicitada indicadas arriba.
         TEXT;
     }
 }
