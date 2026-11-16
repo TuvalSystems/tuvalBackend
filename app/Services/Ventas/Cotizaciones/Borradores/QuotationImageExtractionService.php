@@ -179,6 +179,27 @@ class QuotationImageExtractionService
             Responde en español. Conserva medidas, fracciones, material, diámetro,
             longitud, marca y especificaciones legibles en texto; no confundas medidas
             como 1/2, 2 pulgadas o 90 grados con la cantidad solicitada.
+            Construye texto con esta estructura: producto + características + medidas
+            con su unidad cuando esté explícita + referencia o marca. Omite las partes
+            ausentes, sin agregar etiquetas ni completar datos por conocimiento general.
+            Coloca primero el producto (canal, tubo, disco, alambre, etc.); después su
+            forma o tipo, material y acabado, luego medidas, norma, referencia y marca.
+            Une descripción, medidas y referencias de las columnas de una misma fila,
+            aunque ocupen varias líneas visuales; no mezcles datos de artículos distintos.
+            Desarrolla abreviaturas solo si son claras en contexto, como hn a hierro negro.
+            Corrige errores ortográficos evidentes sin alterar referencias del fabricante.
+            Conserva el orden de las dimensiones, fracciones y códigos con sus separadores.
+            No asignes roles como diámetro o espesor si no están claros en la imagen.
+            No agregues mm o pulgadas si la unidad no está explícita en la fila o en un
+            encabezado aplicable. Puedes expresar el símbolo de pulgadas como pulgadas.
+            Conserva valores ambiguos como 09 sin convertirlos en 0.9 mm; no reconstruyas
+            referencias dudosas. Marca requiere_revision=true y explica la duda en observacion.
+            Ejemplos: canal U. hn | 200 x 50 x 4 => canal U hierro negro 200 x 50 x 4;
+            tubo rectangular hn | 100 x 50 x 3 mm => tubo rectangular hierro negro 100 x 50 x 3 mm;
+            disco de corte Norton | 7 pulgadas x 1/16 pulgadas => disco de corte 7 pulgadas x 1/16 pulgadas Norton.
+            Mantén la cantidad solicitada separada de texto; no la confundas con medidas
+            ni conviertas metros, cajas, rollos o kilos a piezas. Si la unidad solicitada
+            necesita conservarse para revisar la cantidad, indícala en observacion.
             No inventes códigos GP, precios, unidades de venta ni cantidades.
             Usa cantidad=null si falta o es dudosa y requiere_revision=true.
             Las cantidades identificadas deben ser positivas, hasta 1000000 y con
