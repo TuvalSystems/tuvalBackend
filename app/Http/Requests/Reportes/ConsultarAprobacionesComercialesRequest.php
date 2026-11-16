@@ -36,7 +36,7 @@ class ConsultarAprobacionesComercialesRequest extends FormRequest
             'cotizacion' => ['nullable', 'string', 'max:100'],
             'factura' => ['nullable', 'string', 'max:100'],
             'cliente' => ['nullable', 'string', 'max:100'],
-            'sucursal' => $this->unsignedIdRules(),
+            'sucursal' => ['nullable', 'string', 'max:10'],
             'aprobador_final' => $this->unsignedIdRules(),
             'periodo' => ['bail', 'required', 'string', 'regex:/\A[1-9][0-9]{3}(0[1-9]|1[0-2])\z/', 'not_in:999912'],
             'tipo_documento' => ['prohibited'],

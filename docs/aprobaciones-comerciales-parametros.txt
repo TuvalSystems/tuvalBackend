@@ -7,7 +7,7 @@ Parametros HTTP (en minusculas, sin prefijo p_):
 - cotizacion: opcional, numero comercial, hasta 100 caracteres.
 - factura: opcional, numero de factura del pedido, hasta 100 caracteres.
 - cliente: opcional, RUC exacto, hasta 100 caracteres; conservar ceros iniciales.
-- sucursal: opcional, ID positivo BIGINT UNSIGNED de sucursal del cliente.
+- sucursal: opcional, codigo textual PTO_VTA_ID de agencia/punto de venta, hasta 10 caracteres; conservar ceros iniciales (005).
 - aprobador_final: opcional, ID positivo BIGINT UNSIGNED de gp_usuarios.
 
 Texto vacio o solo espacios se normaliza a NULL; los ID tambien admiten
@@ -19,7 +19,7 @@ devuelven HTTP 422. periodo ausente, vacio o invalido devuelve HTTP 422.
 Ejemplos:
 GET /api/reportes/aprobaciones-comerciales?periodo=202611
 GET /api/reportes/aprobaciones-comerciales?periodo=202611&cotizacion=COT-001
-GET /api/reportes/aprobaciones-comerciales?periodo=202611&cliente=0012345678001&sucursal=2&aprobador_final=15
+GET /api/reportes/aprobaciones-comerciales?periodo=202611&cliente=0012345678001&sucursal=005&aprobador_final=15
 
 El repositorio ejecuta en la conexion mysql, mediante parametros enlazados:
 CALL tuvalapi.sp_consultar_aprobaciones_pedido(?, ?, ?, ?, ?, ?)
@@ -29,9 +29,11 @@ El periodo corresponde a fecha_hora_aprobacion_comercial de la decision
 principal elegida por el SP, no a la creacion del pedido. La recuperacion del
 aprobador de hi_cotizacion, las columnas factura/punto de venta y los motivos
 son responsabilidad del SP; la API conserva los campos devueltos.
-Punto de venta no es un filtro nuevo. sucursal corresponde al cliente.
+El nombre HTTP sucursal se conserva, pero ahora filtra por agencia/punto de venta.
+Ya no filtra por sucursal_id del cliente. No convertir 005 a 5.
 
-Despliegue: requiere el SP de seis parametros instalado en cada entorno.
+Despliegue: requiere el SP de seis parametros instalado en cada entorno,
+con p_Sucursal textual y comparacion exacta contra PTO_VTA_ID.
 Este cambio no instala ni modifica procedimientos ni corrige su rendimiento.
 Actualizar los consumidores del contrato anterior al desplegar la API.
 Se conservan la ruta GET, middleware y formato de respuesta existentes.
