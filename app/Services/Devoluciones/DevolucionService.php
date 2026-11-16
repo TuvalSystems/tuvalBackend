@@ -252,11 +252,8 @@ class DevolucionService implements DevolucionServiceInterface
                 ->where('id', '<', data_get($pedido, 'id'))
                 ->orderByDesc('id')
                 ->first();
-            if (!$pedidoIds) {
-                return false;
-            }
             $codigos = collect($detallepedido)->pluck('ART_CODIGO')->unique();
-            return GpPedidoDetalle::where('pedido_id', $pedidoIds->id)
+            return GpPedidoDetalle::where('pedido_id', $pedidoIds?->id ?? $pedido['id'])
                 ->whereIn('ART_CODIGO', $codigos)
                 ->where('trasladado', '>', 0)
                 ->exists();
