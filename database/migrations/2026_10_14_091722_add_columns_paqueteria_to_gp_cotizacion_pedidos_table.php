@@ -26,22 +26,22 @@ return new class extends Migration
                 ->constrained('tipo_despachos')
                 ->nullOnDelete();
             $table->string('responsable_flete',)->nullable();
-            $table->foreignId('proveedor_despacho_id')
+            $table->foreignId('fle_proveedor_id')
                 ->after('cliente_id')->nullable()
                 ->constrained('gp_proveedors')
                 ->nullOnDelete();
             $table->decimal('peso', 11, 2)->default(0)->after('modificador_global');
-            $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
+            $table->decimal('fle_peso', 11, 2)->default(0)->after('peso');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('fle_peso');
 
-            $table->foreignId('usuario_flete_id')
-                ->after('peso_flete')->nullable()
+            $table->foreignId('fle_usuario_id')
+                ->after('fle_peso')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
-            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
-            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
-            $table->foreignId('usuario_flete_autorizador_id')
-                ->after('fecha_flete_autorizacion')->nullable()
+            $table->dateTime('fle_fecha')->nullable()->after('fle_usuario_id');
+            $table->dateTime('fle_fecha_aut')->nullable()->after('fle_fecha');
+            $table->foreignId('fle_usuario_aut_id')
+                ->after('fle_fecha_aut')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
         });
@@ -52,8 +52,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('gp_articulos')
                 ->nullOnDelete();
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('validador_l');
-            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('monto_flete');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('validador_l');
+            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('fle_valor');
             $table->string('lista_precio')->after('precio_sin_flete')->nullable();
         });
         Schema::table('hi_cotizacion', function (Blueprint $table) {
@@ -70,21 +70,21 @@ return new class extends Migration
                 ->constrained('tipo_despachos')
                 ->nullOnDelete();
             $table->string('responsable_flete',)->nullable();
-            $table->foreignId('proveedor_despacho_id')
+            $table->foreignId('fle_proveedor_id')
                 ->after('cliente_id')->nullable()
                 ->constrained('gp_proveedors')
                 ->nullOnDelete();
             $table->decimal('peso', 11, 2)->default(0)->after('total');
-            $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
-            $table->foreignId('usuario_flete_id')
-                ->after('peso_flete')->nullable()
+            $table->decimal('fle_peso', 11, 2)->default(0)->after('peso');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('fle_peso');
+            $table->foreignId('fle_usuario_id')
+                ->after('fle_peso')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
-            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
-            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
-            $table->foreignId('usuario_flete_autorizador_id')
-                ->after('fecha_flete_autorizacion')->nullable()
+            $table->dateTime('fle_fecha')->nullable()->after('fle_usuario_id');
+            $table->dateTime('fle_fecha_aut')->nullable()->after('fle_fecha');
+            $table->foreignId('fle_usuario_aut_id')
+                ->after('fle_fecha_aut')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
         });
@@ -94,8 +94,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('gp_articulos')
                 ->nullOnDelete();
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('validador_l');
-            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('monto_flete');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('validador_l');
+            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('fle_valor');
             $table->string('lista_precio')->after('precio_sin_flete')->nullable();
         });
 
@@ -113,21 +113,21 @@ return new class extends Migration
                 ->constrained('tipo_despachos')
                 ->nullOnDelete();
             $table->string('responsable_flete',)->nullable();
-            $table->foreignId('proveedor_despacho_id')
+            $table->foreignId('fle_proveedor_id')
                 ->after('cliente_id')->nullable()
                 ->constrained('gp_proveedors')
                 ->nullOnDelete();
             $table->decimal('peso', 11, 2)->default(0)->after('modificador_global');
-            $table->decimal('peso_flete', 11, 2)->default(0)->after('peso');
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('peso_flete');
-            $table->foreignId('usuario_flete_id')
-                ->after('peso_flete')->nullable()
+            $table->decimal('fle_peso', 11, 2)->default(0)->after('peso');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('fle_peso');
+            $table->foreignId('fle_usuario_id')
+                ->after('fle_peso')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
-            $table->dateTime('fecha_flete')->nullable()->after('usuario_flete_id');
-            $table->dateTime('fecha_flete_autorizacion')->nullable()->after('fecha_flete');
-            $table->foreignId('usuario_flete_autorizador_id')
-                ->after('fecha_flete_autorizacion')->nullable()
+            $table->dateTime('fle_fecha')->nullable()->after('fle_usuario_id');
+            $table->dateTime('fle_fecha_aut')->nullable()->after('fle_fecha');
+            $table->foreignId('fle_usuario_aut_id')
+                ->after('fle_fecha_aut')->nullable()
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
         });
@@ -137,8 +137,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('gp_articulos')
                 ->nullOnDelete();
-            $table->decimal('monto_flete', 11, 2)->default(0)->after('validador_l');
-            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('monto_flete');
+            $table->decimal('fle_valor', 11, 2)->default(0)->after('validador_l');
+            $table->decimal('precio_sin_flete', 11, 4)->default(0)->after('fle_valor');
             $table->string('lista_precio')->after('precio_sin_flete')->nullable();
         });
 
@@ -173,19 +173,19 @@ return new class extends Migration
         foreach (['gp_pedido_detalles', 'hi_cotizacion_detalles', 'gp_cotizacion_detalles'] as $table) {
             Schema::table($table, function (Blueprint $table) {
                 $table->dropConstrainedForeignId('art_id');
-                $table->dropColumn(['monto_flete', 'precio_sin_flete', 'lista_precio']);
+                $table->dropColumn(['fle_valor', 'precio_sin_flete', 'lista_precio']);
             });
         }
 
         foreach (['gp_pedidos', 'hi_cotizacion', 'gp_cotizacions'] as $table) {
             Schema::table($table, function (Blueprint $table) {
                 $table->dropConstrainedForeignId('pv_id');
-                $table->dropConstrainedForeignId('usuario_flete_id');
-                $table->dropConstrainedForeignId('usuario_flete_autorizador_id');
+                $table->dropConstrainedForeignId('fle_usuario_id');
+                $table->dropConstrainedForeignId('fle_usuario_aut_id');
                 $table->dropConstrainedForeignId('vendedor_id');
                 $table->dropConstrainedForeignId('tipo_despacho_id');
-                $table->dropConstrainedForeignId('proveedor_despacho_id');
-                $table->dropColumn(['responsable_flete', 'peso', 'peso_flete', 'monto_flete', 'fecha_flete', 'fecha_flete_autorizacion']);
+                $table->dropConstrainedForeignId('fle_proveedor_id');
+                $table->dropColumn(['responsable_flete', 'peso', 'fle_peso', 'fle_valor', 'fle_fecha', 'fle_fecha_aut']);
             });
         }
     }

@@ -18,6 +18,8 @@ return new class extends Migration
                 ->constrained('gp_usuarios')
                 ->nullOnDelete();
             $table->dateTime('fecha_modificacion')->nullable()->after('usuario_modifica_id');
+            $table->foreignId('fle_usuario_id')->nullable()->constrained('gp_usuarios')->nullOnDelete();
+            $table->dateTime('fle_fecha')->nullable();
         });
     }
 
@@ -27,7 +29,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('gp_proveedors', function (Blueprint $table) {
-            $table->dropColumn(['es_transportista', 'usuario_modifica_id', 'fecha_modificacion']);
+            $table->dropConstrainedForeignId('fle_usuario_id');
+            $table->dropConstrainedForeignId('usuario_modifica_id');
+            $table->dropColumn(['es_transportista', 'fecha_modificacion', 'fle_fecha']);
         });
     }
 };

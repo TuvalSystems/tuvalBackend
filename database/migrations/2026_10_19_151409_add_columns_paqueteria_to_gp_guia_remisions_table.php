@@ -24,23 +24,22 @@ return new class extends Migration
                 ->constrained('tipo_despachos')
                 ->nullOnDelete();
 
-            $table->foreignId('proveedor_despacho_id')
+            $table->foreignId('fle_proveedor_id')
                 ->after('tipo_despacho_id')->nullable()
                 ->constrained('gp_proveedors')
                 ->nullOnDelete();
 
-            $table->foreignId('chofer_transportista_id')
-                ->after('proveedor_despacho_id')->nullable()
-                ->constrained('chofer_transportistas')
+            $table->foreignId('fle_externo_id')
+                ->after('fle_proveedor_id')->nullable()
+                ->constrained('flete_externos')
                 ->nullOnDelete();
-            $table->string('numero_orden_compra_gp')
-                ->after('chofer_transportista_id')
-                ->nullable();
-            $table->decimal('monto_orden_compra', 11, 2)
-                ->after('numero_orden_compra_gp')
+
+            $table->decimal('valor_orden_compra', 11, 2)
+                ->after('fle_externo_id')
                 ->nullable();
             $table->boolean('requiere_orden_compra')->default(false)
-                ->after('monto_orden_compra');
+                ->after('valor_orden_compra');
+            $table->boolean('oc_generada')->default(false)->after('requiere_orden_compra');
         });
     }
 
@@ -52,13 +51,13 @@ return new class extends Migration
         Schema::table('gp_guia_remisions', function (Blueprint $table) {
             $table->dropConstrainedForeignId('sucursal_destinatario_id');
             $table->dropConstrainedForeignId('tipo_despacho_id');
-            $table->dropConstrainedForeignId('proveedor_despacho_id');
-            $table->dropConstrainedForeignId('chofer_transportista_id');
+            $table->dropConstrainedForeignId('fle_proveedor_id');
+            $table->dropConstrainedForeignId('fle_externo_id');
 
             $table->dropColumn([
-                'numero_orden_compra_gp',
-                'monto_orden_compra',
+                'valor_orden_compra',
                 'requiere_orden_compra',
+                'oc_generada',
             ]);
         });
     }

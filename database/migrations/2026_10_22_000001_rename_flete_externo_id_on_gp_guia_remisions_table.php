@@ -1,22 +1,18 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
+// Se conserva el identificador registrado en pruebas.
+// Las migraciones de origen ya crean el esquema definitivo de paqueteria.
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('gp_guia_remisions', function (Blueprint $table) {
-            $table->renameColumn('flete_externo_id', 'fle_externo_id');
-        });
+        // Sin renombres, reordenamientos ni traslados intermedios.
     }
 
     public function down(): void
     {
-        Schema::table('gp_guia_remisions', function (Blueprint $table) {
-            $table->renameColumn('fle_externo_id', 'flete_externo_id');
-        });
+        // La migracion de origen revierte los campos que crea.
     }
 };
