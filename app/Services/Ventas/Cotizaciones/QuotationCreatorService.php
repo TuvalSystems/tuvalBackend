@@ -2,6 +2,7 @@
 
 namespace App\Services\Ventas\Cotizaciones;
 
+use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Enums\Ventas\QuotationMode;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
@@ -34,6 +35,7 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 {
 
     public function __construct(
+        protected readonly IdempotentSaveServiceInterface $idempotentSave,
         protected readonly QuotationRepositoryInterface $repository,
         protected readonly QuotationBuilderInterface $builder,
         protected readonly ApprovalQuotationServiceInterface $approval,
@@ -45,48 +47,51 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
 
     public function createOrUpdate(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings  = [], array $pfdsNew  = []): GpCotizacion
     {
-        return DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
-            $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
-            $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
-            $client                 = GpCliente::find(data_get($data, 'cliente_id'));
-            $pointSales             = GpPuntoVenta::find(data_get($data, 'pv_id'));
-            $clientConfig           = ClienteConfiguracion::where('pv_id', $pointSales->id)
-                ->where('cliente_id', $client->id)
-                ->where('estado', 1)
-                ->firstOrFail();
-            $typeDispatch = TipoDespacho::where('id', data_get($data, 'tipo_despacho_id'))->first();
+        return $this->idempotentSave->execute(
+            ($data["mode"] ?? "create") === QuotationMode::UPDATE->value ? "cotizacion:update" : "cotizacion:create", (int) $user->id, $data, GpCotizacion::class,
+            fn () => DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
+                $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
+                $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
+                $client                 = GpCliente::find(data_get($data, 'cliente_id'));
+                $pointSales             = GpPuntoVenta::find(data_get($data, 'pv_id'));
+                $clientConfig           = ClienteConfiguracion::where('pv_id', $pointSales->id)
+                    ->where('cliente_id', $client->id)
+                    ->where('estado', 1)
+                    ->firstOrFail();
+                $typeDispatch = TipoDespacho::where('id', data_get($data, 'tipo_despacho_id'))->first();
 
-            if (!$clientConfig) {
-                throw new \RuntimeException("No se ha encontrado la configuración de este cliente");
-            }
-            $seller = GpVendedor::where('id', $clientConfig->vendedor_id)->firstOrFail();
-            // --- VALIDACIONES DE NEGOCIO ---
-            if ($direccionFacturacion) {
-                $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
-            }
+                if (!$clientConfig) {
+                    throw new \RuntimeException("No se ha encontrado la configuración de este cliente");
+                }
+                $seller = GpVendedor::where('id', $clientConfig->vendedor_id)->firstOrFail();
+                // --- VALIDACIONES DE NEGOCIO ---
+                if ($direccionFacturacion) {
+                    $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
+                }
 
-            if ($direccionDespacho) {
-                $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
-            }
+                if ($direccionDespacho) {
+                    $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
+                }
 
-            $cotizacion = $this->prepareQuotationHeader($data, $client, $pointSales, $typeDispatch, $seller, $user);
-            $this->saveQuotationDetails($cotizacion->id, $client->CLI_NIVEL_PRECIO, $data['items'] ?? [], $cotizacion->wasRecentlyCreated);
-            $registerCopyId = data_get($data, 'registro_copia', null);
-            if (!empty($registerCopyId)) {
-                $this->updateRegisterCopyQuotation($registerCopyId, $cotizacion->id);
-            }
-            if ($cotizacion->wasRecentlyCreated) {
-                $cotizacion->refresh();
-            }
-            $this->syncImages($cotizacion, $existingImages, $newImages);
-            $this->syncPdfs($cotizacion, $pfdsExistings, $pfdsNew);
-            $mode = data_get($data, 'mode', 'create');
-            if ($mode == QuotationMode::UPDATE->value) {
-                $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
-            }
-            $this->history->createQuoteHistory($cotizacion);
-            return $cotizacion;
-        });
+                $cotizacion = $this->prepareQuotationHeader($data, $client, $pointSales, $typeDispatch, $seller, $user);
+                $this->saveQuotationDetails($cotizacion->id, $client->CLI_NIVEL_PRECIO, $data['items'] ?? [], $cotizacion->wasRecentlyCreated);
+                $registerCopyId = data_get($data, 'registro_copia', null);
+                if (!empty($registerCopyId)) {
+                    $this->updateRegisterCopyQuotation($registerCopyId, $cotizacion->id);
+                }
+                if ($cotizacion->wasRecentlyCreated) {
+                    $cotizacion->refresh();
+                }
+                $this->syncImages($cotizacion, $existingImages, $newImages);
+                $this->syncPdfs($cotizacion, $pfdsExistings, $pfdsNew);
+                $mode = data_get($data, 'mode', 'create');
+                if ($mode == QuotationMode::UPDATE->value) {
+                    $cotizacion->update(['estado' => 'procesado', 'facturado' => 1]);
+                }
+                $this->history->createQuoteHistory($cotizacion);
+                return $cotizacion;
+            })
+        );
     }
 
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ventas\Cotizaciones;
 
+use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Enums\Ventas\TaxRateEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Integraciones\Sincronizacion\GpCronLog;
@@ -39,6 +40,7 @@ class CotizacionesController extends Controller
     private const LOG_CHANNEL = 'cotizacion';
 
     public function __construct(
+        protected readonly IdempotentSaveServiceInterface $idempotentSave,
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
@@ -59,7 +61,7 @@ class CotizacionesController extends Controller
             $pdfsNuevos             = $request->file('pdfs_nuevos', []);
             $pdfsExistentes         = $request->input('pdfs_existentes', []);
             $cotizacion = $this->quotationCreator->createOrUpdate(
-                $request->validated(),
+                $this->idempotentSave->requestData($request),
                 $user,
                 $imagenesExistentes,
                 $imagenesNuevas,

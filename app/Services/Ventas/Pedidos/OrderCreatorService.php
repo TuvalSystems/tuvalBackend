@@ -2,6 +2,7 @@
 
 namespace App\Services\Ventas\Pedidos;
 
+use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
@@ -34,6 +35,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
 {
 
     public function __construct(
+        protected readonly IdempotentSaveServiceInterface $idempotentSave,
         protected readonly OrderBuilderInterface $builder,
         protected readonly ApprovalOrderServiceInterface $approval,
         protected readonly StockWarehouseServiceInterface $stockService,
@@ -44,59 +46,71 @@ class OrderCreatorService implements OrderCreatorServiceInterface
     }
     public function createOrder(array $data, GpUsuario $user, array $existingImages = [], array $newImages = [], array $pfdsExistings = [], array $pfdsNew = []): array
     {
-        $pedido = DB::transaction(function () use ($data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
-            $quotationId            = data_get($data, 'cotizacion_id');
-            if (!$quotationId) {
-                throw new \DomainException('La cotizacion es obligatoria para crear el pedido.');
-            }
+        $nuevoPedido = false;
+        $pedido = $this->idempotentSave->execute(
+            "pedido", (int) $user->id, $data, GpPedido::class,
+            function () use ($data, $user, $existingImages, $newImages, $pfdsExistings, $pfdsNew, &$nuevoPedido) {
+                return DB::transaction(function () use (&$nuevoPedido, $data, $user,  $existingImages, $newImages, $pfdsExistings, $pfdsNew) {
+                    $quotationId            = data_get($data, 'cotizacion_id');
+                    if (!$quotationId) {
+                        throw new \DomainException('La cotizacion es obligatoria para crear el pedido.');
+                    }
 
-            $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
-            $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
-            if ($direccionFacturacion) {
-                $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
-            }
+                    $direccionFacturacion   = (int) data_get($data, 'direccion_facturacion_id');
+                    $direccionDespacho      = (int)data_get($data, 'direccion_entrega_id');
+                    if ($direccionFacturacion) {
+                        $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');
+                    }
 
-            if ($direccionDespacho) {
-                $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
-            }
-            $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
-            if (!$quoteBlock) {
-                throw new \DomainException('La cotizacion no existe o no esta disponible.');
-            }
+                    if ($direccionDespacho) {
+                        $this->orderAndQuotationService->validateActiveSucursal($direccionDespacho, 'despacho/entrega');
+                    }
+                    $quoteBlock = GpCotizacion::where('id', $quotationId)->lockForUpdate()->first();
+                    if (!$quoteBlock) {
+                        throw new \DomainException('La cotizacion no existe o no esta disponible.');
+                    }
 
-            $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
-                ->whereNotIn('estado', [
-                    OrderStatus::ANULADA->value,
-                    OrderStatus::ELIMINADO->value,
-                    OrderStatus::RECHAZADO->value,
-                ])
-                ->oldest('id')
-                ->lockForUpdate()
-                ->first();
+                    $pedidoExistente = GpPedido::where('cotizacion_id', $quoteBlock->id)
+                        ->whereNotIn('estado', [
+                            OrderStatus::ANULADA->value,
+                            OrderStatus::ELIMINADO->value,
+                            OrderStatus::RECHAZADO->value,
+                        ])
+                        ->oldest('id')
+                        ->lockForUpdate()
+                        ->first();
 
-            if ($pedidoExistente) {
-                Log::warning("Intento duplicado de creacion de pedido para cotizacion {$quotationId}. Se retorna pedido existente {$pedidoExistente->pedido}.");
-                return $pedidoExistente;
-            }
+                    if ($pedidoExistente) {
+                        Log::warning("Intento duplicado de creacion de pedido para cotizacion {$quotationId}. Se retorna pedido existente {$pedidoExistente->pedido}.");
+                        return $pedidoExistente;
+                    }
 
-            if ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1) {
-                Log::warning("Inconsistencia detectada: Cotización {$quotationId} estaba marcada como procesada pero sin pedido. Creando pedido ahora...");
-            }
+                    if ($quoteBlock->estado === 'procesado' || $quoteBlock->facturado == 1) {
+                        Log::warning("Inconsistencia detectada: Cotización {$quotationId} estaba marcada como procesada pero sin pedido. Creando pedido ahora...");
+                    }
 
-            $pedido = $this->prepareOrderHeader($data, $user);
-            if (!empty($data['items'])) {
-                $this->saveOrderDetails($pedido, $data['items'] ?? []);
-            }
-            $this->syncImages($pedido, $existingImages, $newImages);
-            $this->syncPdfs($pedido, $pfdsExistings, $pfdsNew);
-            if ($pedido->exists && $pedido->cotizacion_id) {
-                $quoteBlock->estado = 'procesado';
-                $quoteBlock->facturado = 1;
-                $quoteBlock->save();
-            }
+                    $nuevoPedido = true;
+                    $pedido = $this->prepareOrderHeader($data, $user);
+                    if (!empty($data['items'])) {
+                        $this->saveOrderDetails($pedido, $data['items'] ?? []);
+                    }
+                    $this->syncImages($pedido, $existingImages, $newImages);
+                    $this->syncPdfs($pedido, $pfdsExistings, $pfdsNew);
+                    if ($pedido->exists && $pedido->cotizacion_id) {
+                        $quoteBlock->estado = 'procesado';
+                        $quoteBlock->facturado = 1;
+                        $quoteBlock->save();
+                    }
 
-            return $pedido;
-        });
+                    return $pedido;
+                });
+            }
+        );
+
+        // Un reintento no debe repetir la facturación ni otros efectos externos.
+        if (!$nuevoPedido) {
+            return ["pedido" => $pedido->refresh(), "invoice_error" => null];
+        }
 
         $invoiceError = null;
         try {

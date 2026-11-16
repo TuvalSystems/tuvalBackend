@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ventas\Pedidos;
 
+use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\Ventas\Pedidos\GpPedido;
 use App\Services\Compartido\Contracts\FunctionsServiceInterface;
@@ -40,6 +41,7 @@ class PedidosController extends Controller
     private const LOG_CHANNEL = 'pedido';
 
     public function __construct(
+        protected readonly IdempotentSaveServiceInterface $idempotentSave,
         protected readonly ApiGpService $apiGp,
         protected readonly OrderServiceInterface $orderService,
         protected readonly InvoiceServiceInterface $invoiceService,
@@ -65,10 +67,11 @@ class PedidosController extends Controller
         $maxRetries         = 3;
         $attempt            = 0;
         $user               = $request->user();
+        $validatedData = $this->idempotentSave->requestData($request);
         while (true) {
             try {
                 $pedido         =  $this->orderCreator->createOrder(
-                    $request->validated(),
+                    $validatedData,
                     $user,
                     $imagenesExistentes,
                     $imagenesNuevas,
@@ -106,6 +109,8 @@ class PedidosController extends Controller
                     'trace'     => $e->getTraceAsString(),
                 ]);
                 return $this->buildErrorResponse('No se pudo guardar el pedido, intente de nuevo.', 500);
+            } catch (HttpException $e) {
+                return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
             } catch (DomainException $e) {
                 // 👈 este es el que puede lanzar tu flujo de stock
                 return $this->buildErrorResponse($e->getMessage(), 422);

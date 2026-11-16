@@ -2,6 +2,8 @@
 
 namespace App\Providers\Service;
 
+use App\Services\Ventas\Compartido\IdempotentSaveService;
+use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Services\Ventas\Pedidos\Importaciones\Contracts\OrdersImportInterface;
 use App\Services\Ventas\Cotizaciones\Importaciones\Contracts\QuoteImportsInterface;
 use App\Services\Ventas\Pedidos\Importaciones\OrdersImport;
@@ -54,6 +56,7 @@ class VentaServiceProvider extends ServiceProvider implements DeferrableProvider
 {
 
     public array $singletons = [
+        IdempotentSaveServiceInterface::class            => IdempotentSaveService::class,
         QuotationServiceInterface::class                => QuotationService::class,
         PurchaseOrderServiceInterface::class            => PurchaseOrderService::class,
         InventoryQueryServiceInterface::class           => InventoryQueryService::class,
