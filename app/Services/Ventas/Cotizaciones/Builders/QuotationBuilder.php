@@ -427,6 +427,7 @@ class QuotationBuilder implements QuotationBuilderInterface
             'ART_VALOR'                         => (float)data_get($art, 'ART_VALOR'),
             // El borrador se crea sin flete; su precio base es el valor del artículo.
             'precio_sin_flete'                  => (float)data_get($art, 'ART_VALOR'),
+            'lista_precio'                      => $cliente->CLI_NIVEL_PRECIO,
             'ART_VALOR_ORIGINAL'                => (float)data_get($art, 'ART_VALOR_ORIGINAL'),
             'ART_DESCUENTO'                     => 0,
             'ART_IVA'                           => (float)data_get($art, 'ART_IMP_VTA'),

@@ -54,6 +54,10 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
 
             $groupPrices = $this->getPriceListGroupedByArticle($articles);
             $this->identifyGroupPricesToArticle($articles, $groupPrices, $client);
+            [$articles, $included, $omitted] = $this->omitArticlesWithoutPrice($articles, $included, $omitted);
+            if (!$articles) {
+                return ['id' => null, 'numero' => null, 'incluidos' => [], 'omitidos' => $omitted, 'advertencias' => $warnings];
+            }
 
             $quote = $this->saveDraftHeader($user, $client, $headerInfo, $seller);
             $this->saveDraftDetails($articles, $quote->id, $client);
@@ -331,6 +335,27 @@ class QuotationItemsDraftService implements QuotationItemsDraftServiceInterface
             $article->ART_VALOR = round($value, 4);
             $article->ART_VALOR_ORIGINAL = round($value, 4);
         }
+    }
+
+    protected function omitArticlesWithoutPrice(array $articles, array $included, array $omitted): array
+    {
+        $pricedArticles = [];
+        $pricedIncluded = [];
+        foreach ($articles as $index => $article) {
+            $price = (float) $article->ART_VALOR;
+            // Los ítems L reciben su precio al editar la cotización.
+            $isTypeL = strtoupper(trim((string) $article->ART_TIPO_COMPRA)) === 'L';
+            if (!$isTypeL && (!is_finite($price) || $price <= 0)) {
+                $omitted[] = array_merge($included[$index], [
+                    'razones' => ['El artículo se omite porque no tiene un precio de venta mayor a cero para crear el borrador.'],
+                ]);
+                continue;
+            }
+            $pricedArticles[] = $article;
+            $pricedIncluded[] = $included[$index];
+        }
+
+        return [$pricedArticles, $pricedIncluded, $omitted];
     }
 
     protected function saveDraftHeader(GpUsuario $user, GpCliente $client, array $info, GpVendedor $seller): GpCotizacion

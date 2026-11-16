@@ -183,7 +183,11 @@ class ApprovalQuotationService implements ApprovalQuotationServiceInterface
                 $porcMaxSubida  = (float) $ptoVenta->PTO_VTA_MAXIMO_PORC_SUBIDA_PRECIO;
                 $precioLimite   = $valorOriginal * (1 + ($porcMaxSubida / 100));
 
-                if ($price > $precioLimite) {
+                if ($valorOriginal <= 0) {
+                    $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse(
+                        "El ítem {$artCode} no tiene un precio original mayor a cero; requiere aprobación y no se puede calcular el porcentaje de incremento."
+                    );
+                } elseif ($price > $precioLimite) {
                     $exceso = $price - $precioLimite;
                     $excesoPct = round(($exceso / $valorOriginal) * 100, 2);
                     $detailMotivos[] = $this->approvalFuntions->requiredApprovalResponse("El valor del producto ({$price}) supera el límite permitido de {$porcMaxSubida}% "

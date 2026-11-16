@@ -486,6 +486,9 @@ class OrderAndQuotationService implements OrderAndQuotationServiceInterface
             $item->save();
         }
         $qt->subtotal                   = round($subtotal, 2);
+        if ($qt->estado === 'borrador_app') {
+            $qt->peso = round($qtds->sum(fn ($item) => (float) $item->ART_PESO * (float) $item->ART_CANTIDAD), 2);
+        }
         $qt->descuento                  = round($totalDiscount, 2);
         $qt->subtotalmenosdescuento     = round($netSubtotal, 2);
         $qt->iva                        = round($totalIva, 2);
