@@ -8,18 +8,18 @@ Parametros HTTP (en minusculas, sin prefijo p_):
 - factura: opcional, numero de factura del pedido, hasta 100 caracteres.
 - cliente: opcional, RUC exacto, hasta 100 caracteres; conservar ceros iniciales.
 - sucursal: opcional, codigo textual PTO_VTA_ID de agencia/punto de venta, hasta 10 caracteres; conservar ceros iniciales (005).
-- aprobador_final: opcional, ID positivo BIGINT UNSIGNED de gp_usuarios.
+- aprobador_final: opcional, nombre de usuario gp_usuarios.USERID (por ejemplo storres), hasta 100 caracteres.
 
-Texto vacio o solo espacios se normaliza a NULL; los ID tambien admiten
-vacio o ausencia como NULL. Cero no desactiva filtros.
-Los identificadores se transportan como cadenas para conservar su precision.
+Texto vacio o solo espacios se normaliza a NULL; omitir un filtro tambien
+lo desactiva. aprobador_final se envia como USERID, no como ID numerico.
+Los filtros de texto conservan su contenido despues de recortar espacios.
 tipo_documento y documento_id fueron retirados: valores presentes no vacios
 devuelven HTTP 422. periodo ausente, vacio o invalido devuelve HTTP 422.
 
 Ejemplos:
 GET /api/reportes/aprobaciones-comerciales?periodo=202611
 GET /api/reportes/aprobaciones-comerciales?periodo=202611&cotizacion=COT-001
-GET /api/reportes/aprobaciones-comerciales?periodo=202611&cliente=0012345678001&sucursal=005&aprobador_final=15
+GET /api/reportes/aprobaciones-comerciales?periodo=202611&cliente=0012345678001&sucursal=005&aprobador_final=storres
 
 El repositorio ejecuta en la conexion mysql, mediante parametros enlazados:
 CALL tuvalapi.sp_consultar_aprobaciones_pedido(?, ?, ?, ?, ?, ?)
@@ -33,7 +33,8 @@ El nombre HTTP sucursal se conserva, pero ahora filtra por agencia/punto de vent
 Ya no filtra por sucursal_id del cliente. No convertir 005 a 5.
 
 Despliegue: requiere el SP de seis parametros instalado en cada entorno,
-con p_Sucursal textual y comparacion exacta contra PTO_VTA_ID.
+con p_Sucursal textual y comparacion exacta contra PTO_VTA_ID,
+y p_AprobadorFinal textual que filtre por gp_usuarios.USERID.
 Este cambio no instala ni modifica procedimientos ni corrige su rendimiento.
 Actualizar los consumidores del contrato anterior al desplegar la API.
 Se conservan la ruta GET, middleware y formato de respuesta existentes.

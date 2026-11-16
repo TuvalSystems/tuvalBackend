@@ -37,22 +37,10 @@ class ConsultarAprobacionesComercialesRequest extends FormRequest
             'factura' => ['nullable', 'string', 'max:100'],
             'cliente' => ['nullable', 'string', 'max:100'],
             'sucursal' => ['nullable', 'string', 'max:10'],
-            'aprobador_final' => $this->unsignedIdRules(),
+            'aprobador_final' => ['nullable', 'string', 'max:100'],
             'periodo' => ['bail', 'required', 'string', 'regex:/\A[1-9][0-9]{3}(0[1-9]|1[0-2])\z/', 'not_in:999912'],
             'tipo_documento' => ['prohibited'],
             'documento_id' => ['prohibited'],
-        ];
-    }
-
-    private function unsignedIdRules(): array
-    {
-        return [
-            'bail', 'nullable', 'regex:/\A[1-9][0-9]{0,19}\z/',
-            static function (string $attribute, mixed $value, \Closure $fail): void {
-                if (strlen((string) $value) === 20 && strcmp((string) $value, '18446744073709551615') > 0) {
-                    $fail('El campo '.$attribute.' excede el rango BIGINT UNSIGNED.');
-                }
-            },
         ];
     }
 
