@@ -232,6 +232,20 @@ class QuotationImageExtractionService
             Une descripción, medidas y referencias de las columnas de una misma fila,
             aunque ocupen varias líneas visuales; no mezcles datos de artículos distintos.
             Desarrolla abreviaturas solo si son claras en contexto, como hn a hierro negro.
+            Cuando Galv o Galv. esté legible como característica de un artículo metálico
+            (por ejemplo tol, plancha o tubo), desarrolla galvanizado o galvanizada según
+            el producto y colócalo antes de las medidas. No lo conviertas en Gold ni en
+            una marca: si los trazos admiten ambas lecturas, conserva el fragmento y
+            explica la duda en observacion con requiere_revision=true.
+            Cuando ng o ng. esté legible como característica de una plancha, tubo u otro
+            artículo metálico, desarrolla negro o negra solo si el contexto lo confirma.
+            Ejemplos con datos explícitos: plancha 15 mm ng => plancha negra 15 mm;
+            plancha 3 mm ng lisa => plancha negra lisa 3 mm;
+            tol Galv 0,45 => tol galvanizado 0,45, sin agregar una unidad ausente.
+            Estas equivalencias se aplican a abreviaturas independientes, no a fragmentos
+            dentro de códigos, referencias o marcas. No añadas hierro, acero, acabado,
+            marca ni unidades que no estén indicados. Una abreviatura clara no aclara
+            automáticamente otra palabra dudosa de la misma fila; señálala por separado.
             Corrige errores ortográficos evidentes sin alterar referencias del fabricante.
             Conserva el orden de las dimensiones, fracciones y códigos con sus separadores.
             No asignes roles como diámetro o espesor si no están claros en la imagen.
