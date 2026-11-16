@@ -62,13 +62,20 @@ class CommercialApprovalsParametersTest extends TestCase
         }
     }
 
-    public function test_unsigned_ids_keep_precision_and_reject_invalid_values(): void
+    public function test_approver_username_is_normalized_and_validated_as_text(): void
     {
-        foreach (['aprobador_final'] as $field) {
-            self::assertTrue($this->validator(['periodo' => '202611', $field => '18446744073709551615'])->passes());
-            foreach (['0', '-1', '1.5', '1e3', '01', '18446744073709551616', ['1']] as $value) {
-                self::assertTrue($this->validator(['periodo' => '202611', $field => $value])->fails());
-            }
+        foreach (['storres', 'usuario.nombre', 'user_01', str_repeat('a', 100)] as $username) {
+            $validator = $this->validator(['periodo' => '202611', 'aprobador_final' => ' '.$username.' ']);
+            self::assertTrue($validator->passes());
+            self::assertSame($username, $validator->validated()['aprobador_final']);
+        }
+        foreach ([null, '', '   '] as $empty) {
+            $validator = $this->validator(['periodo' => '202611', 'aprobador_final' => $empty]);
+            self::assertTrue($validator->passes());
+            self::assertNull($validator->validated()['aprobador_final']);
+        }
+        foreach ([['storres'], 167, str_repeat('a', 101)] as $invalid) {
+            self::assertTrue($this->validator(['periodo' => '202611', 'aprobador_final' => $invalid])->fails());
         }
     }
 
@@ -109,14 +116,14 @@ class CommercialApprovalsParametersTest extends TestCase
         Facade::setFacadeApplication($container);
         $connection->shouldReceive('select')->once()->with(
             'CALL tuvalapi.sp_consultar_aprobaciones_pedido(?, ?, ?, ?, ?, ?)',
-            ['COT-1', '001-002-123', '0012345678001', '005', '18446744073709551615', '202611'],
+            ['COT-1', '001-002-123', '0012345678001', '005', 'storres', '202611'],
         )->andReturn([(object) [
             'factura' => '001-002-123', 'punto_venta' => 'MATRIZ',
             'fuente_aprobador_final' => 'hi_cotizacion',
             'DetalleJson' => '{"id":18446744073709551615}',
         ]]);
         $service = new CommercialApprovalsService(new AprobacionesComercialesRepository());
-        $rows = $service->getApprovals('COT-1', '001-002-123', '0012345678001', '005', '18446744073709551615', '202611');
+        $rows = $service->getApprovals('COT-1', '001-002-123', '0012345678001', '005', 'storres', '202611');
         self::assertSame('MATRIZ', $rows[0]['punto_venta']);
         self::assertSame('hi_cotizacion', $rows[0]['fuente_aprobador_final']);
         self::assertSame('18446744073709551615', $rows[0]['DetalleJson']->id);
