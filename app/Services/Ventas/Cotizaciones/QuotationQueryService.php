@@ -33,6 +33,8 @@ class QuotationQueryService
             ->with('reserva:id,cotizacion_id,fe_solicitud_reserva')
             ->where('gp_cotizacions.pv_id', $puntoVenta->id);
         $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user, $puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
+        // Sólo existía el filtro de punto: el servicio comercial agrega usuarios.
+        $hasVisibilityLimit = count($cotizaciones->getQuery()->wheres) > 1;
         $data['estado'] = $data['estado'] ?? '';
         if ($data['estado'] == 'pendientes') {
             $cotizaciones = $cotizaciones
@@ -80,10 +82,43 @@ class QuotationQueryService
         }
         $sort = in_array($data['sortField'] ?? '', self::SORT_FIELDS, true) ? $data['sortField'] : 'created_at';
         $order = ($data['sortOrder'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $searching = ($data['search'] ?? '') !== '' || ($data['cotizacion_filtro'] ?? '') !== '';
+        $mysql = $cotizaciones->getConnection()->getDriverName() === 'mysql';
+        $total = null;
+        if ($mysql && $data['estado'] !== 'prospectos') {
+            // El índice de prospectos sólo es selectivo con cliente_id IS NULL.
+            $cotizaciones->ignoreIndex('idx_cot_list_prospectos');
+        }
+        if ($searching) {
+            // Resolver la página sobre el índice de búsqueda; hidratar sólo sus cabeceras.
+            $cotizaciones->select('gp_cotizacions.id')->without('reserva');
+            if ($mysql) {
+                // LIKE lleva al optimizador a elegir índices cortos y leer cabeceras
+                // masivamente. Usar cobertura salvo los filtros más selectivos.
+                $index = $hasVisibilityLimit ? 'idx_cot_list_pv_usuario'
+                    : ($data['estado'] === 'prospectos' ? 'idx_cot_list_prospectos' : 'idx_cot_list_busqueda');
+                $cotizaciones->forceIndex($index);
+                if (!$hasVisibilityLimit && $data['estado'] !== 'prospectos'
+                    && ($data['estado'] === 'pendientes' || !empty($data['cotizacion_filtro']))
+                    && (empty($data['fecha_desde']) || empty($data['fecha_hasta']))) {
+                    // Para estos filtros el conteo descarta casi todas las filas
+                    // con el índice pequeño. La página usa la cobertura y su orden.
+                    $total = fn () => (clone $cotizaciones)->forceIndex('idx_cot_list_pv_estado')
+                        ->toBase()->getCountForPagination();
+                }
+            }
+        }
         $page = $cotizaciones->orderBy("gp_cotizacions.$sort", $order)->orderBy('gp_cotizacions.id', $order)
-            ->paginate(min(100, max(1, (int) ($data['perPage'] ?? 20))), ['*'], 'page', $data['page'] ?? 1);
+            ->paginate(min(100, max(1, (int) ($data['perPage'] ?? 20))), ['*'], 'page', $data['page'] ?? 1, $total);
         $ids = $page->getCollection()->pluck('id');
         if ($ids->isEmpty()) return $page;
+
+        if ($searching) {
+            $headers = GpCotizacion::query()->select($fields)
+                ->with('reserva:id,cotizacion_id,fe_solicitud_reserva')
+                ->whereIn('id', $ids)->get()->keyBy('id');
+            $page->setCollection($ids->map(fn ($id) => $headers->get($id))->filter()->values());
+        }
 
         // Consultas por página: nunca serializar los accessors que consultan por fila.
         $details = GpCotizacionDetalle::query()->whereIn('cotizacion_id', $ids)
