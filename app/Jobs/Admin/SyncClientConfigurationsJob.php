@@ -3,6 +3,7 @@
 namespace App\Jobs\Admin;
 
 use App\Enums\Admin\Sync\StatusSync;
+use App\Exceptions\ClientConfigurationSyncException;
 use App\Models\Admin\Sync\SyncLog;
 use App\Services\Integraciones\Sincronizacion\Contracts\SyncClientsServiceInterface;
 use Illuminate\Bus\Queueable;
@@ -36,14 +37,15 @@ class SyncClientConfigurationsJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        $context = $exception instanceof ClientConfigurationSyncException ? $exception->syncContext : [];
         SyncLog::logErrorSync(
             'SyncClientConfigurationsJob',
             'sincronizar_clientes_configuraciones',
             'syncClientConfigurations',
             $exception->getMessage(),
+            data_get($context, 'clave.txCli'),
             null,
-            null,
-            ['batchSize' => $this->batchSize, 'maxBatches' => $this->maxBatches],
+            array_merge(['batchSize' => $this->batchSize, 'maxBatches' => $this->maxBatches], $context),
             $this->attempts(),
             StatusSync::FAILED
         );

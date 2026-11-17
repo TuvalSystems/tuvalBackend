@@ -2,6 +2,8 @@
 
 namespace App\Services\Integraciones\Sincronizacion;
 
+use App\Exceptions\ClientConfigurationSyncException;
+use App\Services\Integraciones\Api\Endpoints\ApiGpEndpoints;
 use App\Models\Admin\Ubicaciones\Canton;
 use App\Models\Admin\Ubicaciones\Provincia;
 use App\Models\Admin\Ubicaciones\Region;
@@ -18,6 +20,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class SyncClientsService implements SyncClientsServiceInterface
 {
@@ -255,18 +258,35 @@ class SyncClientsService implements SyncClientsServiceInterface
                     'coLoc' => data_get($item, 'coLoc'),
                     'txCli' => trim((string) data_get($item, 'txCli')),
                 ];
-                if ($key['coEmp'] === null || $key['coLoc'] === null || $key['txCli'] === '') {
-                    throw new InvalidArgumentException('Configuracion sin coEmp, coLoc o txCli.');
-                }
-                if ($cursor !== null && $key == $cursor) {
-                    throw new \RuntimeException('La API repitio el cursor de configuraciones.');
-                }
+                $context = [
+                    'etapa' => 'validar_configuracion',
+                    'clave' => $key,
+                    'configuracionRecibida' => $item,
+                    'ultimoCursorConfirmado' => $cursor,
+                    'registrosProcesados' => $processed,
+                    'lote' => $batches + 1,
+                ];
+                try {
+                    if ($key['coEmp'] === null || $key['coLoc'] === null || $key['txCli'] === '') {
+                        throw new InvalidArgumentException('Configuracion sin coEmp, coLoc o txCli.');
+                    }
+                    if ($cursor !== null && $key == $cursor) {
+                        throw new \RuntimeException('La API repitio el cursor de configuraciones.');
+                    }
 
-                $this->createOrUpdateConfig($item);
-                $response = $this->api->confirmBranchConfigurationSync($key);
-                $this->requireSuccessfulSyncResponse($response);
-                if ((int) data_get($response, 'data') !== 1) {
-                    throw new \RuntimeException('La API no confirmo una configuracion y su historico.');
+                    $context['etapa'] = 'guardar_configuracion_local';
+                    $this->createOrUpdateConfig($item);
+                    $context['etapa'] = 'confirmar_configuracion_e_historico';
+                    $context['endpoint'] = ApiGpEndpoints::CLIENTE_CONFIRMAR_CONFIGURACION_SYNC;
+                    $context['solicitudEnviada'] = $key;
+                    $response = $this->api->confirmBranchConfigurationSync($key);
+                    $context['respuestaApi'] = array_intersect_key($response, array_flip(['success', 'message', 'status', 'data']));
+                    $this->requireSuccessfulSyncResponse($response);
+                    if ((int) data_get($response, 'data') !== 1) {
+                        throw new \RuntimeException('La API no confirmo una configuracion y su historico.');
+                    }
+                } catch (Throwable $exception) {
+                    throw new ClientConfigurationSyncException($context, $exception);
                 }
 
                 // Avanzar solamente despues del guardado local y la confirmacion en GP.
