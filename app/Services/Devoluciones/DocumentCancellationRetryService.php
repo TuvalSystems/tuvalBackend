@@ -28,15 +28,8 @@ class DocumentCancellationRetryService implements DocumentCancellationRetryServi
      */
     public function handleCancellationRetries()
     {
-        $docs = $this->getYesterdayCancellations()->map(function ($item) {
-            $item->can_resend = $this->isWithinCancellationDeadline($item->gpPedido);
-            return $item;
-        });
-
-        $docsCanSend = $docs->where('can_resend', 1);
-        $docsCantSend = $docs->where('can_resend', 0);
-
-
+        [$docsCanSend, $docsCantSend] = $this->getYesterdayCancellations()
+            ->partition(fn($item) => $this->isWithinCancellationDeadline($item->gpPedido));
 
         $this->retryValidCancellations($docsCanSend);
         $this->reportUnprocessableCancellations($docsCantSend);
