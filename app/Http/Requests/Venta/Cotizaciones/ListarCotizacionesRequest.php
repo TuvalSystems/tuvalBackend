@@ -15,7 +15,8 @@ class ListarCotizacionesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'puntodeventa_id' => 'required|string|max:20',
+            'pv_id' => 'required_without:puntodeventa_id|nullable|integer|min:1',
+            'puntodeventa_id' => 'required_without:pv_id|nullable|string|max:20',
             'estado' => 'nullable|in:pendientes,caducado,prospectos,procesadas,rechazadas',
             'fecha_desde' => 'nullable|date_format:Y-m-d',
             'fecha_hasta' => 'nullable|date_format:Y-m-d',

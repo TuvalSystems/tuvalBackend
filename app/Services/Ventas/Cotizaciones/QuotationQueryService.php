@@ -20,17 +20,18 @@ class QuotationQueryService
 
     public function paginate(array $data, GpUsuario $user): LengthAwarePaginator
     {
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', $data['puntodeventa_id'])->firstOrFail();
+        $puntoVenta = !empty($data['pv_id'])
+            ? GpPuntoVenta::findOrFail($data['pv_id'], ['id'])
+            : GpPuntoVenta::where('PTO_VTA_ID', $data['puntodeventa_id'])->firstOrFail(['id']);
         $fields = ['id', 'cotizacion', 'CLI_RAZON_SOCIAL', 'CLI_RUC', 'USERID', 'COND_ID',
             'created_at', 'total', 'estado', 'prospecto_id', 'cliente_id', 'PTO_VTA_ID',
             'BOD_BODEGA', 'tipo_despacho_id', 'requiere_aprobacion_comercial',
             'requiere_aprobacion_crediticia', 'aprobado_comercial', 'aprobado_crediticio',
             'impreso', 'aprobado_comercial_mensaje', 'cotizacion_venta_motivo_id',
             'recordar', 'observacion', 'fecha_recordatorio'];
-        $cotizaciones = GpCotizacion::query()
-            ->select(array_map(fn ($field) => "gp_cotizacions.$field", $fields))
+        $cotizaciones = GpCotizacion::query()->select($fields)
             ->with('reserva:id,cotizacion_id,fe_solicitud_reserva')
-            ->where('gp_cotizacions.PTO_VTA_ID', $data['puntodeventa_id']);
+            ->where('gp_cotizacions.pv_id', $puntoVenta->id);
         $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user, $puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
         $data['estado'] = $data['estado'] ?? '';
         if ($data['estado'] == 'pendientes') {
