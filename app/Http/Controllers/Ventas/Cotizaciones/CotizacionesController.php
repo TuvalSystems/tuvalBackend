@@ -4,34 +4,28 @@ namespace App\Http\Controllers\Ventas\Cotizaciones;
 
 use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
 use App\Http\Requests\Venta\Cotizaciones\GuardarCotizacionProspectoRequest;
+use App\Http\Requests\Venta\Cotizaciones\ListarCotizacionesRequest;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Venta\Cotizaciones\GuardarObservacionesCotizacionRequest;
+use App\Http\Requests\Venta\Cotizaciones\GuardarMensajeCotizacionRequest;
 use App\Models\Integraciones\Sincronizacion\GpCronLog;
-use App\Models\Ventas\Clientes\GpProspecto;
 use App\Traits\JsonResponseTrait;
 use App\Models\Ventas\Cotizaciones\GpCotizacion;
-use App\Models\Ventas\Cotizaciones\GpCotizacionDetalle;
 use App\Models\Admin\PuntosVenta\GpPuntoVenta;
-use App\Models\Ventas\Clientes\GpClienteSucursal;
-use App\Models\Ventas\Clientes\GpCliente;
-use App\Models\Ventas\CondicionesPago\GpDescuentoFormaPago;
 use Illuminate\Http\Request;
 use App\Services\Integraciones\Soap\LegacyGpSoapService;
 use App\Http\Requests\Venta\Cotizaciones\ValidateStoreQuotationRequest;
-use App\Models\Ventas\Pedidos\GpPedido;
 use App\Models\Admin\Usuarios\GpUsuario;
-use App\Services\Ventas\Comercial\CommercialVisibilityService;
 use App\Services\Ventas\Clientes\Contracts\ClientQueryServiceInterface;
 use App\Services\Ventas\Cotizaciones\Contracts\QuotationCreatorServiceInterface;
 use App\Services\Ventas\Cotizaciones\Contracts\QuotationServiceInterface;
+use App\Services\Ventas\Cotizaciones\QuotationQueryService;
+use App\Services\Ventas\Cotizaciones\QuotationDocumentService;
 use App\Services\Ventas\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Services\Ventas\Pedidos\Contracts\InvoiceHistoryServiceInterface;
 use App\Traits\ExecuteApiTransactions;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Http\Response;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\Routing\ResponseFactory;
 
 class CotizacionesController extends Controller
 {
@@ -44,8 +38,9 @@ class CotizacionesController extends Controller
         protected readonly QuotationServiceInterface $quotationService,
         protected readonly ClientQueryServiceInterface $clientService,
         protected readonly QuotationCreatorServiceInterface $quotationCreator,
-        protected readonly CommercialVisibilityService $commercial,
         protected readonly InvoiceHistoryServiceInterface $invoiceHistory,
+        protected readonly QuotationQueryService $quotationQuery,
+        protected readonly QuotationDocumentService $quotationDocuments,
         protected readonly ProspectQuoteServiceInterface $prospectService
     ) {}
 
@@ -86,98 +81,22 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'guardarCotizacionProspecto');
     }
 
-    public function vercotizaciones(Request $request): Response|Application|ResponseFactory
+    public function vercotizaciones(ListarCotizacionesRequest $request): JsonResponse
     {
-        $user = $request->user() ?? GpUsuario::find(137);
-        $data = $request->validate([
-            'puntodeventa_id' => 'required',
-            'estado' => '',
-            'fecha_desde' => '',
-            'fecha_hasta' => '',
-            'cotizacion_filtro' => ''
-        ]);
-
-        $puntoVenta = GpPuntoVenta::where('PTO_VTA_ID', data_get($data, 'puntodeventa_id'))->first();
-
-        $cotizaciones = GpCotizacion::with('reserva')->where('gp_cotizacions.PTO_VTA_ID', '=', $data['puntodeventa_id'])
-            ->join('gp_descuento_forma_pagos', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_CODIGO', 'gp_cotizacions.DESC_FORMA_PAGO_CODIGO')
-            ->select('gp_cotizacions.*', 'gp_descuento_forma_pagos.DESC_FORMA_PAGO_TIPO_CREDITO');
-
-        $this->commercial->applyLimitsVisibiliteList($cotizaciones, $user, $puntoVenta->id, 'cotizaciones', 'gp_cotizacions.user_id');
-
-        if ($data['estado'] == 'pendientes') {
-            $cotizaciones = $cotizaciones
-                ->where(function ($q) {
-                    $q->where('gp_cotizacions.estado', '!=', 'procesado');
-                    $q->where('gp_cotizacions.estado', '!=', 'caducado');
-                    $q->where('gp_cotizacions.estado', '!=', 'rechazado');
-                })
-                ->where(function ($q) {
-                    $q->whereNull('prospecto_id');
-                    $q->orWhere(function ($q) {
-                        $q->whereNotNull('prospecto_id');
-                        $q->whereNotNull('cliente_id');
-                    });
-                });
-        } else if ($data['estado'] == 'caducado') {
-            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'caducado')
-                ->whereNull('prospecto_id');
-        } else if ($data['estado'] == 'prospectos') {
-            $cotizaciones = $cotizaciones
-                ->where(function ($q) {
-                    $q->whereNotNull('prospecto_id');
-                    $q->whereNull('cliente_id');
-                })
-                ->where('gp_cotizacions.estado', '!=', 'procesado');
-        } else if ($data['estado'] == 'procesadas') {
-            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'procesado');
-        } else if ($data['estado'] == 'rechazadas') {
-            $cotizaciones = $cotizaciones->where('gp_cotizacions.estado', 'rechazado');
-        }
-        if (isset($data['fecha_desde']) && $data['fecha_desde'] != '' && isset($data['fecha_hasta']) && $data['fecha_hasta'] != '') {
-            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '>=', $data['fecha_desde'] . ' 00:00:00');
-            $cotizaciones = $cotizaciones->whereDate('gp_cotizacions.created_at', '<=', $data['fecha_hasta'] . ' 23:59:59');
-        }
-        if (isset($data['cotizacion_filtro']) && $data['cotizacion_filtro'] != '') {
-            $cotizaciones = $cotizaciones->where('gp_cotizacions.cotizacion', 'like', '%' . $data['cotizacion_filtro'] . '%');
-        }
-        $cotizaciones = $cotizaciones->orderBy('created_at', 'desc')->limit(1500)->get();
-
-
-
-        foreach ($cotizaciones as $cotizacion) {
-
-            $cotizacion->direccion_entrega = GpClienteSucursal::where('id', $cotizacion->sucursal_id)->first();
-            $cotizacion->recordatorioventa = GpPedido::where('cotizacion_id', $cotizacion->id)->whereNotNull('factura')->exists() ? 1 : 0;
-            $cotizacion->recuperar = 'yes';
-            $cotizacion->imprimir = 'yes';
-            $cotizacion->facturar = 'no';
-            if ($cotizacion->requiere_aprobacion_comercial == 'yes' && $cotizacion->aprobado_comercial == 'no') {
-                $cotizacion->imprimir = 'no';
-            } elseif ($cotizacion->requiere_aprobacion_crediticia == 'yes' && $cotizacion->aprobado_crediticio == 'no') {
-                $cotizacion->imprimir = 'no';
-                $cotizacion->recuperar = 'no';
-            }
-            if ($cotizacion->impreso == 'yes') {
-                $cotizacion->recuperar = 'yes';
-                $cotizacion->facturar = 'yes';
-            }
-            if ($cotizacion->estado == 'rechazado') {
-                $cotizacion->imprimir = 'no';
-                $cotizacion->recuperar = 'no';
-            }
-        }
-        return response([
-            'success' => true,
-            'cotizaciones' => $cotizaciones,
-        ]);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            return $this->successResponse(
+                'Cotizaciones obtenidas correctamente',
+                $this->quotationQuery->paginate($request->validated(), $request->user() ?? GpUsuario::findOrFail(137)),
+                200
+            );
+        }, self::LOG_CHANNEL, 'vercotizaciones');
     }
 
 
     public function detallecotizacion(Request $request)
     {
         return $this->handleApiAction(function () use ($request) {
-            $data = $request->all();
+            $data = $request->validate(['id' => 'required|integer|min:1']);
             $quote = $this->quotationService->detailQuotation($data, $request->user());
             return $this->successResponse('Información Obtenida Correctamente', $quote, 200);
         }, self::LOG_CHANNEL, 'detallecotizacion');
@@ -253,106 +172,42 @@ class CotizacionesController extends Controller
         $cronLog->save();
     }
 
-    public function imprimircotizacion(int $id)
+    public function imprimircotizacion(int $id): Response|JsonResponse
     {
-        try {
-            $cotizacion = $this->quotationService->printQuotationPdf($id, false);
-            $pdf = Pdf::loadView('cotizacionPDF', $cotizacion);
-            return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->handleDocumentAction(function () use ($id): Response {
+            return $this->buildFileResponse($this->quotationDocuments->printQuotation($id));
+        }, self::LOG_CHANNEL, 'imprimircotizacion');
     }
 
-    public function imprimircotizacionimagenes(int $id)
+    public function imprimircotizacionimagenes(int $id): Response|JsonResponse
     {
-        try {
-            $cotizacion = $this->quotationService->printQuotationPdf($id, true);
-            $pdf = Pdf::loadView('cotizacionImagenesPDF', $cotizacion);
-            return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
-        } catch (HttpException $e) {
-            return $this->buildErrorResponse($e->getMessage(), $e->getStatusCode());
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        return $this->handleDocumentAction(function () use ($id): Response {
+            return $this->buildFileResponse($this->quotationDocuments->printQuotation($id, true));
+        }, self::LOG_CHANNEL, 'imprimircotizacionimagenes');
     }
 
-    public function imprimirCotizacionProspecto(int $id): Response|string
+    public function imprimirCotizacionProspecto(int $id): Response|JsonResponse
     {
-        $cotizacionModel = GpCotizacion::where('id', $id)->first();
-        $cotizacion = $cotizacionModel->toarray();
-
-        $cotizacionModel->impreso = 'yes';
-        if (is_null($cotizacionModel->fecha_impreso)) {
-            $cotizacionModel->fecha_impreso = date('Y-m-d H:i:s');
-        }
-        $cotizacionModel->save();
-
-        $detalle = GpCotizacionDetalle::where('cotizacion_id', $cotizacion['id'])->get()->toarray();
-        $peso = 0;
-        foreach ($detalle as &$art) {
-            $peso += $art['ART_PESO'] * $art['ART_CANTIDAD'];
-        }
-        $cotizacion['peso'] = $peso;
-        $cotizacion['detalle'] = $detalle;
-        $formadepago = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toarray();
-        $cotizacion['formadepago'] = $formadepago['DESC_FORMA_PAGO_TIPO_CREDITO'];
-
-        $cliente = GpProspecto::where('id', $cotizacion['prospecto_id'])->first()->toarray();
-
-        $cotizacion['cliente'] = $cliente;
-        //
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toarray();
-
-        if ($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] == 0) {
-            $cotizacion['validez'] = '0 días';
-        } else {
-
-            $cotizacion['validez'] = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' días hábiles';
-        }
-
-        $cotizacion['expira'] = date('Y-m-d', strtotime($puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] . ' day', strtotime($cotizacion['updated_at'])));
-
-        $cotizacion['direccion'] = $puntodeventa['PTO_VTA_DIRECCION_1'] . ' ' . $puntodeventa['PTO_VTA_DIRECCION_2'];
-
-        $data = $cotizacion;
-        //return view('cotizacionPDF', $data);
-        $pdf = Pdf::loadView('cotizacionProspectoPDF', $data);
-        return $pdf->stream('cotizacion-' . $cotizacion['cotizacion'] . '.pdf');
+        return $this->handleDocumentAction(function () use ($id): Response {
+            return $this->buildFileResponse($this->quotationDocuments->printProspectQuotation($id));
+        }, self::LOG_CHANNEL, 'imprimirCotizacionProspecto');
     }
 
-    public function guardarordendecompra(Request $request): Response|Application|ResponseFactory
+    public function guardarordendecompra(GuardarObservacionesCotizacionRequest $request): JsonResponse
     {
-        $data = $request->all();
-
-        $cotizacion = GpCotizacion::where('id', $data['id'])->get()->first();
-        $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        $cotizacion->nota_interna = $data['nota_interna'];
-        $cotizacion->save();
-
-        return response([
-            'success' => true,
-            'message' => 'Orden de compra guardada'
-        ]);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $this->quotationService->updateAnnotations($request->integer('id'), $request->safe()->except('id'));
+            return $this->buildSuccessResponse('Orden de compra guardada');
+        }, self::LOG_CHANNEL, 'guardarordendecompra');
     }
 
-    public function guardarmensaje(Request $request): Response|Application|ResponseFactory
+    public function guardarmensaje(GuardarMensajeCotizacionRequest $request): JsonResponse
     {
-        $data = $request->all();
-
-        $cotizacion = GpCotizacion::where('id', $data['id'])->get()->first();
-        $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        $cotizacion->aprobado_comercial_mensaje = $data['aprobado_comercial_mensaje'];
-        $cotizacion->save();
-
-        return response([
-            'success' => true,
-            'message' => 'Todo guardado'
-        ]);
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $this->quotationService->updateAnnotations($request->integer('id'), $request->safe()->except('id'));
+            return $this->buildSuccessResponse('Todo guardado');
+        }, self::LOG_CHANNEL, 'guardarmensaje');
     }
-
 
     public function ListaMotivosNoVenta(): JsonResponse
     {

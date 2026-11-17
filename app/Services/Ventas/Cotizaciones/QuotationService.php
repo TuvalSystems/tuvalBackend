@@ -291,11 +291,7 @@ class QuotationService implements QuotationServiceInterface
 
     public function printQuotationPdf(int $id, $withImages = false)
     {
-        $cotizacion = GpCotizacion::where('id', $id)->first()->toArray();
-
-        if (!$cotizacion) {
-            abort(404, 'Cotización no encontrada');
-        }
+        $cotizacion = GpCotizacion::findOrFail($id)->setAppends([])->attributesToArray();
         if ($cotizacion['requiere_aprobacion_comercial'] == 'yes' && $cotizacion['aprobado_comercial'] == 'no') {
             abort(403, 'La cotización requiere aprobación comercial y aún no ha sido aprobada');
         }
@@ -307,7 +303,6 @@ class QuotationService implements QuotationServiceInterface
             abort(403, 'La cotización ha caducado y no puede ser impresa');
         }
 
-        $this->updatePrintsQuotation($id);
         $detalle = GpCotizacionDetalle::where('cotizacion_id', $id)
             ->orderBy('id', 'asc')
             ->get()
@@ -350,10 +345,10 @@ class QuotationService implements QuotationServiceInterface
         }
         unset($item);
 
-        $formadepago    = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->first()->toArray();
-        $cliente        = GpCliente::where('id', $cotizacion['cliente_id'])->first()->toArray();
-        $sucursal       = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->first()->toArray();
-        $puntodeventa   = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->first()->toArray();
+        $formadepago    = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $cotizacion['DESC_FORMA_PAGO_CODIGO'])->firstOrFail()->toArray();
+        $cliente        = GpCliente::where('id', $cotizacion['cliente_id'])->firstOrFail()->toArray();
+        $sucursal       = GpClienteSucursal::where('id', $cotizacion['sucursal_facturacion_id'])->firstOrFail()->toArray();
+        $puntodeventa   = GpPuntoVenta::where('PTO_VTA_ID', $cotizacion['PTO_VTA_ID'])->firstOrFail()->toArray();
         $validezDias    = $puntodeventa['PTO_VTA_DIA_VALIDEZ_COTIZACION'] ?? 0;
         $validezTexto   = $validezDias === 0 ? '0 días' : $validezDias . " días habiles";
         $validezReal    = $this->calcularDiasHabiles($validezDias, $cotizacion['created_at']);
@@ -395,17 +390,14 @@ class QuotationService implements QuotationServiceInterface
     }
 
 
-    public function updatePrintsQuotation(int $id)
+    public function updateAnnotations(int $id, array $data): void
     {
-        $cotizacion = GpCotizacion::find($id);
-        $cotizacion->impreso = 'yes';
-
-        if (is_null($cotizacion->fecha_impreso)) {
-            $cotizacion->fecha_impreso = date('Y-m-d H:i:s');
-        }
-        $cotizacion->save();
+        $quote = GpCotizacion::findOrFail($id);
+        $quote->fill(array_intersect_key($data, array_flip([
+            'orden_de_compra', 'nota_interna', 'aprobado_comercial_mensaje',
+        ])));
+        $quote->save();
     }
-
 
     /**
      *  consulta de cotizaciones con novedades
@@ -490,6 +482,11 @@ class QuotationService implements QuotationServiceInterface
 
     public function detailQuotation(array $data, GpUsuario $user)
     {
+        $quote = GpCotizacion::with('usuario.vendedor.zonas')->findOrFail($data['id']);
+        $data = $quote->getAttributes();
+        $header = $quote->setAppends([])->attributesToArray();
+        $header['direccion_entrega'] = GpClienteSucursal::find($quote->sucursal_id);
+        $header['DESC_FORMA_PAGO_TIPO_CREDITO'] = GpDescuentoFormaPago::where('DESC_FORMA_PAGO_CODIGO', $quote->DESC_FORMA_PAGO_CODIGO)->value('DESC_FORMA_PAGO_TIPO_CREDITO');
         $estadoCuenta = [
             'cupoDisponible' => $this->functionService->getClientCheckAvailableQuota($data['CLI_RUC'])
         ];
@@ -507,7 +504,6 @@ class QuotationService implements QuotationServiceInterface
             $this->loadProviderDetailQuotation($data['id'], $det, $descuentoGeneral);
             $this->calculatePorcentilDiscountAndPrice($det);
         }
-        $quote = GpCotizacion::with('usuario.vendedor.zonas')->find($data['id']);
 
         $reglasAprobacion = $this->getPorcentilChangeDiscount($user, $quote);
         $detalle->transform(function ($item) use ($groupsByAbc, $reglasAprobacion) {
@@ -520,9 +516,10 @@ class QuotationService implements QuotationServiceInterface
         $segmento = $this->orderAndQuotationService->getSegmentoCliente($data['CLI_RUC']);
         $tipoDespacho = TipoDespacho::find($quote->tipo_despacho_id);
         $requiereAprobacionFlete = FreightApproval::requiresApprovalForType($tipoDespacho)
-            && !FreightApproval::hasValidApproval($quote->toArray(), $quote);
+            && !FreightApproval::hasValidApproval($data, $quote);
 
         return [
+            'cabecera' => $header,
             'estadodecuenta'    => $estadoCuenta,
             'detalle'           => $detalle,
             'segmento'          => $segmento,

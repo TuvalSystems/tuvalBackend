@@ -96,12 +96,8 @@ Route::prefix('pedidos')->group(function () {
 
 
 Route::prefix('cotizaciones')->group(function () {
-    Route::get('reserva/recalcular-cotizacion/{id}', [CotizacionesController::class, 'recalcularCotizacionReserva']);
-    Route::get('llenar-cotizacion', [CotizacionesController::class, 'llenarcotizacion']);
     Route::get('verificar-stock-actual-reserva', [ReservasController::class, 'verificarStockCotizacionActual']);
 
-    Route::get('obtener-segmentos', [CotizacionesController::class, 'obtenerListaSegmentos']);
-    Route::get('obtener-subsegmentos', [CotizacionesController::class, 'obtenerListaSubSegmentos']);
     Route::get('listado-cotizaciones-novedades', [CotizacionesController::class, 'consultQuotationsNews']);
     Route::get('lista-items-alternativos', [CotizacionesController::class, 'getItemsAlternatives']);
     Route::get('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);

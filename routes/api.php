@@ -245,12 +245,10 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
 
             Route::post('validar-segmento-cliente', [CotizacionesController::class, 'validarSegmentoCliente']);
             Route::post('actualizar-segmento-cliente', [CotizacionesController::class, 'actualizarSegmentoCliente']);
-            Route::post('guardarcliente', [CotizacionesController::class, 'guardarcliente']);
 
 
 
 
-            Route::get('imprimircotizacion/{id}', [CotizacionesController::class, 'imprimircotizacion']);
 
 
 
@@ -273,13 +271,9 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:web'])->group(fu
                 Route::post('obtener-lista-precio-defecto', [CotizacionesController::class, 'obtenerListaPrecioDefectoPuntoVenta']);
                 Route::post('recuperar', [CotizacionesController::class, 'recuperarProspecto']);
             });
-            // Route::post('limpiarcotizacion', [CotizacionesController::class, 'limpiarcotizacion']);
             Route::post('vercotizaciones', [CotizacionesController::class, 'vercotizaciones']);
-            // Route::post('selectarticulo', [CotizacionesController::class, 'selectarticulo']);
 
 
-            // Route::post('guardardireccion', [CotizacionesController::class, 'guardardireccion']);
-            // Route::post('checkrucprospecto', [CotizacionesController::class, 'checkrucprospecto']);
 
             Route::get('obtener-lista-proyectos', [CotizacionesController::class, 'obtenerListaProyectosVenta']);
 

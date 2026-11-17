@@ -10,6 +10,8 @@ interface QuotationServiceInterface
 
     public function getNonSalesReasons();
 
+    public function updateAnnotations(int $id, array $data): void;
+
     public function updateNonSaleAndReminderData(array $data, GpUsuario $user) :void;
     public function getQuotationsWithReminderToday();
 
