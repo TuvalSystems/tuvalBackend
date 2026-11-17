@@ -19,9 +19,6 @@ interface QuotationServiceInterface
 
     public function restoreQuotationV2(int $quoteId);
 
-    /** prospecto*/
-    public function updateQuoteClientData(int $quoteId, int $clientId);
-
     /**
      *  volver a pedir
      */

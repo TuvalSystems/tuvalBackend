@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Ventas\Cotizaciones;
 
 use App\Services\Ventas\Compartido\Contracts\IdempotentSaveServiceInterface;
-use App\Enums\Ventas\TaxRateEnum;
+use App\Http\Requests\Venta\Cotizaciones\GuardarCotizacionProspectoRequest;
 use App\Http\Controllers\Controller;
 use App\Models\Integraciones\Sincronizacion\GpCronLog;
 use App\Models\Ventas\Clientes\GpProspecto;
@@ -74,129 +74,16 @@ class CotizacionesController extends Controller
     }
 
 
-    public function selectarticuloprospecto(Request $request): Response|Application|ResponseFactory
+    public function guardarCotizacionProspecto(GuardarCotizacionProspectoRequest $request): JsonResponse
     {
-
-        $data = $request->validate([
-
-            'articulo' => []
-        ]);
-        $user = $request->user();
-        if ($data['articulo']['ART_CLASE_ARTICULO'] == 'VTA-SERV') {
-            $data['articulo']['ART_TIPO_COMPRA'] = 'SERV';
-        }
-        $data['articulo']['timestamp'] = time();
-        return response([
-            'success' => true,
-            'articulo' => $data['articulo'],
-        ]);
-    }
-
-
-
-
-
-    public function guardarcotizacionprospecto(Request $request): Response|Application|ResponseFactory
-    {
-        $data = $request->all();
-        $user = $request->user();
-        $user = GpUsuario::where('id', $user->id)->first();
-        if (isset($data['prospecto']['id']) && $data['prospecto']['id'] != '') {
-            $prospecto = GpProspecto::where('id', $data['prospecto']['id'])->first();
-        } else {
-            $prospecto = new GpProspecto;
-        }
-        $prospecto->CLI_RUC = trim($data['prospecto']['CLI_RUC']);
-        $prospecto->CLI_RAZON_SOCIAL = trim($data['prospecto']['CLI_RAZON_SOCIAL']);
-        $prospecto->CLI_CORREO_ELECT_SRI = trim($data['prospecto']['CLI_CORREO_ELECT_SRI']);
-        $prospecto->CLI_DIRECCION = trim($data['prospecto']['CLI_DIRECCION']);
-        $prospecto->CLI_TELEFONO_1 = trim($data['prospecto']['CLI_TELEFONO_1']);
-        $prospecto->save();
-        $puntodeventa = GpPuntoVenta::where('PTO_VTA_ID', $data['PTO_VTA_ID'])->first();
-        $cotizacion = new GpCotizacion;
-        $cotizacion->user_id = $user->id;
-        $cotizacion->sucursal_id = $data['sucursal_id'];
-        $cotizacion->sucursal_facturacion_id = $data['sucursal_facturacion_id'];
-        $cotizacion->cliente_id = $data['cliente_id'];
-        $cotizacion->prospecto_id = $prospecto->id;
-        $cotizacion->estado = 'aprobado';
-        $cotizacion->factura_posterior_despacho = $data['factura_posterior_despacho'];
-        $cotizacion->factura_a_demanda = $data['factura_a_demanda'];
-        $cotizacion->factura_siguiente_mes = $data['factura_siguiente_mes'];
-        $cotizacion->BOD_BODEGA = $data['bodega_facturacion'];
-        $cotizacion->PTO_VTA_ID = $data['PTO_VTA_ID'];
-        $cotizacion->PTO_VTA_DESCRIPCION = $puntodeventa['PTO_VTA_DESCRIPCION'];
-        $cotizacion->USERID = $user->USERID;
-        $cotizacion->DESC_FORMA_PAGO_CODIGO = $data['DESC_FORMA_PAGO_CODIGO'];
-        $cotizacion->CLI_RUC = $data['CLI_RUC'];
-        $cotizacion->CLI_RAZON_SOCIAL = $data['CLI_RAZON_SOCIAL'];
-        $cotizacion->CLI_CORREO_ELECT_SRI = $data['CLI_CORREO_ELECT_SRI'];
-        $cotizacion->COND_ID = $data['COND_ID'];
-        $cotizacion->COND_ID_ORIGINAL = $data['COND_ID_ORIGINAL'];
-        $cotizacion->VEND_ID = $data['VEND_ID'];
-        $cotizacion->VEND_NOMBRES = $data['VEND_NOMBRES'];
-        $cotizacion->VEND_APELLIDOS = $data['VEND_APELLIDOS'];
-        $cotizacion->despacho = $data['despacho'];
-        $cotizacion->porcentage_descuentooriginal = $data['porcentage_descuentooriginal'];
-        $cotizacion->porcentage_descuento = $data['porcentage_descuento'];
-
-        $cotizacion->subtotal = (float) $data['subtotal'] + (float) $data['descuento'];
-        $cotizacion->descuento = (float) $data['descuento'];
-        $cotizacion->subtotalmenosdescuento = (float) $data['subtotal'];
-        $cotizacion->iva = (float) $data['iva'];
-        $cotizacion->total = (float) $data['total'];
-        $cotizacion->requiere_aprobacion_comercial = 'no';
-        $cotizacion->aprobado_comercial = 'no';
-        $cotizacion->aprobador_comercial_id = null;
-        $cotizacion->requiere_aprobacion_crediticia = 'no';
-        $cotizacion->aprobado_crediticio = 'no';
-        $cotizacion->aprobador_crediticio_id = null;
-        $cotizacion->impreso = 'no';
-        $cotizacion->nota_interna = $data['nota_interna'];
-        $cotizacion->nota_cliente = $data['nota_cliente'];
-        $cotizacion->orden_de_compra = $data['orden_de_compra'];
-        $cotizacion->impuesto = TaxRateEnum::IVA_15->value;
-
-        if ($cotizacion->save()) {
-
-            foreach ($data['cotizacion'] as $det) {
-                $detalle = new GpCotizacionDetalle;
-                $detalle->cotizacion_id = $cotizacion->id;
-                $detalle->art_id        = $det['art_id'];
-                $detalle->ART_CODIGO = $det['ART_CODIGO'];
-                $detalle->ART_DESCRIPCION = $det['ART_DESCRIPCION'];
-                $detalle->ART_DESCRIPCION_ORIGINAL = $det['ART_DESCRIPCION_ORIGINAL'];
-                $detalle->ART_CODIGO_TRES_LETRAS = $det['ART_CODIGO_TRES_LETRAS'];
-                $detalle->ART_DECIMAL_CANTIDAD = (int) $det['ART_DECIMAL_CANTIDAD'];
-                $detalle->ART_PLAN_UMEDIDA = $det['ART_PLAN_UMEDIDA'];
-                $detalle->ART_MARCA = $det['ART_MARCA'];
-                $detalle->ART_MATERIAL = $det['ART_MATERIAL'];
-                $detalle->ART_PESO = $det['ART_PESO'];
-                $detalle->ART_TIPO_COMPRA = $det['ART_TIPO_COMPRA'];
-                $detalle->ART_VALOR = (float) $det['ART_VALOR'];
-                $detalle->ART_VALOR_ORIGINAL = (float) $det['ART_VALOR_ORIGINAL'];
-                $detalle->ART_DESCUENTO = (float) $det['ART_DESCUENTO'];
-                $detalle->ART_IVA = (float) $det['ART_IVA'];
-                $detalle->ART_CANTIDAD = (float) $det['ART_CANTIDAD'];
-                $detalle->ART_STOCK = (float)data_get($det, 'ART_STOCK', 0);
-                $detalle->ART_IMP_VTA = (float) $det['ART_IMP_VTA'];
-                $detalle->ART_COSTO_PROMEDIO = (float) $det['ART_COSTO_PROMEDIO'];
-                $detalle->descuento = (float) $det['descuento'];
-                $detalle->descuento_original = (float) $det['descuento_original'];
-                $detalle->modificador = (float) $det['modificador'];
-                $detalle->save();
-            }
-
-            $cotizacion->refresh();
-            return response([
-                'success' => true,
-                'message' => "La cotización #{$cotizacion->cotizacion} ha sido guardada"
-            ]);
-        } else {
-            return response([
-                'error' => "Hubo un error al guardar"
-            ], 409);
-        }
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $cotizacion = $this->prospectService->create($request->validated(), $request->user());
+            return $this->successResponse(
+                "La cotización #{$cotizacion->cotizacion} ha sido guardada",
+                ['id' => $cotizacion->id, 'cotizacion' => $cotizacion->cotizacion],
+                200
+            );
+        }, self::LOG_CHANNEL, 'guardarCotizacionProspecto');
     }
 
     public function vercotizaciones(Request $request): Response|Application|ResponseFactory
@@ -309,25 +196,6 @@ class CotizacionesController extends Controller
     }
 
 
-    public function recuperarcotizacionprospecto(Request $request): Response|Application|ResponseFactory
-    {
-        $data = $request->all();
-        $cliente = GpProspecto::where('id', $data['prospecto_id'])->first();
-        $tipo = 'prospecto';
-        $existente = GpCliente::where('CLI_RUC', $cliente->CLI_RUC)->first();
-        if ($existente) {
-            $tipo = 'cliente';
-            $cliente = $existente;
-        }
-        return response([
-            'success' => true,
-            'cliente' => $cliente,
-            'cotizacion_id' => $data['id'],
-            'tipo' => $tipo,
-        ]);
-    }
-
-
     public function volverAPedirCotizacionV2(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request) {
@@ -340,14 +208,6 @@ class CotizacionesController extends Controller
         }, self::LOG_CHANNEL, 'volverAPedirCotizacionV2');
     }
 
-
-    public function actualizarCotizacionPropectoV2(Request $request): JsonResponse
-    {
-        return $this->handleApiAction(function () use ($request): JsonResponse {
-            $quote = $this->quotationService->updateQuoteClientData($request->input('id'), $request->input('cliente_id'));
-            return $this->successResponse('Cotización actualizada', $quote,  200);
-        }, self::LOG_CHANNEL, 'actualizarCotizacionPropectoV2');
-    }
 
     /** ELIMINA LAS COTIZACIONES EXPIRADAS SEGÚN LOS DIAS POR PUNTO DE VENTA*/
     public function checkvalidezcotizaciones()
@@ -419,7 +279,7 @@ class CotizacionesController extends Controller
         }
     }
 
-    public function imprimircotizacionprospecto(int $id): Response|string
+    public function imprimirCotizacionProspecto(int $id): Response|string
     {
         $cotizacionModel = GpCotizacion::where('id', $id)->first();
         $cotizacion = $cotizacionModel->toarray();

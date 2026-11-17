@@ -57,13 +57,20 @@ class QuotationCreatorService implements QuotationCreatorServiceInterface
                 $clientConfig           = ClienteConfiguracion::where('pv_id', $pointSales->id)
                     ->where('cliente_id', $client->id)
                     ->where('estado', 1)
-                    ->firstOrFail();
+                    ->first();
                 $typeDispatch = TipoDespacho::where('id', data_get($data, 'tipo_despacho_id'))->first();
 
                 if (!$clientConfig) {
-                    throw new \RuntimeException("No se ha encontrado la configuración de este cliente");
+                    throw ValidationException::withMessages([
+                        'cliente_id' => "El cliente no tiene una configuración activa para el punto de venta {$pointSales->PTO_VTA_ID}. Registre o sincronice su configuración comercial antes de guardar la cotización.",
+                    ]);
                 }
-                $seller = GpVendedor::where('id', $clientConfig->vendedor_id)->firstOrFail();
+                $seller = GpVendedor::find($clientConfig->vendedor_id);
+                if (!$seller) {
+                    throw ValidationException::withMessages([
+                        'cliente_id' => "La configuración del cliente para el punto de venta {$pointSales->PTO_VTA_ID} no tiene un vendedor válido. Revise o sincronice su configuración comercial.",
+                    ]);
+                }
                 // --- VALIDACIONES DE NEGOCIO ---
                 if ($direccionFacturacion) {
                     $this->orderAndQuotationService->validateActiveSucursal($direccionFacturacion, 'facturación');

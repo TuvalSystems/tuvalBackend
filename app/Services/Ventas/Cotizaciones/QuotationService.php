@@ -25,6 +25,7 @@ use App\Services\Integraciones\Api\Cobros\ApiBillingService;
 use App\Models\Inventario\Despachos\TipoDespacho;
 use App\Services\Ventas\Aprobaciones\Utils\FreightApproval;
 use App\Services\Ventas\Cotizaciones\Contracts\QuotationServiceInterface;
+use App\Services\Ventas\Cotizaciones\Contracts\ProspectQuoteServiceInterface;
 use App\Repositories\Venta\Contracts\QuotationRepositoryInterface;
 use App\Services\Ventas\Aprobaciones\Contracts\ApprovalServiceInterface;
 use App\Services\Ventas\Cotizaciones\Builders\Contracts\QuotationBuilderInterface;
@@ -51,7 +52,8 @@ class QuotationService implements QuotationServiceInterface
         protected readonly OrderAndQuotationServiceInterface $orderAndQuotationService,
         protected readonly QuotationBuilderInterface $quotationBuilder,
         protected readonly ClientQueryServiceInterface $clientService,
-        protected readonly ClientGpSenderServiceInterface $clientGp
+        protected readonly ClientGpSenderServiceInterface $clientGp,
+        protected readonly ProspectQuoteServiceInterface $prospectService
     ) {}
 
 
@@ -109,8 +111,16 @@ class QuotationService implements QuotationServiceInterface
     public function restoreQuotationV2(int $quoteId): array
     {
         $quote      = GpCotizacion::findOrFail($quoteId);
+        $this->prospectService->completeLegacyFields($quote);
+        if ($quote->prospecto_id && !GpCliente::where('CLI_RUC', $quote->CLI_RUC)->exists()) {
+            throw new DomainException('Registre primero el prospecto como cliente para continuar la cotización.');
+        }
         $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $this->fillProspectCustomer($quote, data_get($cliente, 'cliente'));
         $detalles   = $this->getQuotationDetailWithSuppliers($quote->id);
+        if ($quote->prospecto_id) {
+            $this->completeProspectDetails($quote, $detalles);
+        }
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
             $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
@@ -129,6 +139,37 @@ class QuotationService implements QuotationServiceInterface
             'segmento'              => data_get($cliente, 'segmentos'),
             'mode'                  => QuotationMode::RESTORE_QUOTE->value,
         ];
+    }
+
+    private function fillProspectCustomer(GpCotizacion $quote, ?GpCliente $client): void
+    {
+        if (!$quote->prospecto_id || $quote->cliente_id || !$client) {
+            return;
+        }
+        // Preparación de la respuesta. La vinculación se persiste al guardar con el flujo actual.
+        $quote->cliente_id = $client->id;
+        $quote->CLI_RAZON_SOCIAL = $client->CLI_RAZON_SOCIAL;
+        $quote->CLI_CORREO_ELECT_SRI = $client->CLI_CORREO_ELECT_SRI;
+        $branch = GpClienteSucursal::where('CLI_SUC_RUC', $client->CLI_RUC)
+            ->where('estado', 1)->orderByDesc('CLI_SUC_ID_DIRECCION')->first();
+        $quote->sucursal_facturacion_id = $branch?->id;
+        $quote->sucursal_id = $branch?->id;
+    }
+
+    private function completeProspectDetails(GpCotizacion $quote, Collection $details): void
+    {
+        $priceList = GpPuntoVenta::find($quote->pv_id)?->lista_precios_defecto;
+        foreach ($details as $item) {
+            if (!$item->lista_precio) {
+                $item->lista_precio = $priceList;
+            }
+            if (!$item->precio_sin_flete && !$item->fle_valor) {
+                $item->precio_sin_flete = $item->ART_VALOR;
+            }
+        }
+        if ($quote->peso === null || (float) $quote->peso === 0.0) {
+            $quote->peso = round($details->sum(fn ($item) => (float) $item->ART_PESO * (float) $item->ART_CANTIDAD), 2);
+        }
     }
 
     protected function getQuotationDetailWithSuppliers(int $quotationId)
@@ -157,34 +198,6 @@ class QuotationService implements QuotationServiceInterface
 
 
 
-    /**
-     *
-     * PROCESO DE ACTUALIZAR CIENTE Y SUCURSALES EN UNA COTIZACION DE PROSPECTO
-     */
-
-    public function updateQuoteClientData(int $quoteId, int  $clientId)
-    {
-        $quote                           = GpCotizacion::findOrFail($quoteId);
-        $cliente                         = GpCliente::with(['gpvendedor:id,VEND_ID,VEND_NOMBRES,VEND_APELLIDOS'])
-            ->findOrFail($clientId);
-        $sucursal = GpClienteSucursal::where('CLI_SUC_RUC', $cliente->CLI_RUC)
-            ->firstOrFail();
-        $quote->cliente_id               = $cliente->id;
-        $quote->sucursal_id              = $sucursal->id;
-        $quote->sucursal_facturacion_id  = $sucursal->id;
-        $quote->CLI_RUC                  = $cliente->CLI_RUC;
-        $quote->CLI_RAZON_SOCIAL         = $cliente->CLI_RAZON_SOCIAL;
-        $quote->CLI_CORREO_ELECT_SRI     = $cliente->CLI_CORREO_ELECT_SRI;
-        if ($cliente->gpvendedor) {
-            $quote->VEND_ID                  = $cliente->gpvendedor->VEND_ID;
-            $quote->VEND_NOMBRES             = $cliente->gpvendedor->VEND_NOMBRES;
-            $quote->VEND_APELLIDOS           = $cliente->gpvendedor->VEND_APELLIDOS;
-        }
-        $quote->save();
-        return $quote;
-    }
-
-
     public function mergeSelectedStock(array &$stockGeneral, array $seleccionStockPorArticulo)
     {
         $seleccionIndex = [];
@@ -211,9 +224,17 @@ class QuotationService implements QuotationServiceInterface
     public function loadQuotationForCopy(int $quoteId, GpUsuario $user): array
     {
         $quote      = GpCotizacion::findOrFail($quoteId);
+        $this->prospectService->completeLegacyFields($quote);
+        if ($quote->prospecto_id && !GpCliente::where('CLI_RUC', $quote->CLI_RUC)->exists()) {
+            throw new DomainException('Registre primero el prospecto como cliente para continuar la cotización.');
+        }
         $cliente    = $this->clientService->getAvailabeCreditCustomer($quote->CLI_RUC);
+        $this->fillProspectCustomer($quote, data_get($cliente, 'cliente'));
         $clienteNew =  data_get($cliente, 'cliente');
         $detalles   = $this->orderAndQuotationService->getDetailQuotationOrOrder($quote, $clienteNew, 'cotizacion', false, false);
+        if ($quote->prospecto_id) {
+            $this->completeProspectDetails($quote, $detalles);
+        }
         $this->functionService->recalculateIva($detalles);
         $detalles->transform(function ($item) {
             $item->imagenes     = $this->orderAndQuotationService->getImageArticle($item->ART_CODIGO_TRES_LETRAS);
