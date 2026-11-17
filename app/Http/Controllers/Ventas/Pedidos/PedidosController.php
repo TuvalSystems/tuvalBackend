@@ -436,11 +436,11 @@ class PedidosController extends Controller
 
     public function guardarordendecompra(Request $request): Response|Application|ResponseFactory
     {
-        $data = $request->all();
-
-        $pedido = GpPedido::where('id', $data['id'])->get()->first();
-        $pedido->orden_de_compra = $data['orden_de_compra'];
-        $pedido->nota_interna = $data['nota_interna'];
+        $data                       = $request->all();
+        $id                         = data_get($data, 'id', null);
+        $pedido                     = GpPedido::find($id);
+        $pedido->orden_de_compra    = data_get($data, 'orden_de_compra');
+        $pedido->nota_interna       = data_get($data, 'nota_interna');
         $pedido->save();
 
         return response([
@@ -451,12 +451,12 @@ class PedidosController extends Controller
 
     public function guardarmensaje(Request $request): Response|Application|ResponseFactory
     {
-        $data = $request->all();
-
-        $pedido = GpPedido::where('id', $data['id'])->get()->first();
-        $pedido->orden_de_compra = $data['orden_de_compra'];
-        $pedido->aprobado_comercial_mensaje = $data['aprobado_comercial_mensaje'];
-        $pedido->aprobado_crediticio_mensaje = $data['aprobado_crediticio_mensaje'];
+        $data                       = $request->all();
+        $id                         = data_get($data, 'id', null);
+        $pedido                     = GpPedido::find($id);
+        $pedido->orden_de_compra                = $data['orden_de_compra'];
+        $pedido->aprobado_comercial_mensaje     = $data['aprobado_comercial_mensaje'];
+        $pedido->aprobado_crediticio_mensaje    = $data['aprobado_crediticio_mensaje'];
         $pedido->save();
 
         return response([
