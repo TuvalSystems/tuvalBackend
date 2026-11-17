@@ -557,9 +557,9 @@ class CotizacionesController extends Controller
                 'articulo'  => 'required',
                 'bodega'    => 'required',
             ]);
-            $articulo       = $request->get('articulo', null);
-            $bodega         = $request->get('bodega', null);
-            $cotizacionId   = $request->get('cotizacion_id', null);
+            $articulo       = $request->input('articulo', null);
+            $bodega         = $request->input('bodega', null);
+            $cotizacionId   = $request->input('cotizacion_id', null);
             $response       = $this->quotationService->getStockItemsForWarehouse($articulo, $bodega, $cotizacionId);
             return $this->successResponse('Stock obtenido correctamente', $response, 200);
         }, self::LOG_CHANNEL, 'obtenerStockItemPorBodega');
@@ -603,7 +603,7 @@ class CotizacionesController extends Controller
     public function validarSegmentoCliente(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $ruc = $request->get('ruc', null);
+            $ruc = $request->input('ruc', null);
             $hasSegment = $this->quotationService->checkClientWithSegmentExist($ruc);
             if ($hasSegment['success'] === true) {
                 return $this->buildExistResponse(true, 'Segmento encontrado', 200);
@@ -615,9 +615,9 @@ class CotizacionesController extends Controller
     public function actualizarSegmentoCliente(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $ruc            = $request->get('ruc', null);
-            $segmento       = $request->get('segmento', null);
-            $subsegmento    = $request->get('subsegmento', null);
+            $ruc            = $request->input('ruc', null);
+            $segmento       = $request->input('segmento', null);
+            $subsegmento    = $request->input('subsegmento', null);
             $this->quotationService->updateClientWithSegment($ruc, $segmento, $subsegmento);
             return $this->buildSuccessResponse('Segmento del cliente actualizado correctamente', 200);
         }, self::LOG_CHANNEL, 'actualizarSegmentoCliente');

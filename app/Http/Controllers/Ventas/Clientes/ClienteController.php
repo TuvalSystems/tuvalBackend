@@ -75,7 +75,7 @@ class ClienteController extends Controller
     public function obtenerListaSubSegmentos(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $coAtrPadre = $request->get('segmento', null);
+            $coAtrPadre = $request->input('segmento', null);
             $resp       = $this->clientService->getSubSegmentBySegment($coAtrPadre);
             return $this->successResponse('Segmentos obtenidos correctamente', $resp, 200);
         }, self::LOG_CHANNEL, 'obtenerListaSubSegmentos');

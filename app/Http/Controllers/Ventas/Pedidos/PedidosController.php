@@ -302,11 +302,11 @@ class PedidosController extends Controller
     public function volverAPedirPedido(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $request->validate([
-                'id' => 'required|exists:gp_pedidos,id',
+            $validated = $request->validate([
+                'id' => 'required|integer|exists:gp_pedidos,id',
             ]);
             $user = $request->user() ?? GpUsuario::find(179);
-            $response = $this->orderService->loadOrderForCopy($request->get('id'),  $user);
+            $response = $this->orderService->loadOrderForCopy((int) $validated['id'],  $user);
             return $this->successResponse('Pedido copiado correctamente', $response, 200);
         }, self::LOG_CHANNEL, 'volverAPedirPedido');
     }

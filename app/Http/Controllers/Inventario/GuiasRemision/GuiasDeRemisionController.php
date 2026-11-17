@@ -192,7 +192,7 @@ class GuiasDeRemisionController extends Controller
     public function consultarDetalleGuiaReservaPorId(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $id             = $request->get('id');
+            $id             = $request->input('id');
             $detalle        = $this->reservedDeliveryNoteService->getDetailReservationDeliveryNoteById($id);
             return $this->successResponse('Detalle de guia obtenido', $detalle, 200);
         }, 'reservas_log', 'consultarDetalleGuiaReservaPorId -GuiasDeRemisionController');
@@ -224,8 +224,8 @@ class GuiasDeRemisionController extends Controller
     public function listaGuiaDespachoConAjuste(Request $request): JsonResponse
     {
         try {
-            $fechaInicio = $request->get('fechaInicio');
-            $fechaFin = $request->get('fechaFin');
+            $fechaInicio = $request->input('fechaInicio');
+            $fechaFin = $request->input('fechaFin');
             $pedido = $this->deliveryNoteService->getDeliveryNoteDispatchWithAjustment($fechaInicio, $fechaFin);
             return $this->successResponse('Información obtenida', $pedido, 200);
         } catch (\Throwable $e) {
@@ -237,9 +237,9 @@ class GuiasDeRemisionController extends Controller
     public function listaGuiaTransferenciaReposicionConAjuste(Request $request): JsonResponse
     {
         return $this->handleApiAction(function () use ($request): JsonResponse {
-            $fechaInicio    = $request->get('fechaInicio');
-            $fechaFin       = $request->get('fechaFin');
-            $estado         = $request->get('estado');
+            $fechaInicio    = $request->input('fechaInicio');
+            $fechaFin       = $request->input('fechaFin');
+            $estado         = $request->input('estado');
             $pedido         = $this->deliveryNoteService->getDeliveryNoteTransferAndRepositionAjustment($fechaInicio, $fechaFin, $estado);
             return $this->successResponse('Información obtenida', $pedido, 200);
         }, 'reservas_log', 'listaGuiaTransferenciaReposicionConAjuste -GuiasDeRemisionController');
