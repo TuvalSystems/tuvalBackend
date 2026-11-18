@@ -4,13 +4,13 @@ namespace App\Console\Commands;
 
 use App\Models\Admin\Usuarios\GpUsuario;
 use App\Models\Movil\AppVersion;
+use App\Services\Movil\ArchivoApk;
 use App\Services\Movil\Contracts\AppServiceInterface;
 use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -66,7 +66,7 @@ class PublicarApkPruebas extends Command
             }
             $latest = AppVersion::latestForPlatform('android')->first();
             $minimum = $latest?->minimum_required_build ?? 1;
-            $candidate = 'apks/tuvalapp-v'.Str::slug($data['versionName'], '-').'-build'.$data['buildNumber'].'.apk';
+            $candidate = ArchivoApk::ruta($data['versionName'], (int) $data['buildNumber']);
             if (Storage::disk('public')->exists($candidate)) {
                 throw new RuntimeException('Ya existe un archivo con el nombre de destino.');
             }

@@ -50,6 +50,10 @@ php artisan app:publicar-apk-pruebas /ruta/app-qa-release.apk /ruta/manifest.jso
 
 El comando solo admite QA en el host y base indicados; reutiliza `AppService`,
 guarda en `storage/app/public/apks`, registra `app_versions` y la auditoría.
+El nombre de descarga es `Tuval-QA.apk` para versiones terminadas en `-qa`,
+`Tuval-DEV.apk` para `-dev` y `Tuval-PROD.apk` para las versiones de producción
+(sin esos sufijos). Cada versión tiene su propia carpeta interna, por lo que las
+APK anteriores no se sobrescriben aunque compartan nombre de descarga.
 El usuario técnico `APP_QA_CI` debe existir, deshabilitado, sin contraseña ni
 perfiles de acceso. Solo identifica las publicaciones en la auditoría.
 

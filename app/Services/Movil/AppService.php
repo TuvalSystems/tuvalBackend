@@ -11,7 +11,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class AppService implements AppServiceInterface
 {
@@ -118,9 +117,8 @@ class AppService implements AppServiceInterface
             throw AppVersionException::duplicatedBuildNumber();
         }
 
-        $safeVersion = Str::slug($versionName, '-');
-        $fileName = "tuvalapp-v{$safeVersion}-build{$buildNumber}.apk";
-        $path = $file->storeAs('apks', $fileName, 'public');
+        $fileName = ArchivoApk::nombre($versionName);
+        $path = $file->storeAs(ArchivoApk::directorio($versionName, $buildNumber), $fileName, 'public');
 
         $fullPath = storage_path('app/public/' . $path);
         $checksum = hash_file('sha256', $fullPath);
