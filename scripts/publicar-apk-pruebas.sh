@@ -38,6 +38,11 @@ expected = {'package': package, 'buildNumber': int(build), 'versionName': versio
             'commit': os.environ['GITHUB_SHA'],
             'runUrl': 'https://github.com/TuvalSystems/appmovil/actions/runs/' + os.environ['GITHUB_RUN_ID'],
             'sha256': hashlib.sha256((artifact / 'app-qa-release.apk').read_bytes()).hexdigest()}
+if 'releaseNotes' in metadata:
+    notes = metadata['releaseNotes']
+    if not isinstance(notes, str) or not notes.strip() or len(notes) > 20000:
+        raise SystemExit('Notas de versión inválidas.')
+    expected['releaseNotes'] = notes
 if metadata != expected or package != 'com.tuvalsa.tuvalapp.qa' or not version.endswith('-qa'):
     raise SystemExit('La APK y el manifiesto de QA no coinciden.')
 PY

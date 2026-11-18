@@ -1,7 +1,9 @@
 # Publicación automática de appmovil en pruebas
 
 Cada push a `develop` de `TuvalSystems/appmovil` ejecuta `.github/workflows/deploy-qa.yml`.
-GitHub compila con Flutter 3.44.1, Java 17, flavor `qa` y `APP_ENV=qa`. El número de
+GitHub compila con Flutter 3.44.1, Java 17, flavor `qa`, `APP_ENV=qa` y
+`--target-platform android-arm64` (solo teléfonos Android ARM64, sin emuladores x86
+ni dispositivos ARM de 32 bits). El número de
 compilación son los segundos UTC transcurridos desde 2020-01-01; el nombre visible
 sale de `pubspec.yaml`, con sufijo `-qa`. Actualizar la versión en pubspec cuando
 corresponda. Las compilaciones manuales posteriores deben usar un build mayor al
@@ -49,6 +51,14 @@ y `runUrl`. El comando conserva el mínimo obligatorio de la última versión ac
 rechaza builds anteriores y permite reintentar el mismo build únicamente cuando
 contenido, versión, archivo y estado coinciden. No modifica versiones anteriores.
 Si falla la transacción, retira el archivo creado sin registro.
+
+El manifiesto también incluye `releaseNotes`: lista de descripciones de commits
+desde la última ejecución exitosa del workflow en develop. Se eliminan prefijos
+como `feat:` y `fix:`, merges y duplicados; no se muestran hashes ni enlaces de CI
+en las notas. Escribir mensajes de commit descriptivos en español para que expliquen
+los cambios al usuario. El historial completo se obtiene con `fetch-depth: 0` y
+el workflow usa permiso `actions: read` para consultar su última publicación.
+En una recompilación del mismo commit se indica que no hay cambios adicionales.
 
 Al terminar se consulta `/api/movil/app/latest` y se descarga la APK vía HTTP local
 con el virtual host `tuvalapi.cosenco.ec`, verificando SHA-256. Si esa comprobación

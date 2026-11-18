@@ -43,6 +43,7 @@ class PublicarApkPruebas extends Command
                 'sha256' => ['required', 'regex:/^[a-f0-9]{64}$/'],
                 'commit' => ['required', 'regex:/^[a-f0-9]{40}$/'],
                 'runUrl' => ['required', 'regex:~^https://github\.com/TuvalSystems/appmovil/actions/runs/[0-9]+$~'],
+                'releaseNotes' => ['sometimes', 'required', 'string', 'max:20000'],
             ])->validate();
             $checksum = hash_file('sha256', $apk);
             if (!hash_equals($data['sha256'], $checksum)) {
@@ -76,7 +77,7 @@ class PublicarApkPruebas extends Command
                 'build_number' => (int) $data['buildNumber'],
                 'minimum_required_build' => $minimum,
                 'message' => 'Nueva versión de pruebas disponible.',
-                'release_notes' => "Publicación automática QA\nCommit: {$data['commit']}\n{$data['runUrl']}",
+                'release_notes' => $data['releaseNotes'] ?? 'Actualización de la aplicación de pruebas.',
                 'is_active' => true,
             ], $user, new UploadedFile($apk, 'app-qa-release.apk', 'application/vnd.android.package-archive', null, true));
             $path = null;
