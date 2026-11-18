@@ -4,9 +4,16 @@ Cada push a `develop` de `TuvalSystems/appmovil` ejecuta `.github/workflows/depl
 GitHub compila con Flutter 3.44.1, Java 17, flavor `qa`, `APP_ENV=qa` y
 `--target-platform android-arm64` (solo teléfonos Android ARM64, sin emuladores x86
 ni dispositivos ARM de 32 bits). El número de
-compilación son los segundos UTC transcurridos desde 2020-01-01; el nombre visible
-sale de `pubspec.yaml`, con sufijo `-qa`. Actualizar la versión en pubspec cuando
-corresponda. Las compilaciones manuales posteriores deben usar un build mayor al
+compilación son los segundos UTC transcurridos desde 2020-01-01. Antes de compilar,
+el job `prepare` consulta `app:siguiente-version-qa` en el servidor de pruebas:
+toma la mayor versión Android con formato `X.Y.Z-qa` registrada (incluso inactiva)
+e incrementa `Z`. Por ejemplo, `1.0.17-qa` pasa a `1.0.18-qa`.
+El resultado se pasa a Flutter mediante `--build-name`, y Gradle añade `-qa`.
+No se lee ni se modifica la versión de `pubspec.yaml` para calcular la versión QA;
+las versiones de producción tampoco intervienen. Sin historial QA se inicia en
+`1.0.1-qa`. La concurrencia del workflow serializa preparación, compilación y
+publicación. Un build fallido sin publicación no consume la versión; reintentar
+solo la publicación conserva la misma APK y versión. Las compilaciones manuales posteriores deben usar un build mayor al
 último publicado. No se utiliza `--split-per-abi`, que modifica el versionCode.
 
 El análisis bloquea errores; advertencias e información se reportan sin bloquear.
