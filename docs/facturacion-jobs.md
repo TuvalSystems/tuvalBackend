@@ -67,6 +67,8 @@ La clave única de API-GP no se modificó. Estas protecciones no equivalen a hab
 
 ### Worker preparado en pruebas — 19 de noviembre de 2026
 
+**Actualización de activación:** después del despliegue `f47f6e7a` y de que el usuario ejecutara la migración (batch 62), se habilitó `autostart=true` y se actualizó únicamente el grupo `queue-facturacion`. Verificado `RUNNING` como `www-data`, PID 67112, durante 49 segundos. La cola quedó sin pendientes ni fallidos; 12 solicitudes terminaron y no había registros de envío en `envios_facturacion`. Esto confirma ejecución del worker, no emisión de facturas. Los ocho workers Redis también estaban `RUNNING`. No se modificó producción ni se ejecutaron migraciones durante la activación.
+
 Se registró `queue-facturacion:queue-facturacion_00` en Supervisor de `srv-web02`, mediante `/etc/supervisor/conf.d/queue-facturacion.conf`. Usuario `www-data`, PHP `/usr/bin/php` (8.2.35), un proceso y el comando de la sección Activación. `stopwaitsecs=1260`, `autorestart=true` y, temporalmente, `autostart=false`.
 
 Estado verificado: `STOPPED`. El servidor aún estaba en `832f2764`, sin `InvoiceOrderJob.php` ni la migración nueva. Los ocho workers Redis conservaron sus PID y continuaron `RUNNING`; no se ejecutaron migraciones ni se modificó producción.
