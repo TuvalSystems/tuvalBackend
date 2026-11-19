@@ -4,9 +4,12 @@ namespace App\Services\Integraciones\Api;
 
 use App\Services\Integraciones\Api\Core\GpHttpClient;
 use App\Services\Integraciones\Api\Endpoints\ApiGpEndpoints;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ApiGpService
 {
+
+    public const SALES_COMPARISON_BRANCHES = 'FAC-CAL,FAC-MAT,FAC-CUE,FAC-MAN,FAC-SDM,FAC-DAU,FAC-DUR,FAC-QNT,FAC-QSR,FAC-MAC';
 
     protected $httpClient;
 
@@ -17,6 +20,31 @@ class ApiGpService
         $this->httpClient = new GpHttpClient($config['url'], $config['timeout']);
     }
 
+
+    public function getSalesBranchComparison(string $fechaIni, string $fechaFin, ?string $sucursales = null): array
+    {
+        $response = $this->httpClient->makeRequest(
+            ApiGpEndpoints::VENTAS_COMPARATIVO_SUCURSALES,
+            'GET',
+            [
+                'FechaIni' => $fechaIni,
+                'FechaFin' => $fechaFin,
+                'Sucursales' => $sucursales ?? self::SALES_COMPARISON_BRANCHES,
+            ]
+        );
+
+        if (!is_array($response) || array_key_exists('status', $response)
+            || ($response['success'] ?? null) !== true
+            || !is_array($response['data'] ?? null)
+            || !array_is_list($response['data'])) {
+            throw new HttpException(
+                502,
+                'No se pudo consultar el comparativo de ventas.'
+            );
+        }
+
+        return $response['data'];
+    }
 
     public function getEmailUser(array $params){
         return $this->httpClient->makeRequest(ApiGpEndpoints::GENERAL_CONSULTAR_CORREO_USUARIO, 'POST', $params, 'json');

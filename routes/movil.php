@@ -8,6 +8,7 @@ use App\Http\Controllers\Movil\Gestion\SteamTrapController;
 use App\Http\Controllers\Movil\Inventario\GuiasRemision\GuiaRemisionController;
 use App\Http\Controllers\Movil\Inventario\GuiasRemision\GuiaRemisionArchivoController;
 use App\Http\Controllers\Ventas\Clientes\ClienteController;
+use App\Http\Controllers\Movil\Reportes\VentasComparativasController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -75,6 +76,8 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:mobile'])->group
             Route::get('bodegas', 'obtenerBodegas');
             Route::get('/', 'index');
         });
+
+        Route::get('reportes/ventas/sucursales/comparativo', [VentasComparativasController::class, 'index']);
 
         //menu
         Route::get('/menu', [MobileMenuController::class, 'index']);
