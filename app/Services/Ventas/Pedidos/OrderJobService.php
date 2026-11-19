@@ -220,6 +220,9 @@ class OrderJobService
                     continue;
 
                 }
+                if ($this->shouldDeferAutomaticInvoice($order)) {
+                    continue;
+                }
                 Log::channel('cron_process')->info("Procesando pedido {$order->pedido} en estado '{$order->estado->value}'...");
                 $trasladado = $order->estado === OrderStatus::ENVIANDO;
                 $this->invoiceService->checkSendInvoice($order, $trasladado);
@@ -234,6 +237,9 @@ class OrderJobService
                 if ($this->orderService->valdidateOrdersProviders($order)) {
                     $order->estado = OrderStatus::ESPERA;
                     $order->save();
+                    if ($this->shouldDeferAutomaticInvoice($order)) {
+                        continue;
+                    }
                     $this->invoiceService->checkSendInvoice($order, true);
                 }
             } catch (\Throwable $e) {
@@ -242,5 +248,26 @@ class OrderJobService
             }
         }
         Log::channel('cron_process')->info("Proceso de facturas pendientes finalizado.");
+    }
+
+    /** Evita trabajos sin posibilidad de emitir; el worker conserva todas sus validaciones. */
+    protected function shouldDeferAutomaticInvoice(GpPedido $order): bool
+    {
+        if (filled($order->factura)) {
+            return false;
+        }
+
+        $pendingApproval = ($order->requiere_aprobacion_comercial === 'yes' && $order->aprobado_comercial !== 'yes')
+            || ($order->requiere_aprobacion_crediticia === 'yes' && $order->aprobado_crediticio !== 'yes');
+        $pendingDate = $order->origen === OrderOrigenEnum::FACTURA_DEMANDA->value
+            && (empty($order->fe_facturacion_reserva)
+                || Carbon::parse($order->fe_facturacion_reserva)->startOfDay()->gt(now()->startOfDay()));
+
+        if (!$pendingApproval && !$pendingDate) {
+            return false;
+        }
+
+        // Un envío previo debe poder conciliarse aunque después cambien fecha/aprobaciones.
+        return !DB::table('envios_facturacion')->where('pedido_id', $order->id)->exists();
     }
 }

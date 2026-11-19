@@ -41,6 +41,7 @@ class GpDescuentoFormaPago extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_descuento_forma_pagos';
     protected $fillable = [
         'DESC_FORMA_PAGO_CODIGO',
         'DESC_FORMA_PAGO_CONDICION_PAGO',
@@ -49,7 +50,8 @@ class GpDescuentoFormaPago extends Model
         'DESC_FORMA_PAGO_TIPO_CREDITO',
         'DESC_FORMA_PAGO_PORCENTAJE_REBAJAR',
         'DESC_FORMA_PAGO_SRI',
-        'DESC_FORMA_PAGO_TIPO_COBRO'
-
+        'DESC_FORMA_PAGO_TIPO_COBRO',
+        'estado',
+        'nivel'
     ];
 }

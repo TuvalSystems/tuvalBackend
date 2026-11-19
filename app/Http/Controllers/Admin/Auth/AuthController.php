@@ -83,24 +83,21 @@ class AuthController extends Controller
 
     public function obtenerCondicionesDePago()
     {
-        try {
+        return $this->handleApiAction(function () {
             $conditions = $this->userService->getAllPaymentConditions();
             return $this->successResponse('Condiciones de pago obtenidas correctamente', $conditions, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'stack', 'obtenerCondicionesDePago');
     }
 
     public function obtenerMetodosDePago(Request $request)
     {
-        try {
-            $request->validate([
+        return $this->handleApiAction(function () use ($request): JsonResponse {
+            $validate = $request->validate([
                 'condId' => 'required|string',
             ]);
-            $methods = $this->userService->getAllPaymentMethods($request->condId);
+            $condId = data_get($validate, 'condId');
+            $methods = $this->userService->getAllPaymentMethods($condId);
             return $this->successResponse('Métodos de pago obtenidos correctamente', $methods, 200);
-        } catch (\Throwable $e) {
-            return $this->buildErrorResponse($e->getMessage(), 500);
-        }
+        }, 'stack', 'obtenerMetodosDePago');
     }
 }

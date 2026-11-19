@@ -163,7 +163,7 @@ class UserService implements UserServiceInterface
     public function getUserSalesPoints(int $userId)
     {
         return GpPuntoVenta::from('gp_punto_ventas as gpv')
-        ->join('gp_relacion_usuario_punto_ventas as gprupv', 'gpv.PTO_VTA_ID', '=', 'gprupv.USER_PTO_VTA_PUNTO_VENTA')
+            ->join('gp_relacion_usuario_punto_ventas as gprupv', 'gpv.PTO_VTA_ID', '=', 'gprupv.USER_PTO_VTA_PUNTO_VENTA')
             ->where('gprupv.user_id', $userId)
             ->select('gpv.*')
             ->with('bodegas')
@@ -429,7 +429,14 @@ class UserService implements UserServiceInterface
 
     public function getAllPaymentConditions()
     {
-        return GpCondicionPago::select('id', 'COND_DIAS as condDias', 'COND_ID as condId', 'COND_TIPO_DESCUENTO as tipoDesc', 'COND_VALOR as condValor')
+        return GpCondicionPago::select(
+                'id',
+                'COND_DIAS as condDias',
+                'COND_ID as condId',
+                'COND_TIPO_DESCUENTO as tipoDesc',
+                'COND_VALOR as condValor'
+            )
+            ->where('estado', 1)
             ->orderBy('COND_ID', 'desc')->get();
     }
 
@@ -445,6 +452,7 @@ class UserService implements UserServiceInterface
             'NIVEL as nivel'
         )
             ->where('DESC_FORMA_PAGO_CONDICION_PAGO', trim($condId))
+            ->where('estado', 1)
             ->orderBy('DESC_FORMA_PAGO_CODIGO')->get();
     }
 

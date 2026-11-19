@@ -31,6 +31,7 @@ class GpCondicionPago extends Model
 {
     use HasFactory;
 
+    protected $table = 'gp_condicion_pagos';
     protected $fillable = [
         'COND_DIAS',
         'COND_ID',
