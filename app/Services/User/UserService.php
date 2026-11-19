@@ -418,9 +418,17 @@ class UserService implements UserServiceInterface
 
     /** proceso para obtener las condiciones de pago y formas de pago  */
 
+
     public function getAllPaymentConditions()
     {
-        return GpCondicionPago::select('id', 'COND_DIAS as condDias', 'COND_ID as condId', 'COND_TIPO_DESCUENTO as tipoDesc', 'COND_VALOR as condValor')
+        return GpCondicionPago::select(
+            'id',
+            'COND_DIAS as condDias',
+            'COND_ID as condId',
+            'COND_TIPO_DESCUENTO as tipoDesc',
+            'COND_VALOR as condValor'
+        )
+            ->where('estado', 1)
             ->orderBy('COND_ID', 'desc')->get();
     }
 
@@ -436,6 +444,7 @@ class UserService implements UserServiceInterface
             'NIVEL as nivel'
         )
             ->where('DESC_FORMA_PAGO_CONDICION_PAGO', trim($condId))
+            ->where('estado', 1)
             ->orderBy('DESC_FORMA_PAGO_CODIGO')->get();
     }
 
