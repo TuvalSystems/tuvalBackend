@@ -46,9 +46,6 @@ php artisan optimize:clear
 php artisan config:cache
 chmod 640 bootstrap/cache/config.php
 php artisan view:cache
-php artisan optimize:clear
-php artisan optimize:clear
-php artisan optimize:clear
 php artisan route:list --json >/dev/null
 php artisan queue:restart
 php artisan up
