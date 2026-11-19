@@ -2,6 +2,8 @@
 
 namespace App\Services\Ventas\Pedidos;
 
+use App\Models\Facturacion\InvoiceSubmission;
+
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Repositories\Pedidos\Contracts\OrderRepositoryInterface;
@@ -268,6 +270,6 @@ class OrderJobService
         }
 
         // Un envío previo debe poder conciliarse aunque después cambien fecha/aprobaciones.
-        return !DB::table('envios_facturacion')->where('pedido_id', $order->id)->exists();
+        return !InvoiceSubmission::query()->toBase()->where('pedido_id', $order->id)->exists();
     }
 }

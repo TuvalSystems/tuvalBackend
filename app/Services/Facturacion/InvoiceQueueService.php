@@ -2,6 +2,9 @@
 
 namespace App\Services\Facturacion;
 
+use App\Models\Facturacion\InvoiceRequest;
+use App\Enums\Facturacion\InvoiceRequestStatus;
+
 use App\Jobs\Facturacion\InvoiceOrderJob;
 use App\Models\Ventas\Pedidos\GpPedido;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +23,14 @@ class InvoiceQueueService
                 'trasladado' => $trasladado,
                 'check_demanda' => $checkDemanda
             ];
-            DB::table('solicitudes_facturacion')->insertOrIgnore($identity + ['created_at' => now(), 'updated_at' => now()]);
-            $query = DB::table('solicitudes_facturacion')->where($identity);
+            InvoiceRequest::query()->toBase()->insertOrIgnore($identity + ['created_at' => now(), 'updated_at' => now()]);
+            $query = InvoiceRequest::query()->toBase()->where($identity);
             $request = (clone $query)->lockForUpdate()->first();
-            if ($request->estado === 'pendiente') {
+            if ($request->estado === InvoiceRequestStatus::PENDING->value) {
                 return;
             }
             $version = $request->version + 1;
-            $query->update(['estado' => 'pendiente', 'version' => $version, 'ultimo_error' => null, 'updated_at' => now()]);
+            $query->update(['estado' => InvoiceRequestStatus::PENDING->value, 'version' => $version, 'ultimo_error' => null, 'updated_at' => now()]);
             Queue::connection('facturacion')->push(new InvoiceOrderJob($request->id, $version), '', 'facturacion');
         });
     }

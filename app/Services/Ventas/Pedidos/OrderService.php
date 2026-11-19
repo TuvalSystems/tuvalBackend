@@ -2,6 +2,10 @@
 
 namespace App\Services\Ventas\Pedidos;
 
+use App\Models\Facturacion\InvoiceSubmission;
+use App\Services\Facturacion\InvoiceGpResponse;
+use App\Enums\Facturacion\InvoiceSubmissionStatus;
+
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Enums\Ventas\QuotationMode;
@@ -1603,8 +1607,8 @@ class OrderService implements OrderServiceInterface
             throw new \RuntimeException("Este pedido ya tiene una factura generada.");
         }
 
-        if (DB::table('envios_facturacion')->where('pedido_id', $id)->where('estado', 'incierto')->exists()
-            || ($success !== true && !\App\Services\Facturacion\InvoiceGpResponse::isMissing($existInvoice))) {
+        if (InvoiceSubmission::query()->toBase()->where('pedido_id', $id)->where('estado', InvoiceSubmissionStatus::UNCERTAIN->value)->exists()
+            || ($success !== true && !InvoiceGpResponse::isMissing($existInvoice))) {
             throw new \RuntimeException('Debe conciliar el resultado de GP antes de cancelar este pedido.');
         }
 

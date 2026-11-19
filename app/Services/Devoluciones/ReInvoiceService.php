@@ -2,6 +2,8 @@
 
 namespace App\Services\Devoluciones;
 
+use App\Models\Facturacion\ReturnReinvoice;
+
 use App\Enums\Ventas\OrderOrigenEnum;
 use App\Enums\Ventas\OrderStatus;
 use App\Models\Devoluciones\GpDevoluciones;
@@ -46,13 +48,13 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         return DB::transaction(function () use ($devolucion) {
             $devolucion = GpDevoluciones::whereKey($devolucion->id)->lockForUpdate()->firstOrFail();
             $identity = ['devolucion_id' => $devolucion->id];
-            $record = DB::table('refacturaciones_devolucion')->where($identity)->first();
+            $record = ReturnReinvoice::query()->toBase()->where($identity)->first();
             if ($record?->pedido_id) {
                 return GpPedido::findOrFail($record->pedido_id);
             }
-            DB::table('refacturaciones_devolucion')->insert($identity + ['created_at' => now(), 'updated_at' => now()]);
+            ReturnReinvoice::query()->toBase()->insert($identity + ['created_at' => now(), 'updated_at' => now()]);
             $order = $this->createReplacementOrder($devolucion);
-            DB::table('refacturaciones_devolucion')->where($identity)->update([
+            ReturnReinvoice::query()->toBase()->where($identity)->update([
                 'pedido_id' => $order->id, 'updated_at' => now(),
             ]);
             return $order;

@@ -2,6 +2,9 @@
 
 namespace App\Services\Facturacion;
 
+use App\Models\Facturacion\InvoiceSubmission;
+use App\Enums\Facturacion\InvoiceSubmissionStatus;
+
 use App\Enums\Ventas\OrderOrigenEnum;
 use Carbon\Carbon;
 use App\Models\Ventas\Pedidos\GpPedido;
@@ -83,7 +86,7 @@ class InvoiceService implements InvoiceServiceInterface
         if (filled($pedido->factura)) return;
 
         // Un envío anterior pudo terminar en GP aunque el worker muriera o perdiera la respuesta.
-        if (DB::table('envios_facturacion')->where('pedido_id', $pedidoId)->exists()) {
+        if (InvoiceSubmission::query()->toBase()->where('pedido_id', $pedidoId)->exists()) {
             $this->respuestaFacturaVenta($pedido);
             return;
         }
@@ -474,8 +477,8 @@ class InvoiceService implements InvoiceServiceInterface
         ]);
 
         // Se confirma antes del POST y fuera de transacciones: sobrevive a timeout/reinicio.
-        DB::table('envios_facturacion')->insert([
-            'pedido_id' => $pedido->id, 'estado' => 'incierto', 'created_at' => now(), 'updated_at' => now(),
+        InvoiceSubmission::query()->toBase()->insert([
+            'pedido_id' => $pedido->id, 'estado' => InvoiceSubmissionStatus::UNCERTAIN->value, 'created_at' => now(), 'updated_at' => now(),
         ]);
         $result = $this->apiGpProcessInvoice->storeDocumentInvoiceVta($params);
         $pedido->MST_FAC_VTAResult = data_get($result, 'message', 'Envío pendiente de conciliación con GP');
@@ -676,8 +679,8 @@ class InvoiceService implements InvoiceServiceInterface
         $pedido->fecha_hora_factura = now();
         Log::channel('invoice')->info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
-        DB::table('envios_facturacion')->where('pedido_id', $pedido->id)->update([
-            'estado' => 'confirmado', 'factura' => $numero, 'updated_at' => now(),
+        InvoiceSubmission::query()->toBase()->where('pedido_id', $pedido->id)->update([
+            'estado' => InvoiceSubmissionStatus::CONFIRMED->value, 'factura' => $numero, 'updated_at' => now(),
         ]);
     }
 
