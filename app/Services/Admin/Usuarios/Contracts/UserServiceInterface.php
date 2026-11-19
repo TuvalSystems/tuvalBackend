@@ -10,6 +10,8 @@ interface UserServiceInterface
 
     public function listUsers(array $filters): LengthAwarePaginator;
 
+    public function syncUsers(iterable $users): void;
+
     public function updateMobileAppAccess(int $id);
      public function updateAdminCollectionAccess(int $id);
 

@@ -31,6 +31,7 @@ use App\Models\Cobranzas\Bancos\GpCajaBancos;
 use App\Models\Inventario\Articulos\GpUnidadMedida;
 use App\Models\Cobranzas\Cajas\GpRelacionUsuarioCaja;
 use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Admin\Usuarios\Contracts\UserServiceInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Response;
 use Illuminate\Contracts\Foundation\Application;
@@ -40,7 +41,10 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 class SincronizacionController extends Controller
 {
 
-    public function __construct(protected readonly ApiGpService $apiGp) {}
+    public function __construct(
+        protected readonly ApiGpService $apiGp,
+        protected readonly UserServiceInterface $userService,
+    ) {}
 
     /*
      * Sincroniza usuarios desde Dynamics GP
@@ -50,17 +54,7 @@ class SincronizacionController extends Controller
     {
         $obj = new LegacyGpSoapService;
         $usuarios = $obj->usuarios();
-        foreach ($usuarios as $key => $data) {
-
-            $usuario = GpUsuario::where('USERID', trim($data['USERID']))->first();
-            if (!$usuario) {
-                $usuario = new GpUsuario;
-            }
-            $usuario->USERID = trim($data['USERID']);
-            $usuario->USERNAME = trim($data['USERNAME']);
-            $usuario->NIVEL_AUTORIZA_CRED = (int) trim($data['NIVEL_AUTORIZA_CRED']);
-            $usuario->save();
-        }
+        $this->userService->syncUsers($usuarios);
         return response([
             'success' => true,
             'message' => 'Usuarios correctamente sincronizados'

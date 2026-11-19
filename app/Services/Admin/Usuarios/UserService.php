@@ -31,6 +31,24 @@ class UserService implements UserServiceInterface
     ) {}
 
 
+    public function syncUsers(iterable $users): void
+    {
+        foreach ($users as $data) {
+            $userId = trim($data['USERID']);
+            $user = GpUsuario::firstOrNew(['USERID' => $userId]);
+
+            if (!$user->exists) {
+                $user->password = Hash::make($userId);
+                $user->must_change_password = true;
+                $user->process_job = 1;
+            }
+
+            $user->USERNAME = trim($data['USERNAME']);
+            $user->NIVEL_AUTORIZA_CRED = (int) trim($data['NIVEL_AUTORIZA_CRED']);
+            $user->save();
+        }
+    }
+
     public function listUsers(array $filters): LengthAwarePaginator
     {
         $search = data_get($filters, 'search', '');
