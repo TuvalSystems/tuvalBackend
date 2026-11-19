@@ -1,10 +1,21 @@
 # Crear una API de reportes para web o app móvil
 
+## Lectura obligatoria antes de implementar
+
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos documentos referencien y que apliquen al cambio. Contrasta la documentación con el código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una referencia, búscala en el proyecto y comunica la limitación sin inventar su contenido.
+
 ## Mensaje para copiar
 
 Completa lo que conozcas. Basta con describir qué necesitas consultar; el agente investigará los detalles técnicos.
 
 ```text
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y
+docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos
+documentos referencien y que apliquen al cambio. Contrasta la documentación con el
+código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una
+referencia, búscala en el proyecto y comunica la limitación sin inventar su
+contenido.
+
 Usa docs/prompts/crear-api-reportes.md.
 
 Consumidor: [web / app móvil].
@@ -28,6 +39,13 @@ Elige solo uno y completa los campos entre corchetes. Si desconoces la fuente ex
 ### Web con MySQL
 
 ```text
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y
+docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos
+documentos referencien y que apliquen al cambio. Contrasta la documentación con el
+código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una
+referencia, búscala en el proyecto y comunica la limitación sin inventar su
+contenido.
+
 Usa docs/prompts/crear-api-reportes.md.
 
 Consumidor: web.
@@ -52,6 +70,13 @@ No modifiques la web ni la app móvil, no fusiones PR ni despliegues.
 ### Web con API-GP
 
 ```text
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y
+docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos
+documentos referencien y que apliquen al cambio. Contrasta la documentación con el
+código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una
+referencia, búscala en el proyecto y comunica la limitación sin inventar su
+contenido.
+
 Usa docs/prompts/crear-api-reportes.md.
 
 Consumidor: web.
@@ -77,6 +102,13 @@ No modifiques la web ni la app móvil, no fusiones PR ni despliegues.
 ### App móvil con MySQL
 
 ```text
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y
+docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos
+documentos referencien y que apliquen al cambio. Contrasta la documentación con el
+código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una
+referencia, búscala en el proyecto y comunica la limitación sin inventar su
+contenido.
+
 Usa docs/prompts/crear-api-reportes.md.
 
 Consumidor: app móvil.
@@ -102,6 +134,13 @@ No modifiques la web ni la app móvil, no fusiones PR ni despliegues.
 ### App móvil con API-GP
 
 ```text
+Antes de implementar, lee los AGENTS.md aplicables, si existen, y docs/PROYECTO.md y
+docs/prompts/crear-api-reportes.md. Sigue las instrucciones adicionales que esos
+documentos referencien y que apliquen al cambio. Contrasta la documentación con el
+código actual, reutiliza su estructura y conserva las reglas de negocio. Si falta una
+referencia, búscala en el proyecto y comunica la limitación sin inventar su
+contenido.
+
 Usa docs/prompts/crear-api-reportes.md.
 
 Consumidor: app móvil.
