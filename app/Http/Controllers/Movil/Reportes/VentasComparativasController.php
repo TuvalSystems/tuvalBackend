@@ -6,18 +6,19 @@ namespace App\Http\Controllers\Movil\Reportes;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Perfiles\Perfiles;
-use App\Services\Integraciones\Api\ApiGpService;
+use App\Services\Reportes\Contracts\SalesBranchComparisonServiceInterface;
 use App\Traits\ExecuteApiTransactions;
 use App\Traits\JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class VentasComparativasController extends Controller
 {
     use ExecuteApiTransactions, JsonResponseTrait;
 
-    public function __construct(private readonly ApiGpService $apiGp) {}
+    public function __construct(private readonly SalesBranchComparisonServiceInterface $service)
+    {
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -42,20 +43,10 @@ class VentasComparativasController extends Controller
                 'Sucursales' => ['sometimes', 'required', 'string', 'max:79'],
             ]);
 
-            $sucursales = $validated['Sucursales'] ?? null;
-            if ($sucursales !== null) {
-                $codes = explode(',', $sucursales);
-                $allowed = explode(',', ApiGpService::SALES_COMPARISON_BRANCHES);
-
-                if (count(array_unique($codes)) !== count($codes) || array_diff($codes, $allowed) !== []) {
-                    throw ValidationException::withMessages([
-                        'Sucursales' => 'Indique códigos de sucursales válidos sin repetir.',
-                    ]);
-                }
-            }
-
-            $data = $this->apiGp->getSalesBranchComparison(
-                $validated['FechaIni'], $validated['FechaFin'], $sucursales
+            $data = $this->service->getComparison(
+                $validated['FechaIni'],
+                $validated['FechaFin'],
+                $validated['Sucursales'] ?? null
             );
 
             return $this->successResponse('Comparativo de ventas obtenido.', $data);

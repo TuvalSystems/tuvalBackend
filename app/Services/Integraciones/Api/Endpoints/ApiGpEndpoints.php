@@ -5,11 +5,12 @@ namespace App\Services\Integraciones\Api\Endpoints;
 class ApiGpEndpoints
 {
 
+    // Reportes: ventas por sucursales.
+    public const VENTAS_COMPARATIVO_SUCURSALES = 'api/reportes/ventas/sucursales/comparativo';
+
     // ---
     // ✅ 1. Endpoints de Autenticación y Generales
     // ---
-    public const VENTAS_COMPARATIVO_SUCURSALES = 'api/reportes/ventas/sucursales/comparativo';
-
     public const GENERAL_VALIDAR_USUARIO = 'api/validar-usuario';
     public const GENERAL_CONSULTAR_CORREO_USUARIO = 'api/buscar-correo-usuario';
     public const GENERAL_CONSULTA_TRANSFERENCIA_CABECERA = 'api/consultar-cabecera-transferencia';

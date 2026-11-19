@@ -93,6 +93,9 @@ La nueva API será de solo consulta, sin login.
 Verifica en api-gp el contrato y la respuesta real del endpoint.
 Reutiliza el cliente HTTP, constantes e integración existentes.
 No crees un repositorio que solo repita la llamada HTTP.
+Usa controlador → servicio del reporte → ApiGpService → GpHttpClient.
+El servicio prepara params e interpreta resultados y fallos; ApiGpService
+solo recibe array $params, llama a makeRequest() y devuelve su resultado.
 Reutiliza servicios y lógica compartida con el otro consumidor si existen,
 sin duplicar código ni crear archivos innecesarios.
 Implementa solo el backend y verifica únicamente en pruebas.
@@ -158,6 +161,9 @@ contraseña y acceso a datos. No crees una ruta pública.
 Verifica en api-gp el contrato y la respuesta real del endpoint.
 Reutiliza el cliente HTTP, constantes e integración existentes.
 No crees un repositorio que solo repita la llamada HTTP.
+Usa controlador → servicio del reporte → ApiGpService → GpHttpClient.
+El servicio prepara params e interpreta resultados y fallos; ApiGpService
+solo recibe array $params, llama a makeRequest() y devuelve su resultado.
 Reutiliza servicios y lógica compartida con el otro consumidor si existen,
 sin duplicar código ni crear archivos innecesarios.
 Implementa solo el backend y verifica únicamente en pruebas.
@@ -196,6 +202,15 @@ El controlador no contiene SQL ni reglas de negocio extensas. El servicio no con
 
 Para API-GP, reutiliza la integración en `app/Services/Integraciones/Api/`, `ApiGpService`, `GpHttpClient`, las constantes de `ApiGpEndpoints` y `config('services.api_gp')`. No crees un repositorio que solo repita la llamada HTTP ni otro cliente. Verifica el contrato en api-gp y la respuesta desplegada; no modifiques ese repositorio ni sus SP salvo que forme parte del requerimiento.
 
+**Flujo obligatorio para reportes con API-GP:** controlador → servicio del reporte → `ApiGpService` → `GpHttpClient`.
+
+- Reutiliza un servicio de reportes compatible; si no existe, crea uno en `app/Services/Reportes/`, siguiendo los contratos, inyección y bindings del módulo. Actualiza el provider existente y su `provides()` cuando corresponda. La instrucción de crear solo lo necesario no permite omitir esta capa ni trasladar su lógica a la integración.
+- El servicio prepara `array $params`, aplica reglas, catálogos y valores predeterminados del reporte, llama a la integración e interpreta su respuesta: éxito, ausencia de resultados, respuesta inválida o fallo. Extrae o transforma los datos allí. No construye respuestas HTTP ni depende de `Request`; utiliza el manejo de excepciones existente para que el controlador y los traits conserven el contrato HTTP.
+- Los métodos nuevos de `ApiGpService` reciben `array $params` y se limitan a llamar a `makeRequest()` con el endpoint, método y formato correspondientes, devolviendo su resultado sin interpretarlo. No reciben los filtros del reporte como argumentos individuales ni construyen sus parámetros.
+- No coloques en `ApiGpService` catálogos de sucursales, filtros predeterminados, validaciones del reporte, extracción de `data`, mensajes específicos ni excepciones propias del reporte.
+- `GpHttpClient` conserva el manejo técnico compartido de conexión, transporte y reintentos. No lo modifiques para resolver reglas o errores específicos de un reporte.
+- El controlador valida la entrada, aplica la autorización correspondiente, delega al servicio y construye la respuesta mediante los traits existentes. No llama directamente a `ApiGpService` para resolver el reporte.
+
 ### 3. Consultar la fuente correctamente
 
 - Usa conexiones existentes. Para MySQL, inspecciona en pruebas la tabla o vista; para un SP, verifica su definición, firma, orden de parámetros, tipos y comportamiento con null. No deduzcas la firma por nombres ni ejecutes un SP antes de confirmar que es de consulta.
@@ -206,6 +221,7 @@ Para API-GP, reutiliza la integración en `app/Services/Integraciones/Api/`, `Ap
 
 ### 4. Consumidor, autenticación y contrato
 
+- Organiza las rutas mediante grupos `Route::prefix()` según el módulo y submódulo al que pertenecen. Reutiliza el grupo existente; si falta, créalo dentro del grupo de acceso correspondiente al consumidor. Para reportes de ventas, usa el grupo `reportes` y dentro el grupo `ventas`, dejando en la ruta solo el segmento específico, por ejemplo `sucursales/comparativo`. No declares una ruta aislada con `reportes/ventas/...` ni dupliques grupos equivalentes. Determina el submódulo por su uso de negocio; no agregues niveles sin necesidad. Al reorganizar rutas existentes, conserva su URL final, método, nombre, restricciones y middleware efectivos.
 - Implementa solo el backend. Para web, usa `/api/reportes/<submodulo>/<reporte>`. Para reportes móviles nuevos, reutiliza el grupo equivalente en `routes/movil.php`; si no existe, incorpora `reportes/<submodulo>/<reporte>` dentro del grupo protegido. El prefijo actual lo registra `RouteServiceProvider`: `/api/movil`, por lo que la URL resultará `/api/movil/reportes/...`. Comprueba siempre el registro actual y no dupliques `/api` ni `/api/movil` en los archivos de rutas. Omite el submódulo cuando no corresponda.
 - **Web:** se conserva la autorización de esta plantilla para rutas nuevas de reportes públicas, sin login, token, API key ni `Authorization`. Ubícalas fuera de grupos de autenticación; conserva middleware generales y límites. No conviertas rutas protegidas existentes en públicas. Un FormRequest público debe permitir la solicitud y no depender de un usuario autenticado.
 - **App móvil:** no hereda la regla de acceso público. Coloca los reportes dentro de los grupos existentes con `auth:sanctum`, `active.account`, `abilities:mobile` y `must.change.password`, conforme al registro vigente. No uses las excepciones de login o actualización de la app como ejemplo para un reporte. Conserva permisos y alcance por usuario, agencia, punto de venta o bodega cuando apliquen; valida los identificadores recibidos contra ese alcance. No añadas ni elimines políticas de negocio sin fundamento en el flujo existente.
@@ -227,6 +243,8 @@ Para API-GP, reutiliza la integración en `app/Services/Integraciones/Api/`, `Ap
 - Reutiliza pruebas. Añade solo las que verifiquen comportamiento relevante: filtros, parámetros y su orden, transformación, ausencia de resultados y errores. No generes pruebas que solo repitan la implementación.
 - Realiza consultas acotadas exclusivamente en pruebas. Compara resultados con la fuente y verifica entradas válidas, inválidas y vacías. No ejecutes migraciones, escrituras ni procedimientos comerciales para probar. Distingue pruebas aisladas de integración real y no afirmes resultados no comprobados.
 - Revisa el diff y elimina únicamente archivos innecesarios creados por tu tarea. Conserva el trabajo ajeno y comunica limitaciones reales en la respuesta o el PR, sin otro informe.
+- Para API-GP, verifica en el diff el flujo controlador → servicio del reporte → integración: `ApiGpService` únicamente delega la llamada con `array $params`. Comprueba que la preparación de parámetros, valores predeterminados e interpretación de respuestas estén en el servicio del reporte. Una respuesta exitosa con una lista vacía debe conservarse como resultado vacío; un fallo o una respuesta inválida no deben convertirse en éxito ni en una lista vacía. Verifica también la resolución del servicio mediante su contrato en el contenedor.
+- Comprueba que cada ruta esté dentro de los prefijos de su módulo y submódulo, sin segmentos duplicados. Contrasta la URL final y los middleware efectivos con `route:list`; agrupar rutas existentes no debe cambiar su contrato ni su acceso.
 
 ### 6. Entrega local o mediante PR
 

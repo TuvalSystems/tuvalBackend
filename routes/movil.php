@@ -77,7 +77,11 @@ Route::middleware(['auth:sanctum', 'active.account', 'abilities:mobile'])->group
             Route::get('/', 'index');
         });
 
-        Route::get('reportes/ventas/sucursales/comparativo', [VentasComparativasController::class, 'index']);
+        Route::prefix('reportes')->group(function () {
+            Route::prefix('ventas')->group(function () {
+                Route::get('sucursales/comparativo', [VentasComparativasController::class, 'index']);
+            });
+        });
 
         //menu
         Route::get('/menu', [MobileMenuController::class, 'index']);
