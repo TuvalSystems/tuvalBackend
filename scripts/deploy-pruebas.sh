@@ -46,9 +46,13 @@ php artisan optimize:clear
 php artisan config:cache
 chmod 640 bootstrap/cache/config.php
 php artisan view:cache
+php artisan optimize:clear
+php artisan optimize:clear
+php artisan optimize:clear
 php artisan route:list --json >/dev/null
 php artisan queue:restart
 php artisan up
+php artisan optimize:clear
 
 status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
     --max-time 20 --header 'Host: tuvalapi.cosenco.ec' http://127.0.0.1/api/login)
