@@ -5,6 +5,7 @@ namespace App\Services\Movil\Gestion;
 use App\Mail\Cotizacion\CotizacionBorradorAppMail;
 use App\Models\Admin\PuntosVenta\GpPuntoVenta;
 use App\Models\Inventario\Articulos\GpArticulo;
+use App\Models\Inventario\Articulos\GpUnidadMedida;
 use App\Models\Ventas\Clientes\ClienteConfiguracion;
 use App\Models\Ventas\Clientes\GpCliente;
 use App\Models\Ventas\Clientes\GpClienteSucursal;
@@ -210,6 +211,7 @@ class SteamTrapService implements SteamTrapServiceInterface
         $itemMetaByCode     = $this->resolveSteamTrapArticleCodes($suggestItems, $selectedItem);
         $artCodes           = $itemMetaByCode->keys()->values();
         $articulos          = GpArticulo::whereIn('ART_CODIGO_TRES_LETRAS', $artCodes)->get();
+        $this->resolveArticleBaseUnits($articulos);
         //obtener lista de precio de los articulos
         $groupPrices        = $this->getPriceListGroupedByArticle($articulos);
         $this->identifyGroupPricesToArticle($articulos, $groupPrices, $itemMetaByCode, $client);
@@ -326,6 +328,23 @@ class SteamTrapService implements SteamTrapServiceInterface
         $quote = $this->quoteBuilder->payloadQuotationHeaderDraft($user, $cliente, $info, $seller);
         $quote->save();
         return $quote;
+    }
+
+    protected function resolveArticleBaseUnits(EloquentCollection $articles): void
+    {
+        $units = GpUnidadMedida::whereIn('UMEDIDA_PLAN', $articles->pluck('ART_PLAN_UMEDIDA')->unique())
+            ->get()->groupBy('UMEDIDA_PLAN');
+
+        foreach ($articles as $article) {
+            $matches = $units->get($article->ART_PLAN_UMEDIDA, collect());
+            if ($matches->count() !== 1 || blank($matches->first()->UMEDIDA_BASE)) {
+                throw ValidationException::withMessages([
+                    'items' => "No se pudo determinar la unidad base del artículo {$article->ART_CODIGO}.",
+                ]);
+            }
+            // El catálogo guarda el plan; el detalle de venta requiere la unidad base.
+            $article->ART_PLAN_UMEDIDA = $matches->first()->UMEDIDA_BASE;
+        }
     }
 
     protected function payloadQuotationDetailDraft(EloquentCollection $articles, int $quoteId, GpCliente $cliente)
