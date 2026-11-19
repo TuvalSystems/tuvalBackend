@@ -138,9 +138,7 @@ class AprobacionesController extends Controller
             $user       = $request->user();
             $orderId    = data_get($validate, 'id');
             $alert      = data_get($validate, 'msg');
-            $pedido     = DB::transaction(function () use ($orderId, $user, $alert) {
-                return $this->approvalOrder->rejectCommercialOrder($orderId,  $user, $alert,);
-            });
+            $pedido = $this->approvalOrder->rejectCommercialOrder($orderId, $user, $alert);
             return $this->buildSuccessResponse("Pedido {$pedido->pedido} rechazado", 200);
         }, 'laravel', 'rechazarpedido');
     }
@@ -156,9 +154,7 @@ class AprobacionesController extends Controller
             $alert      = data_get($validate, 'msg');
 
             $gpuser = $request->user();
-            $order = DB::transaction(function () use ($orderId, $alert, $gpuser) {
-                return $this->approvalOrder->rejectCommercialOrder($orderId,   $gpuser, $alert);
-            });
+            $order = $this->approvalOrder->rejectCommercialOrder($orderId, $gpuser, $alert);
 
             return $this->buildSuccessResponse("Pedido {$order->pedido} rechazado por: {$alert}", 200);
         }, 'laravel', 'rechazarpedidoporstock');

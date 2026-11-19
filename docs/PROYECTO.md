@@ -430,6 +430,8 @@ Para producción debe existir un cron del sistema similar a:
 
 ## 10. Colas y jobs
 
+La facturación usa `InvoiceOrderJob` en la conexión `database` denominada `facturacion`, con un worker dedicado y solicitudes persistentes. Los demás jobs conservan sus conexiones actuales. Flujos cubiertos, migración manual en pruebas, activación y recuperación: [Facturación mediante jobs](facturacion-jobs.md).
+
 La configuración por defecto de `config/queue.php` usa `QUEUE_CONNECTION=redis` si no se sobreescribe. Recomendaciones operativas:
 
 ```bash

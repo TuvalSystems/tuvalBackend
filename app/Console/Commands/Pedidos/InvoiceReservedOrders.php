@@ -34,14 +34,15 @@ class InvoiceReservedOrders extends Command
                 $payload = array_merge($payload, [
                     'processed' => $result['processed'] ?? null,
                     'invoiced'  => $result['invoiced'] ?? null,
+                    'queued'   => $result['queued'] ?? null,
                     'skipped'   => $result['skipped'] ?? null,
                     'failed'    => $result['failed'] ?? null,
                 ]);
 
                 $this->info(sprintf(
-                    "✅ Completado en %ss. Facturadas: %d | Omitidas: %d | Fallidas: %d | Procesadas: %d",
+                    "✅ Completado en %ss. Solicitudes registradas: %d | Omitidas: %d | Fallidas: %d | Procesadas: %d",
                     $duration,
-                    (int)($result['invoiced'] ?? 0),
+                    (int)($result['queued'] ?? 0),
                     (int)($result['skipped'] ?? 0),
                     (int)($result['failed'] ?? 0),
                     (int)($result['processed'] ?? 0),

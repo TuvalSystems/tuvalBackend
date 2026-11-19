@@ -11,7 +11,7 @@ class ApiGpProcessInvoiceVta extends ApiGpService
 
     public function storeDocumentInvoiceVta(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_GUARDAR_FACTURA_VTA, 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_GUARDAR_FACTURA_VTA, 'POST', $params, 'json', false);
     }
 
 
@@ -22,6 +22,6 @@ class ApiGpProcessInvoiceVta extends ApiGpService
 
     public function deleteDocumentInvoiceVta(array $params)
     {
-        return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_ELIMINAR_FACTURA_VTA, 'POST', $params, 'json');
+        return $this->httpClient->makeRequest(ApiGpEndpoints::TRANSACCIONES_ELIMINAR_FACTURA_VTA, 'POST', $params, 'json', false);
     }
 }

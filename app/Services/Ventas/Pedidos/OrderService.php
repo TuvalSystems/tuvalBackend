@@ -577,7 +577,7 @@ class OrderService implements OrderServiceInterface
 
     protected function recalculateAndSendInvoice(GpPedido $order)
     {
-        $this->functionsService->recalculateOrder($order->id);
+        // El worker conserva el recálculo de esta vía antes de enviar a GP.
         $this->invoiceService->sendInvoiceGp($order);
     }
 
@@ -682,7 +682,7 @@ class OrderService implements OrderServiceInterface
                 'errores' => []
             ];
         }
-        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
+        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'encolados' => 0, 'fallidos' => 0, 'errores' => []];
         $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
             foreach ($pedidos as $pedido) {
                 $resultados['total']++;
@@ -694,28 +694,9 @@ class OrderService implements OrderServiceInterface
                 }
 
                 try {
-                    try {
-
-                        $this->invoiceService->checkSendInvoice($pedido, true, false);
-                    } catch (\Throwable $exGp) {
-                        // Clasifica “ya facturado” como éxito idempotente
-                        $msg = mb_strtolower($exGp->getMessage());
-                        if (str_contains($msg, 'ya se encuentra facturado') || str_contains($msg, 'ya existe')) {
-                            $resultados['exitosos']++;
-                            Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} ya estaba facturado (idempotente)");
-                        } else {
-                            throw $exGp;
-                        }
-                    }
-
-                    $pedido->refresh();
-                    if ($pedido->estado === OrderStatus::FACTURADO && filled($pedido->factura)) {
-                        $resultados['exitosos']++;
-                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
-                    } else {
-                        // throw new \Exception("El pedido no cambió a 'facturado'");
-                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
-                    }
+                    $this->invoiceService->checkSendInvoice($pedido, true, false);
+                    $resultados['encolados']++;
+                    Log::channel('cron_process')->info("Pedido {$pedido->pedido}: solicitud de facturación registrada.");
                 } catch (\Throwable $e) {
                     $resultados['fallidos']++;
                     $resultados['errores'][] = [
@@ -1179,9 +1160,7 @@ class OrderService implements OrderServiceInterface
         $this->recalculateOldAndNewOrder($data['id'], $newOrder->id);
         $this->cloneMediaFromParent($parentOder, $newOrder);
         $this->updateHeaderOrderTransferVta($parentOder);
-        DB::afterCommit(function () use ($newOrder) {
-            $this->invoiceService->checkSendInvoice($newOrder, true);
-        });
+        $this->invoiceService->checkSendInvoice($newOrder, true);
         Log::info('Pedido desde Facturar Existente Generado Correctamente en generateInvoiceFromExistingOrder', [
             'pedido' => $newOrder->pedido
         ]);
@@ -1588,9 +1567,18 @@ class OrderService implements OrderServiceInterface
         );
     }
 
-    /** cancelar pedido en estado enviando sin respetar el cache de facturacion */
+    /** Cancelación manual coordinada con el worker de facturación. */
 
     public function cancelOrderStatusSending(int $id, GpUsuario $user): GpPedido
+    {
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $id,
+            fn () => $this->cancelOrderStatusSendingLocked($id, $user),
+            'No se puede cancelar el pedido mientras su job de facturación está activo.'
+        );
+    }
+
+    protected function cancelOrderStatusSendingLocked(int $id, GpUsuario $user): GpPedido
     {
         $order = GpPedido::find($id);
 
@@ -1613,6 +1601,11 @@ class OrderService implements OrderServiceInterface
                 'FAC_VTA_MENSAJE'    => data_get($existInvoice, 'data.mensaje', data_get($existInvoice, 'message')),
             ]);
             throw new \RuntimeException("Este pedido ya tiene una factura generada.");
+        }
+
+        if (DB::table('envios_facturacion')->where('pedido_id', $id)->where('estado', 'incierto')->exists()
+            || ($success !== true && !\App\Services\Facturacion\InvoiceGpResponse::isMissing($existInvoice))) {
+            throw new \RuntimeException('Debe conciliar el resultado de GP antes de cancelar este pedido.');
         }
 
         return DB::transaction(function () use ($id, $user) {

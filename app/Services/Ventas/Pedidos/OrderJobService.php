@@ -49,7 +49,7 @@ class OrderJobService
 
         $resultados = $this->invoicePreviousMonthOrders();
 
-        if (isset($resultados['abortado']) && $resultados['abortado'] === false) {
+        if (isset($resultados['abortado']) && $resultados['abortado'] === false && $resultados['fallidos'] === 0) {
             Cache::put($cacheKey, true, now()->addDays(32));
             Log::channel('cron_process')->info("✅ Proceso mensual completado y marcado en caché.");
         }
@@ -82,7 +82,7 @@ class OrderJobService
             ];
         }
 
-        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'fallidos' => 0, 'errores' => []];
+        $resultados = ['abortado' => false, 'mes' => $mes, 'total' => 0, 'exitosos' => 0, 'encolados' => 0, 'fallidos' => 0, 'errores' => []];
         $this->orderRepository->queryOrdersToInvoiceNextMonth($year, $mes)->chunkById(100, function ($pedidos) use (&$resultados) {
             foreach ($pedidos as $pedido) {
                 $resultados['total']++;
@@ -94,27 +94,9 @@ class OrderJobService
                 }
 
                 try {
-                    try {
-
-                        $this->invoiceService->checkSendInvoice($pedido, true, false);
-                    } catch (\Throwable $exGp) {
-                        // Clasifica “ya facturado” como éxito idempotente
-                        $msg = mb_strtolower($exGp->getMessage());
-                        if (str_contains($msg, 'ya se encuentra facturado') || str_contains($msg, 'ya existe')) {
-                            $resultados['exitosos']++;
-                            Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} ya estaba facturado (idempotente)");
-                        } else {
-                            throw $exGp;
-                        }
-                    }
-
-                    $pedido->refresh();
-                    if ($pedido->estado === OrderStatus::FACTURADO && filled($pedido->factura)) {
-                        $resultados['exitosos']++;
-                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} facturado: {$pedido->factura}");
-                    } else {
-                        Log::channel('cron_process')->info("✅ Pedido {$pedido->pedido} no cambió a 'facturado'");
-                    }
+                    $this->invoiceService->checkSendInvoice($pedido, true, false);
+                    $resultados['encolados']++;
+                    Log::channel('cron_process')->info("Pedido {$pedido->pedido}: solicitud de facturación registrada.");
                 } catch (\Throwable $e) {
                     $resultados['fallidos']++;
                     $resultados['errores'][] = [
@@ -149,7 +131,7 @@ class OrderJobService
     public function generateInvoiceForReservedOrders(?string $date = null): array
     {
         $today = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
-        $metrics = ['processed' => 0, 'invoiced' => 0, 'skipped' => 0, 'failed' => 0];
+        $metrics = ['processed' => 0, 'invoiced' => 0, 'queued' => 0, 'skipped' => 0, 'failed' => 0];
         $orders = $this->orderRepository->queryInvoiceReservedOrdersForDate($today);
         $orders->orderBy('id')->chunkById(200, function ($orders) use (&$metrics, $today) {
             foreach ($orders as $order) {
@@ -182,20 +164,9 @@ class OrderJobService
                             return;
                         }
 
-                        // 4) Ejecuta la facturación (tu servicio)
                         $this->invoiceService->checkSendInvoice($fresh, true, false);
-                        $fresh->refresh();
-
-
-                         if ($fresh->estado === OrderStatus::FACTURADO && filled($fresh->factura)) {
-                            $metrics['invoiced']++;
-                            Log::channel('cron_process')->info("✅ Pedido {$fresh->id} facturado: {$fresh->factura}");
-                       } elseif ($fresh->estado === OrderStatus::ESPERA) {
-                            $metrics['skipped']++;
-                            Log::channel('cron_process')->info("✅ Pedido {$fresh->id} no cambió a 'facturado' después de intentar facturar.");
-                        }else{
-                            Log::channel('cron_process')->warning("❓ Pedido {$fresh->id} procesado pero quedó en estado: {$fresh->estado->value}");
-                        }
+                        $metrics['queued']++;
+                        Log::channel('cron_process')->info("Pedido {$fresh->id}: solicitud de facturación registrada.");
                     });
                 } catch (\DomainException $e) {
                     $metrics['skipped']++;

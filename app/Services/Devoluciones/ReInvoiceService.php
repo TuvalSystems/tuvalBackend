@@ -24,6 +24,7 @@ use App\Services\Compartido\Contracts\FunctionsServiceInterface;
 use App\Services\Facturacion\Contracts\InvoiceServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ReInvoiceService implements ReInvoiceServiceInterface
 {
@@ -42,6 +43,24 @@ class ReInvoiceService implements ReInvoiceServiceInterface
 
     public function execute(GpDevoluciones $devolucion)
     {
+        return DB::transaction(function () use ($devolucion) {
+            $devolucion = GpDevoluciones::whereKey($devolucion->id)->lockForUpdate()->firstOrFail();
+            $identity = ['devolucion_id' => $devolucion->id];
+            $record = DB::table('refacturaciones_devolucion')->where($identity)->first();
+            if ($record?->pedido_id) {
+                return GpPedido::findOrFail($record->pedido_id);
+            }
+            DB::table('refacturaciones_devolucion')->insert($identity + ['created_at' => now(), 'updated_at' => now()]);
+            $order = $this->createReplacementOrder($devolucion);
+            DB::table('refacturaciones_devolucion')->where($identity)->update([
+                'pedido_id' => $order->id, 'updated_at' => now(),
+            ]);
+            return $order;
+        });
+    }
+
+    protected function createReplacementOrder(GpDevoluciones $devolucion)
+    {
         $orderOrigin    = GpPedido::where('id', $devolucion->pedido_id)->first();
         $isDispatch     = $this->devRepo->shouldMarkAsDispatched($devolucion->id);
         $cliente        = GpCliente::findOrFail($devolucion->cliente_volver_a_facturar_id);
@@ -54,7 +73,7 @@ class ReInvoiceService implements ReInvoiceServiceInterface
         $userOrder = GpUsuario::where('id', $newOrderHeader->user_id)->first();
         //notificar al usuario
         $mensaje = "El pedido {$newOrderHeader->pedido} ha sido creado exitosamente tras el proceso de refacturación por devolución.";
-        $userOrder->notify(new UserNotification('Pedido Refacturado', $mensaje));
+        DB::afterCommit(fn () => $userOrder->notify(new UserNotification('Pedido Refacturado', $mensaje)));
 
         return $newOrderHeader->refresh();
     }

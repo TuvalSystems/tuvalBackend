@@ -84,7 +84,7 @@ class PedidosController extends Controller
                     $msg = "Pedido #{$order->pedido} generado con éxito, pero no se pudo procesar la factura. Detalle: {$invoiceError}";
                     return $this->buildSuccessResponse($msg, 201);
                 }
-                return $this->buildSuccessResponse("Pedido {$order->pedido} guardado", 200);
+                return $this->buildSuccessResponse("Pedido {$order->pedido} guardado; facturación pendiente de procesamiento según sus condiciones", 200);
             } catch (QueryException $e) {
                 $mysqlCode = $e->errorInfo[1] ?? null;
                 // ¿es un error de concurrencia y aún puedo reintentar?
@@ -138,8 +138,8 @@ class PedidosController extends Controller
                 'id' => 'required',
             ]);
             $order = $this->orderService->generateInvoiceOrder($data['id']);
-            Log::channel(self::LOG_CHANNEL)->info("Pedido {$order->pedido} facturado desde Facturar Pedido - generateInvoiceOrder - facturarpedido");
-            return $this->buildSuccessResponse("Pedido {$order->pedido} facturado", 200);
+            Log::channel(self::LOG_CHANNEL)->info("Pedido {$order->pedido} enviado a la cola de facturación");
+            return $this->buildSuccessResponse("Pedido {$order->pedido}: solicitud de facturación registrada", 200);
         }, self::LOG_CHANNEL, 'facturarpedido');
     }
 
@@ -149,7 +149,7 @@ class PedidosController extends Controller
             $pedido = GpPedido::where('pedido', $codPedido)
                 ->first();
             $order = $this->orderService->generateInvoiceOrder($pedido->id);
-            return $this->successResponse('Pedido Facturado', $order, 200);
+            return $this->successResponse('Solicitud de facturación registrada', $order, 200);
         }, self::LOG_CHANNEL, 'facturarPedidoTest');
     }
 
@@ -536,12 +536,12 @@ class PedidosController extends Controller
             // ✅ Manejar errores parciales
             if ($resultado['fallidos'] > 0) {
                 return $this->buildSuccessResponse(
-                    "Proceso completado con errores: {$resultado['exitosos']} exitosos, {$resultado['fallidos']} fallidos",
+                    "Solicitudes registradas: {$resultado['encolados']}; errores: {$resultado['fallidos']}",
                     200,
                 );
             }
             return $this->buildSuccessResponse(
-                "Todos los pedidos facturados: {$resultado['exitosos']} procesados",
+                "Solicitudes de facturación registradas: {$resultado['encolados']}; ya facturados: {$resultado['exitosos']}",
                 200,
             );
         } catch (\Throwable $e) {

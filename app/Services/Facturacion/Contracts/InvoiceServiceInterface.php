@@ -12,6 +12,8 @@ interface InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true);
 
+    public function processQueuedInvoice(int $pedidoId, bool $trasladado, bool $checkDemanda, bool $directa = false): void;
+
     public function generateDisptachOrder(GpPedido $pedido);
 
     public function sendInvoiceGp(GpPedido $pedido);

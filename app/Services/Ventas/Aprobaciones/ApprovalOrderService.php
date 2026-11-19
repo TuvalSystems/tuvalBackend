@@ -473,9 +473,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
                 $camposModificados
             ),
         ];
-        DB::afterCommit(function () use ($order) {
-            $this->invoiceService->checkSendInvoice($order);
-        });
+        $this->invoiceService->checkSendInvoice($order);
         $this->createHistoryRecord(
             $user,
             $order,
@@ -538,10 +536,7 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
             ),
         ];
         $this->updateOrderStockOnCreditOrCommercialApproval($order, 'comercial');
-        DB::afterCommit(function () use ($order) {
-            $orderFresh = GpPedido::find($order->id);
-            $this->invoiceService->checkSendInvoice($orderFresh);
-        });
+        $this->invoiceService->checkSendInvoice($order);
         $this->createHistoryRecord(
             $user,
             $order,
@@ -666,12 +661,24 @@ class ApprovalOrderService implements ApprovalOrderServiceInterface
     /** rechazo de aprobacion comercial de pedido por stock o por forma manual*/
     public function rejectCommercialOrder(int $id, GpUsuario $approver, ?string $alert = null): GpPedido
     {
+        return $this->invoiceService->executeWithOrderInvoiceLock(
+            $id,
+            fn () => DB::transaction(fn () => $this->rejectCommercialOrderWithinTransaction($id, $approver, $alert)),
+            'No se puede rechazar el pedido: tiene un proceso de facturacion o cancelacion activo.'
+        );
+    }
+
+    protected function rejectCommercialOrderWithinTransaction(int $id, GpUsuario $approver, ?string $alert): GpPedido
+    {
         $order = GpPedido::where('id', $id)
             ->lockForUpdate()
             ->first();
 
         if (!$order) {
             throw new \Exception("Pedido no encontrado", 500);
+        }
+        if (filled($order->factura) || in_array($order->estado, [OrderStatus::ENVIANDO, OrderStatus::FACTURADO], true)) {
+            throw new RuntimeException('No se puede rechazar un pedido que se esta facturando o ya fue facturado.');
         }
         $isRejectedByStock = !empty($alert);
 

@@ -102,6 +102,7 @@ class OrderCreatorService implements OrderCreatorServiceInterface
                         $quoteBlock->save();
                     }
 
+                    $this->invoiceService->checkSendInvoice($pedido);
                     return $pedido;
                 });
             }
@@ -112,16 +113,9 @@ class OrderCreatorService implements OrderCreatorServiceInterface
             return ["pedido" => $pedido->refresh(), "invoice_error" => null];
         }
 
-        $invoiceError = null;
-        try {
-            $this->invoiceService->checkSendInvoice($pedido);
-        } catch (\Exception $e) {
-            Log::error("Error facturando pedido {$pedido->id}: " . $e->getMessage());
-            $invoiceError = $e->getMessage();
-        }
         return [
             'pedido' => $pedido->refresh(),
-            'invoice_error' => $invoiceError
+            'invoice_error' => null
         ];
     }
 

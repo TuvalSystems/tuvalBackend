@@ -1020,10 +1020,12 @@ class InventoryReservationService implements InventoryReservationServiceInterfac
             }
         }
 
+        if (in_array($reservedBlock->estado, ['aprobado', 'procesado']) && $order) {
+            $this->invoiceService->checkSendInvoice($order);
+        }
         DB::afterCommit(function () use (&$order, $payload, $reservedBlock, $user) {
             if (in_array($reservedBlock->estado, ['aprobado', 'procesado']) && $order) {
                 NotifyReservationRequesterOrderCreatedJob::dispatch($order->pedido, $payload['user_ingreso_reserva_id']);
-                $this->invoiceService->checkSendInvoice($order);
             } elseif ($reservedBlock->estado === 'rechazada') {
                 SendDennyReservationForStockNotification::dispatch($payload['cotizacion']['id'], $user->id);
             }

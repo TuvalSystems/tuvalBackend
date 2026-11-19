@@ -28,13 +28,14 @@ use App\Services\Facturacion\Contracts\InvoiceServiceInterface;
 use App\Services\Compartido\Contracts\FunctionsServiceInterface;
 use App\Services\Compras\OrdenesCompra\Contracts\PurchaseOrderServiceInterface;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceService implements InvoiceServiceInterface
 {
     use JsonResponseTrait;
     const STATUS_PENDING = 'pendiente';
     const STATUS_RELEASED = 'liberada';
-    private const ORDER_INVOICE_LOCK_SECONDS = 300;
+    private const ORDER_INVOICE_LOCK_SECONDS = 1200;
 
     // Implementa todos los metodos de facturacion de pedidos, devoluciones, aprobaciones, etc
 
@@ -44,7 +45,9 @@ class InvoiceService implements InvoiceServiceInterface
         protected readonly ApiGpProcessInvoiceVta $apiGpProcessInvoice,
         protected readonly OrderRepository $orderRepository,
         protected readonly SalesTransferParamsBuilderInterface $salesTransfer,
-        protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder
+        protected readonly DispatchOrderParamsBuilderInterface $dispatchBuilder,
+        protected readonly InvoiceQueueService $invoiceQueue,
+        protected readonly InvoiceReservationConsumptionService $reservationConsumption
     ) {}
 
     /** Funcion de checkenviarfactura pasada aqui para reutilizar en otros servicios
@@ -53,7 +56,7 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function executeWithOrderInvoiceLock(int $orderId, callable $callback, ?string $busyMessage = null)
     {
-        $lock = Cache::lock($this->orderInvoiceLockKey($orderId), self::ORDER_INVOICE_LOCK_SECONDS);
+        $lock = Cache::store('redis')->lock($this->orderInvoiceLockKey($orderId), self::ORDER_INVOICE_LOCK_SECONDS);
         if (!$lock->get()) {
             throw new \RuntimeException($busyMessage ?? 'El pedido ya tiene un proceso de facturacion activo.');
         }
@@ -67,22 +70,31 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function checkSendInvoice(GpPedido $pedido, $trasladado = false, $checkDemanda = true)
     {
-        $lock = Cache::lock($this->orderInvoiceLockKey($pedido->id), self::ORDER_INVOICE_LOCK_SECONDS);
-        if (!$lock->get()) {
-            Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya tiene un proceso de facturacion activo.");
+        $this->invoiceQueue->enqueue($pedido, (bool) $trasladado, (bool) $checkDemanda);
+    }
+
+    /** Exclusivo del worker, bajo el mismo bloqueo usado por rechazo/cancelación. */
+    public function processQueuedInvoice(int $pedidoId, bool $trasladado, bool $checkDemanda, bool $directa = false): void
+    {
+        if (DB::transactionLevel() !== 0) {
+            throw new \LogicException('La emisión GP debe ejecutarse fuera de una transacción local.');
+        }
+        $pedido = GpPedido::findOrFail($pedidoId);
+        if (filled($pedido->factura)) return;
+
+        // Un envío anterior pudo terminar en GP aunque el worker muriera o perdiera la respuesta.
+        if (DB::table('envios_facturacion')->where('pedido_id', $pedidoId)->exists()) {
+            $this->respuestaFacturaVenta($pedido);
             return;
         }
+        if ($pedido->estado === OrderStatus::FACTURADO || $this->shouldSkipProcessing($pedido)) return;
 
-        try {
-            $pedido->refresh();
-            if (filled($pedido->factura) || $pedido->estado === OrderStatus::FACTURADO) {
-                Log::channel('invoice')->info("Pedido #{$pedido->pedido} omitido: ya se encuentra facturado.");
-                return;
-            }
-
+        if ($directa) {
+            // La vía manual siempre recalculaba y enviaba sin la preparación de checkSendInvoice.
+            $this->functionService->recalculateOrder($pedido->id);
+            $this->processSendInvoiceGp($pedido);
+        } else {
             $this->processCheckSendInvoice($pedido, $trasladado, $checkDemanda);
-        } finally {
-            optional($lock)->release();
         }
     }
 
@@ -116,7 +128,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         $this->generateDisptachOrder($pedido);
         $this->functionService->recalculateOrder($pedido->id);
-        $this->sendInvoiceGp($pedido);
+        $this->processSendInvoiceGp($pedido);
     }
 
     /** funciones anidadas a  checkSendInvoice*/
@@ -205,12 +217,14 @@ class InvoiceService implements InvoiceServiceInterface
 
     protected function saveTransferenciasVentas(GpPedido $pedido, $detalles)
     {
-        foreach ($detalles as $detalle) {
-            $trfvta = $this->salesTransfer->build($pedido, $detalle);
-            $trfvta->save();
-            $detalle->traslado = 1;
-            $detalle->save();
-        }
+        DB::transaction(function () use ($pedido, $detalles) {
+            foreach ($detalles as $detalle) {
+                $trfvta = $this->salesTransfer->build($pedido, $detalle);
+                $trfvta->save();
+                $detalle->traslado = 1;
+                $detalle->save();
+            }
+        });
     }
 
 
@@ -327,6 +341,11 @@ class InvoiceService implements InvoiceServiceInterface
 
     public function sendInvoiceGp(GpPedido $pedido)
     {
+        $this->invoiceQueue->enqueue($pedido, false, true, true);
+    }
+
+    protected function processSendInvoiceGp(GpPedido $pedido)
+    {
         if ($pedido->rechazado || $this->shouldSkipOrderForStatus($pedido)) {
             if ($pedido->rechazado && $pedido->estado !== OrderStatus::RECHAZADO) {
                 $pedido->estado = OrderStatus::RECHAZADO;
@@ -409,7 +428,7 @@ class InvoiceService implements InvoiceServiceInterface
 
         // verificar si el pedido ya fue facturado
         $existInvoice = $this->apiGpProcessInvoice->responseDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
-        if ($existInvoice['success'] === true) {
+        if (data_get($existInvoice, 'success') === true) {
             $info                           = data_get($existInvoice, 'data', []);
             $numFactura = data_get($info, 'numeroDocGenerado');
             $numFactura = trim((string) $numFactura);
@@ -417,6 +436,7 @@ class InvoiceService implements InvoiceServiceInterface
                 $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
                 $pedido->estado             = OrderStatus::FACTURADO;
                 $pedido->fecha_factura      = now()->toDateString();
+                $pedido->fecha_hora_factura = now();
                 $pedido->FAC_VTA_MENSAJE    = data_get($info, 'mensaje', 'Validación de factura correcta.');
             } else {
                 $pedido->estado             = OrderStatus::ESPERA;
@@ -426,10 +446,13 @@ class InvoiceService implements InvoiceServiceInterface
             $pedido->save();
             return $pedido;
         }
+        if (!InvoiceGpResponse::isMissing($existInvoice)) {
+            throw new \RuntimeException('No se pudo confirmar el estado de la factura en GP. No se elimina ni reenvía el pedido.');
+        }
         // eliminar factura existente si existe y no se proceso correctamente
         $deleteInvoice = $this->apiGpProcessInvoice->deleteDocumentInvoiceVta($this->formatParamsInvoiceValidate($pedido));
-        if ($deleteInvoice['success'] === false) {
-            throw new \Exception("No se pudo eliminar la factura existente para el pedido {$pedido->pedido}. Error: {$deleteInvoice['message']}");
+        if (data_get($deleteInvoice, 'success') !== true) {
+            throw new \RuntimeException("No se confirmó la preparación de factura del pedido {$pedido->pedido}. No se envía a GP.");
         }
 
         $detalles       = GpPedidoDetalle::where('pedido_id', $pedido->id)->get();
@@ -450,13 +473,14 @@ class InvoiceService implements InvoiceServiceInterface
             $params
         ]);
 
+        // Se confirma antes del POST y fuera de transacciones: sobrevive a timeout/reinicio.
+        DB::table('envios_facturacion')->insert([
+            'pedido_id' => $pedido->id, 'estado' => 'incierto', 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $result = $this->apiGpProcessInvoice->storeDocumentInvoiceVta($params);
-        if ($result['success'] === false) {
-            throw new \Exception("Error al facturar el pedido {$pedido->pedido}: {$result['message']}");
-        }
-
-        $pedido->MST_FAC_VTAResult = $result['message'];
+        $pedido->MST_FAC_VTAResult = data_get($result, 'message', 'Envío pendiente de conciliación con GP');
         $pedido->save();
+        // Incluso un POST fallido puede haber emitido la factura. La consulta es la autoridad.
         $this->respuestaFacturaVenta($pedido);
     }
 
@@ -636,22 +660,25 @@ class InvoiceService implements InvoiceServiceInterface
         $sucess         = data_get($existInvoice, 'success', false);
         $info           = data_get($existInvoice, 'data', []);
 
-        if ($sucess === false) {
-            $msg                        = data_get($info, 'mensaje', 'Error no definido por GP');
+        $numero = InvoiceGpResponse::invoiceNumber($existInvoice);
+        if ($sucess !== true || $numero === '') {
+            $msg = data_get($info, 'mensaje') ?: 'Resultado de facturación pendiente de confirmar en GP; no se reenvía automáticamente.';
             $pedido->FAC_VTA_MENSAJE    = $msg;
-            $pedido->estado             = OrderStatus::ESPERA;
             $pedido->save();
             throw new \RuntimeException(
                 "Ocurrió un error al obtener la factura del pedido {$pedido->pedido}: {$pedido->FAC_VTA_MENSAJE}"
             );
         }
-        $pedido->factura            = data_get($info, 'numeroDocGenerado', null);
+        $pedido->factura            = $numero;
         $pedido->FAC_VTA_MENSAJE    = data_get($existInvoice, 'message', null);
         $pedido->estado             = OrderStatus::FACTURADO;
         $pedido->fecha_factura      = now()->toDateString();
         $pedido->fecha_hora_factura = now();
         Log::channel('invoice')->info("Pedido {$pedido->pedido} facturado. numero de factura: {$pedido->factura}. Estado del pedido {$pedido->estado->value}");
         $pedido->save();
+        DB::table('envios_facturacion')->where('pedido_id', $pedido->id)->update([
+            'estado' => 'confirmado', 'factura' => $numero, 'updated_at' => now(),
+        ]);
     }
 
     /** proceso de limpieza de stock de cotizacion de reserva  */
@@ -724,27 +751,8 @@ class InvoiceService implements InvoiceServiceInterface
             return;
         }
 
-        $idsParaLock = array_map(fn($k) => $cotizacionPorClave[$k]->id, $clavesAfectadas);
-        GpCotizacionDetalleStock::whereIn('id', $idsParaLock)->get();
         foreach ($clavesAfectadas as $k) {
-            $row            = $cotizacionPorClave[$k];
-            $pedidoQty      = (int) $pedidoPorClave[$k];
-            $selActual      = (int) $row->seleccionado;
-            $facturado      = (int) ($row->cantidad_facturada ?? 0);
-            $cancelado      = (int) ($row->cantidad_cancelada ?? 0);
-            $authorizado    = (int) ($row->cantidad_reservada ?? 0);
-            $limite         = max(0, $authorizado - $cancelado);
-            $remanenteFact  = max(0, $limite - $facturado);
-            $incFacturable  = min($pedidoQty, $remanenteFact);
-            $consumoReserva = min($incFacturable, $selActual);
-            $nuevoSelect    = $selActual - $consumoReserva;
-            $nuevoFacturado = $facturado + $incFacturable;
-
-            if ($nuevoSelect !== $selActual) {
-                $row->seleccionado          = $nuevoSelect;
-                $row->cantidad_facturada    = $nuevoFacturado;
-                $row->save();
-            }
+            $this->reservationConsumption->consume($orderId, (int) $cotizacionPorClave[$k]->id, (int) $pedidoPorClave[$k]);
         }
         $this->updateCheckStatusReservation($reservedId);
     }
